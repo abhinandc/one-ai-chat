@@ -90,9 +90,9 @@ function MessageItem({ message, isStreaming }: MessageItemProps) {
             "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
             isUser 
               ? "bg-accent-blue text-white" 
-              : "bg-gradient-to-br from-accent-blue to-accent-purple text-white"
+              : "bg-surface-secondary text-text-secondary"
           )}>
-            {isUser ? "U" : "OneAI"}
+            {isUser ? "U" : "Agent"}
           </div>
           
           <div className="flex-1 space-y-sm">
