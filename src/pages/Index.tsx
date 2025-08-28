@@ -103,8 +103,8 @@ const Index = () => {
           <GlassCard>
             <GlassCardContent className="p-lg">
               <div className="space-y-md">
-                <div className="flex items-center gap-lg p-lg bg-surface-graphite rounded-xl">
-                  <div className="p-md bg-accent-blue/10 rounded-xl">
+                <div className="flex items-center gap-md p-md bg-surface-graphite rounded-xl">
+                  <div className="p-sm bg-accent-blue/10 rounded-lg">
                     <MessageSquare className="h-5 w-5 text-accent-blue" />
                   </div>
                   <div className="flex-1">
@@ -113,8 +113,8 @@ const Index = () => {
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-lg p-lg bg-surface-graphite rounded-xl">
-                  <div className="p-md bg-accent-green/10 rounded-xl">
+                <div className="flex items-center gap-md p-md bg-surface-graphite rounded-xl">
+                  <div className="p-sm bg-accent-green/10 rounded-lg">
                     <Bot className="h-5 w-5 text-accent-green" />
                   </div>
                   <div className="flex-1">
@@ -123,8 +123,8 @@ const Index = () => {
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-lg p-lg bg-surface-graphite rounded-xl">
-                  <div className="p-md bg-accent-orange/10 rounded-xl">
+                <div className="flex items-center gap-md p-md bg-surface-graphite rounded-xl">
+                  <div className="p-sm bg-accent-orange/10 rounded-lg">
                     <Zap className="h-5 w-5 text-accent-orange" />
                   </div>
                   <div className="flex-1">
