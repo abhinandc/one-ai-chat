@@ -17,11 +17,11 @@ const GlassInput = forwardRef<HTMLInputElement, GlassInputProps>(
           "text-text-primary placeholder:text-text-tertiary",
           "focus:outline-none focus:ring-2 focus:ring-accent-blue focus:border-transparent",
           "disabled:cursor-not-allowed disabled:opacity-50",
-          "motion-safe hover:bg-white/70",
-          {
-            "h-10 rounded-lg": variant === "minimal",
-            "bg-surface-graphite/60 border-border-secondary": variant === "search"
-          },
+           "motion-safe hover:bg-white/70",
+           {
+             "h-10 rounded-lg": variant === "minimal",
+             "bg-surface-graphite/60 border-border-secondary hover:bg-surface-graphite/80": variant === "search"
+           },
           className
         )}
         ref={ref}

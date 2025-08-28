@@ -26,18 +26,18 @@ export function Inspector({ conversation, citations = [], onUpdateSettings }: In
     <div className="w-80 h-full bg-surface-graphite/30 border-l border-border-primary/50 flex flex-col">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
         {/* Header */}
-        <div className="p-lg border-b border-border-secondary/50">
-          <h2 className="text-lg font-semibold text-text-primary mb-lg">Inspector</h2>
-          <TabsList className="grid w-full grid-cols-3 h-10">
-            <TabsTrigger value="context" className="text-xs h-8 flex items-center justify-center">Context</TabsTrigger>
-            <TabsTrigger value="variables" className="text-xs h-8 flex items-center justify-center">Variables</TabsTrigger>
-            <TabsTrigger value="settings" className="text-xs h-8 flex items-center justify-center">Settings</TabsTrigger>
+        <div className="px-4 py-3 border-b border-border-secondary/50">
+          <h2 className="text-lg font-semibold text-text-primary mb-3">Inspector</h2>
+          <TabsList className="grid w-full grid-cols-3 h-9 bg-surface-graphite/30">
+            <TabsTrigger value="context" className="text-xs h-7 data-[state=active]:bg-accent-blue/15 data-[state=active]:text-accent-blue">Context</TabsTrigger>
+            <TabsTrigger value="variables" className="text-xs h-7 data-[state=active]:bg-accent-blue/15 data-[state=active]:text-accent-blue">Variables</TabsTrigger>
+            <TabsTrigger value="settings" className="text-xs h-7 data-[state=active]:bg-accent-blue/15 data-[state=active]:text-accent-blue">Settings</TabsTrigger>
           </TabsList>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
-          <TabsContent value="context" className="p-lg space-y-lg m-0">
+          <TabsContent value="context" className="px-4 py-3 space-y-4 m-0">
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-text-tertiary" />
@@ -73,8 +73,8 @@ export function Inspector({ conversation, citations = [], onUpdateSettings }: In
             </div>
           </TabsContent>
 
-          <TabsContent value="variables" className="p-lg space-y-lg m-0">
-            <div className="space-y-md">
+          <TabsContent value="variables" className="px-4 py-3 space-y-4 m-0">
+            <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Settings className="h-4 w-4 text-text-secondary" />
                 <h3 className="text-sm font-medium text-text-primary">Prompt Variables</h3>
@@ -115,7 +115,7 @@ export function Inspector({ conversation, citations = [], onUpdateSettings }: In
             </div>
           </TabsContent>
 
-          <TabsContent value="settings" className="p-lg space-y-lg m-0">
+          <TabsContent value="settings" className="px-4 py-3 space-y-4 m-0">
             {conversation && (
               <ConversationSettings 
                 conversation={conversation} 
