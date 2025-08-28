@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Eye, EyeOff, Moon, Sun } from "lucide-react";
 import { GlassCard, GlassCardHeader, GlassCardTitle, GlassCardDescription, GlassCardContent } from "@/components/ui/GlassCard";
 import { GlassInput } from "@/components/ui/GlassInput";
@@ -15,6 +15,18 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+
+  // Initialize dark mode from localStorage or system preference
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme");
+    const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const shouldUseDarkMode = savedTheme === "dark" || (!savedTheme && systemPrefersDark);
+    
+    setDarkMode(shouldUseDarkMode);
+    if (shouldUseDarkMode) {
+      document.documentElement.classList.add("dark");
+    }
+  }, []);
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
@@ -55,22 +67,25 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   };
 
   const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-    document.documentElement.classList.toggle("dark");
+    const newDarkMode = !darkMode;
+    setDarkMode(newDarkMode);
+    localStorage.setItem("theme", newDarkMode ? "dark" : "light");
+    
+    if (newDarkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
   };
 
   return (
-    <div className={cn(
-      "min-h-screen flex items-center justify-center p-lg",
-      "bg-gradient-to-br from-background via-surface-graphite/30 to-background",
-      darkMode && "dark"
-    )}>
+    <div className="min-h-screen flex items-center justify-center p-lg bg-gradient-to-br from-background via-surface-graphite/30 to-background">
       {/* Dark Mode Toggle */}
       <Button
         variant="ghost"
         size="sm"
         onClick={toggleDarkMode}
-        className="fixed top-lg right-lg z-50"
+        className="fixed top-lg right-lg z-50 text-text-secondary hover:text-text-primary"
       >
         {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
       </Button>
@@ -78,19 +93,19 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       <div className="w-full max-w-md space-y-xl">
         {/* Logo/Branding */}
         <div className="text-center space-y-md">
-          <h1 className="text-4xl font-bold text-text-primary font-display">
+          <h1 className="text-4xl font-semibold text-text-primary font-display">
             OneAI
           </h1>
           <p className="text-lg text-text-secondary">
-            Professional AI platform for modern workflows
+            OneOrigin&apos;s Unified AI Platform
           </p>
         </div>
 
         {/* Login Card */}
-        <GlassCard variant="elevated">
+        <GlassCard variant="elevated" className="bg-card border-border-primary">
           <GlassCardHeader className="text-center">
-            <GlassCardTitle className="text-2xl">Welcome back</GlassCardTitle>
-            <GlassCardDescription>
+            <GlassCardTitle className="text-2xl text-card-foreground">Welcome back</GlassCardTitle>
+            <GlassCardDescription className="text-text-secondary">
               Sign in to your account to continue
             </GlassCardDescription>
           </GlassCardHeader>
@@ -100,7 +115,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             <Button
               onClick={handleGoogleSignIn}
               disabled={isLoading}
-              className="w-full h-12 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:text-gray-900"
+              className="w-full h-12 bg-card text-card-foreground border border-border-primary hover:bg-surface-graphite-hover"
               variant="outline"
             >
               <div className="flex items-center gap-3">
@@ -132,7 +147,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                 <div className="w-full border-t border-divider" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="bg-background px-md text-text-tertiary">
+                <span className="bg-card px-md text-text-tertiary">
                   Or continue with
                 </span>
               </div>
@@ -141,7 +156,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             {/* Email Form */}
             <form onSubmit={handleEmailSignIn} className="space-y-md">
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-text-primary mb-sm">
+                <label htmlFor="email" className="block text-sm font-medium text-card-foreground mb-sm">
                   Email
                 </label>
                 <GlassInput
@@ -151,11 +166,12 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  className="bg-card text-card-foreground border-border-primary"
                 />
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-text-primary mb-sm">
+                <label htmlFor="password" className="block text-sm font-medium text-card-foreground mb-sm">
                   Password
                 </label>
                 <div className="relative">
@@ -165,14 +181,14 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pr-12"
+                    className="pr-12 bg-card text-card-foreground border-border-primary"
                     required
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 text-text-secondary hover:text-text-primary"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -191,12 +207,12 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
             {/* Footer Links */}
             <div className="text-center space-y-sm">
-              <Button variant="link" className="text-sm text-text-secondary">
+              <Button variant="link" className="text-sm text-text-secondary hover:text-text-primary">
                 Forgot your password?
               </Button>
               <p className="text-sm text-text-tertiary">
-                Don't have an account?{" "}
-                <Button variant="link" className="text-accent-blue p-0 h-auto font-medium">
+                Don&apos;t have an account?{" "}
+                <Button variant="link" className="text-accent-blue p-0 h-auto font-medium hover:text-accent-blue-hover">
                   Sign up
                 </Button>
               </p>

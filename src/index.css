@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -165,38 +165,62 @@
 /* Glass-ios26 Utility Classes */
 @layer components {
   .glass-ios {
-    @apply bg-white/80 backdrop-blur-md border border-white/20;
+    background: rgba(255, 255, 255, var(--glass-bg-opacity));
+    backdrop-filter: blur(var(--blur-md));
+    border: 1px solid hsl(var(--border-primary));
     box-shadow: var(--shadow-glass);
   }
   
+  .dark .glass-ios {
+    background: rgba(0, 0, 0, var(--glass-bg-opacity));
+    border: 1px solid hsl(var(--border-primary));
+  }
+  
   .glass-toolbar {
-    @apply bg-white/70 backdrop-blur-lg border-b border-white/20;
-    box-shadow: 0 1px 0 0 hsl(220 13% 91% / 0.5);
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(var(--blur-lg));
+    border-bottom: 1px solid hsl(var(--border-primary));
+    box-shadow: 0 1px 0 0 hsl(var(--border-primary) / 0.5);
+  }
+  
+  .dark .glass-toolbar {
+    background: rgba(0, 0, 0, 0.7);
+    border-bottom: 1px solid hsl(var(--border-primary));
   }
   
   .glass-divider {
-    @apply bg-gradient-to-r from-transparent via-black/10 to-transparent h-px;
+    background: linear-gradient(to right, transparent, hsl(var(--divider)), transparent);
+    height: 1px;
   }
   
   .surface-graphite {
-    @apply bg-surface-graphite border border-border-primary;
+    background: hsl(var(--surface-graphite));
+    border: 1px solid hsl(var(--border-primary));
   }
   
   .surface-graphite-hover {
-    @apply hover:bg-surface-graphite-hover transition-colors duration-fast;
+    transition: background-color var(--duration-fast) ease-out;
+  }
+  
+  .surface-graphite-hover:hover {
+    background: hsl(var(--surface-graphite-hover));
   }
   
   .text-low-ink {
-    @apply text-text-secondary;
+    color: hsl(var(--text-secondary));
   }
   
   .tap-target {
-    @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   
   /* Gentle motion presets */
   .motion-safe {
-    @apply transition-all duration-normal ease-out;
+    transition: all var(--duration-normal) ease-out;
   }
   
   .motion-gentle {
@@ -204,43 +228,47 @@
   }
   
   .hover-lift {
-    @apply hover:-translate-y-0.5 hover:shadow-md;
     transition: transform var(--duration-slow) cubic-bezier(0.4, 0, 0.2, 1), box-shadow var(--duration-normal) ease-out;
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
   }
 }
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: hsl(var(--border-primary));
   }
   
   body {
-    @apply bg-background text-foreground font-sans antialiased;
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', Inter, system-ui, sans-serif;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   
   /* Focus rings for accessibility */
   *:focus-visible {
-    @apply outline-none ring-2 ring-accent-blue ring-offset-2 ring-offset-background;
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--accent-blue)), 0 0 0 4px hsl(var(--background));
   }
   
   /* Large tap targets for mobile */
   button, a, [role="button"] {
-    @apply tap-target motion-safe;
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--duration-normal) ease-out;
   }
   
   /* Smooth scrolling */
   html {
-    @apply scroll-smooth;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply bg-background text-foreground;
+    scroll-behavior: smooth;
   }
 }
