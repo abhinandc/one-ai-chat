@@ -41,13 +41,14 @@ export function SideNav({ collapsed = false, onToggleCollapsed }: SideNavProps) 
   const isActive = (href: string) => location.pathname === href;
 
   return (
-    <GlassCard className={cn(
-      "h-full flex flex-col border-r border-border-primary bg-surface-graphite/30",
+    <div className={cn(
+      "h-full flex flex-col bg-surface-graphite/40 backdrop-blur-sm",
+      "border-r border-border-primary/50",
       "transition-all duration-normal ease-out",
       collapsed ? "w-16" : "w-64"
     )}>
       {/* Toggle Button */}
-      <div className="p-md border-b border-border-secondary">
+      <div className="p-md border-b border-border-secondary/50">
         <Button
           variant="ghost"
           size="sm"
@@ -93,13 +94,13 @@ export function SideNav({ collapsed = false, onToggleCollapsed }: SideNavProps) 
       </nav>
 
       {/* Footer */}
-      <div className="p-md border-t border-border-secondary">
+      <div className="p-md border-t border-border-secondary/50">
         {!collapsed && (
           <div className="text-xs text-text-quaternary text-center">
             Powered by OneOrigin
           </div>
         )}
       </div>
-    </GlassCard>
+    </div>
   );
 }

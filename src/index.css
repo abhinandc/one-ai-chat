@@ -124,32 +124,32 @@
     --text-tertiary: 0 0% 55%;
     --text-quaternary: 0 0% 40%;
     
-    /* Dark accent colors */
-    --accent-blue: 211 100% 60%;
-    --accent-blue-hover: 211 100% 65%;
-    --accent-green: 142 71% 55%;
-    --accent-orange: 24 100% 60%;
-    --accent-red: 0 84% 70%;
+    /* Dark accent colors - more prominent */
+    --accent-blue: 211 100% 70%;
+    --accent-blue-hover: 211 100% 75%;
+    --accent-green: 142 71% 65%;
+    --accent-orange: 24 100% 70%;
+    --accent-red: 0 84% 75%;
     
-    /* Dark interactive states */
-    --interactive-hover: 0 0% 15%;
-    --interactive-active: 0 0% 18%;
-    --interactive-selected: 211 100% 15%;
+    /* Dark interactive states - more prominent */
+    --interactive-hover: 0 0% 18%;
+    --interactive-active: 0 0% 22%;
+    --interactive-selected: 211 100% 20%;
     
     /* Dark borders and dividers */
     --border-primary: 0 0% 20%;
     --border-secondary: 0 0% 15%;
     --divider: 0 0% 18%;
     
-    /* Legacy tokens for dark mode */
-    --primary: 211 100% 60%;
+    /* Legacy tokens for dark mode - more prominent */
+    --primary: 211 100% 70%;
     --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 15%;
+    --secondary: 0 0% 18%;
     --secondary-foreground: 0 0% 95%;
-    --muted: 0 0% 15%;
+    --muted: 0 0% 18%;
     --muted-foreground: 0 0% 70%;
-    --accent: 211 100% 15%;
-    --accent-foreground: 211 100% 60%;
+    --accent: 211 100% 20%;
+    --accent-foreground: 211 100% 70%;
     --destructive: 0 84% 70%;
     --destructive-foreground: 0 0% 9%;
     --border: 0 0% 20%;
