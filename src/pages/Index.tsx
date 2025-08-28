@@ -102,10 +102,10 @@ const Index = () => {
           <h2 className="text-xl font-semibold text-text-primary mb-lg">Recent Activity</h2>
           <GlassCard>
             <GlassCardContent className="p-lg">
-              <div className="space-y-md">
-                <div className="flex items-center gap-md p-md bg-surface-graphite rounded-lg">
-                  <div className="p-sm bg-accent-blue/10 rounded-lg">
-                    <MessageSquare className="h-4 w-4 text-accent-blue" />
+              <div className="space-y-lg">
+                <div className="flex items-center gap-lg p-lg bg-surface-graphite rounded-xl">
+                  <div className="p-md bg-accent-blue/10 rounded-xl">
+                    <MessageSquare className="h-5 w-5 text-accent-blue" />
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-text-primary">New chat session started</p>
@@ -113,9 +113,9 @@ const Index = () => {
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-md p-md bg-surface-graphite rounded-lg">
-                  <div className="p-sm bg-accent-green/10 rounded-lg">
-                    <Bot className="h-4 w-4 text-accent-green" />
+                <div className="flex items-center gap-lg p-lg bg-surface-graphite rounded-xl">
+                  <div className="p-md bg-accent-green/10 rounded-xl">
+                    <Bot className="h-5 w-5 text-accent-green" />
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-text-primary">Agent "Content Creator" deployed</p>
@@ -123,9 +123,9 @@ const Index = () => {
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-md p-md bg-surface-graphite rounded-lg">
-                  <div className="p-sm bg-accent-orange/10 rounded-lg">
-                    <Zap className="h-4 w-4 text-accent-orange" />
+                <div className="flex items-center gap-lg p-lg bg-surface-graphite rounded-xl">
+                  <div className="p-md bg-accent-orange/10 rounded-xl">
+                    <Zap className="h-5 w-5 text-accent-orange" />
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-text-primary">Automation workflow completed</p>
