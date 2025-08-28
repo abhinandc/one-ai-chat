@@ -273,7 +273,7 @@ function ModelSelector({ value, onChange }: { value: string; onChange: (value: s
             )}
           >
             {model.id === value && (
-              <div className="absolute left-0 top-1 bottom-1 w-1 bg-accent-blue rounded-r" />
+              <div className="absolute left-0 top-1 bottom-1 w-3 bg-accent-blue rounded-r" />
             )}
             <div className="flex flex-col ml-2">
               <span className="font-medium text-sm leading-tight">{model.name}</span>
