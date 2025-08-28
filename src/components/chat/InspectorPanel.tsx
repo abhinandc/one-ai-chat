@@ -20,8 +20,8 @@ export function InspectorPanel({ conversation, citations, onUpdateSettings }: In
       isCollapsed ? "w-12" : "w-80"
     )}>
       {/* Collapse Toggle */}
-      <div className="p-md border-b border-border-secondary/50 flex items-center justify-between min-h-[48px]">
-        {!isCollapsed && <h3 className="text-sm font-medium text-text-primary">Inspector</h3>}
+      <div className="px-4 py-3 border-b border-border-secondary/50 flex items-center justify-between">
+        {!isCollapsed && <h3 className="text-sm font-medium text-text-primary flex-1">Inspector</h3>}
         <Button
           variant="ghost"
           size="sm"
