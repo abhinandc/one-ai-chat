@@ -26,11 +26,11 @@ export function Inspector({ conversation, citations = [], onUpdateSettings }: In
     <div className="w-80 h-full bg-surface-graphite/30 border-l border-border-primary/50 flex flex-col">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
         {/* Header */}
-        <div className="px-4 py-3 border-b border-border-secondary/50">
-          <TabsList className="grid w-full grid-cols-3 h-9 bg-surface-graphite/30">
-            <TabsTrigger value="context" className="text-xs h-7 data-[state=active]:bg-accent-blue/15 data-[state=active]:text-accent-blue">Context</TabsTrigger>
-            <TabsTrigger value="variables" className="text-xs h-7 data-[state=active]:bg-accent-blue/15 data-[state=active]:text-accent-blue">Variables</TabsTrigger>
-            <TabsTrigger value="settings" className="text-xs h-7 data-[state=active]:bg-accent-blue/15 data-[state=active]:text-accent-blue">Settings</TabsTrigger>
+        <div className="px-4 py-2 border-b border-border-secondary/50">
+          <TabsList className="grid w-full grid-cols-3 h-8 bg-surface-graphite/30">
+            <TabsTrigger value="context" className="text-xs h-6 data-[state=active]:bg-accent-blue/15 data-[state=active]:text-accent-blue">Context</TabsTrigger>
+            <TabsTrigger value="variables" className="text-xs h-6 data-[state=active]:bg-accent-blue/15 data-[state=active]:text-accent-blue">Variables</TabsTrigger>
+            <TabsTrigger value="settings" className="text-xs h-6 data-[state=active]:bg-accent-blue/15 data-[state=active]:text-accent-blue">Settings</TabsTrigger>
           </TabsList>
         </div>
 
