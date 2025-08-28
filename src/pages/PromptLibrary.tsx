@@ -314,7 +314,13 @@ export default function PromptLibrary() {
               <h1 className="text-3xl font-bold text-text-primary mb-2">Prompt Library</h1>
               <p className="text-text-secondary">Discover and use proven AI prompt templates</p>
             </div>
-            <Button className="bg-accent-blue hover:bg-accent-blue/90">
+            <Button 
+              className="bg-accent-blue hover:bg-accent-blue/90"
+              onClick={() => {
+                // Navigate to prompt creation
+                window.open("/prompts/create", "_blank");
+              }}
+            >
               <Edit className="h-4 w-4 mr-2" />
               Create Prompt
             </Button>

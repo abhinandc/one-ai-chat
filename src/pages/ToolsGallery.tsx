@@ -189,7 +189,13 @@ export default function ToolsGallery() {
               <h1 className="text-3xl font-bold text-text-primary mb-2">Tools Gallery</h1>
               <p className="text-text-secondary">Discover and integrate powerful AI tools for your workflow</p>
             </div>
-            <Button className="bg-accent-blue hover:bg-accent-blue/90">
+            <Button 
+              className="bg-accent-blue hover:bg-accent-blue/90"
+              onClick={() => {
+                // Navigate to tool submission
+                window.open("/tools/submit", "_blank");
+              }}
+            >
               <Download className="h-4 w-4 mr-2" />
               Submit Tool
             </Button>
@@ -410,11 +416,22 @@ function ToolCard({
 
         {/* Actions */}
         <div className="flex items-center gap-2 pt-2">
-          <Button size="sm" className="flex-1">
+          <Button 
+            size="sm" 
+            className="flex-1"
+            onClick={() => {
+              // Install tool functionality
+              console.log(`Installing tool: ${tool.name}`);
+            }}
+          >
             <Zap className="h-3 w-3 mr-1" />
             Install Tool
           </Button>
-          <Button variant="outline" size="sm">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => window.open(`/tools/${tool.id}`, "_blank")}
+          >
             <ExternalLink className="h-3 w-3" />
           </Button>
         </div>

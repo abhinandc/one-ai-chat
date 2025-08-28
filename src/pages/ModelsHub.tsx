@@ -330,11 +330,22 @@ function ModelCard({ model, featured = false, getTypeIcon, getPricingColor }: { 
 
         {/* Actions */}
         <div className="flex items-center gap-2 pt-2">
-          <Button size="sm" className="flex-1">
+          <Button 
+            size="sm" 
+            className="flex-1"
+            onClick={() => {
+              // Use model functionality - navigate to playground with this model
+              window.location.href = `/playground?model=${model.id}`;
+            }}
+          >
             <Zap className="h-3 w-3 mr-1" />
             Use Model
           </Button>
-          <Button variant="outline" size="sm">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => window.open(`/models/${model.id}`, "_blank")}
+          >
             <ExternalLink className="h-3 w-3" />
           </Button>
         </div>

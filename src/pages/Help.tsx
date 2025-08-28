@@ -208,13 +208,15 @@ export default function Help() {
   return (
     <div className="h-full flex flex-col bg-background">
       {/* Header */}
-      <div className="border-b border-border-primary/50 p-6">
+      <div className="border-b border-border-primary/50 p-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-text-primary mb-4">Help Center</h1>
-            <p className="text-lg text-text-secondary mb-6">
-              Find answers, tutorials, and resources to help you succeed with OneAI
-            </p>
+            <div className="bg-gradient-to-r from-accent-blue/10 to-accent-purple/10 rounded-2xl p-8 mb-6">
+              <h1 className="text-4xl font-bold text-text-primary mb-4">Help Center</h1>
+              <p className="text-lg text-text-secondary mb-0">
+                Find answers, tutorials, and resources to help you succeed with OneAI
+              </p>
+            </div>
             
             {/* Search */}
             <div className="max-w-2xl mx-auto">
@@ -234,7 +236,21 @@ export default function Help() {
           {/* Quick Actions */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {quickActions.map((action, index) => (
-              <GlassCard key={index} className="p-4 hover:border-accent-blue/30 transition-colors cursor-pointer">
+              <GlassCard 
+                key={index} 
+                className="p-4 hover:border-accent-blue/30 transition-colors cursor-pointer"
+                onClick={() => {
+                  if (action.action === "contact") {
+                    window.open("mailto:support@oneai.com", "_blank");
+                  } else if (action.action === "docs") {
+                    window.open("https://docs.oneai.com", "_blank");
+                  } else if (action.action === "videos") {
+                    window.open("https://youtube.com/@oneai", "_blank");
+                  } else if (action.action === "forum") {
+                    window.open("https://forum.oneai.com", "_blank");
+                  }
+                }}
+              >
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-accent-blue/10 rounded-lg text-accent-blue">
                     {action.icon}
@@ -316,7 +332,12 @@ export default function Help() {
                         </span>
                       </div>
 
-                      <Button variant="outline" size="sm" className="w-full">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full"
+                        onClick={() => window.open(`/help/articles/${article.id}`, "_blank")}
+                      >
                         <FileText className="h-3 w-3 mr-2" />
                         Read Article
                       </Button>
@@ -359,7 +380,12 @@ export default function Help() {
                         </div>
                       </div>
 
-                      <Button variant="outline" size="sm" className="w-full">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full"
+                        onClick={() => window.open(`/help/tutorials/${tutorial.id}`, "_blank")}
+                      >
                         <Video className="h-3 w-3 mr-2" />
                         Watch Tutorial
                       </Button>
@@ -394,7 +420,14 @@ export default function Help() {
                             {faq.helpful} people found this helpful
                           </span>
                         </div>
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => {
+                            // Toggle helpful state
+                            console.log(`Marked FAQ ${faq.id} as helpful`);
+                          }}
+                        >
                           <ThumbsUp className="h-3 w-3 mr-1" />
                           Helpful
                         </Button>

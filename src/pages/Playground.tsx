@@ -293,15 +293,15 @@ export default function Playground() {
                       {promptExamples.map((example, index) => (
                         <Button
                           key={index}
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
-                          className="w-full text-left justify-start h-auto p-2"
+                          className="w-full text-left justify-start h-auto p-3 border border-transparent hover:border-border-primary/30 hover:bg-accent-blue/5"
                           onClick={() => loadExample(example)}
                         >
                           <div className="text-xs">
-                            <div className="font-medium">{example.title}</div>
-                            <div className="text-text-tertiary line-clamp-2 mt-1">
-                              {example.prompt.substring(0, 60)}...
+                            <div className="font-medium text-text-primary">{example.title}</div>
+                            <div className="text-text-secondary mt-1 break-words whitespace-normal text-wrap">
+                              {example.prompt.substring(0, 80)}...
                             </div>
                           </div>
                         </Button>
@@ -316,10 +316,12 @@ export default function Playground() {
             <div className="lg:col-span-2">
               <GlassCard className="p-0 h-full flex flex-col">
                 <Tabs defaultValue="playground" className="flex-1 flex flex-col">
-                  <TabsList className="grid w-full grid-cols-2 m-4 mb-0">
-                    <TabsTrigger value="playground">Playground</TabsTrigger>
-                    <TabsTrigger value="history">History</TabsTrigger>
-                  </TabsList>
+                  <div className="p-6 pb-0">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="playground">Playground</TabsTrigger>
+                      <TabsTrigger value="history">History</TabsTrigger>
+                    </TabsList>
+                  </div>
                   
                   <TabsContent value="playground" className="flex-1 flex flex-col m-4 mt-4">
                     {/* Prompt Input */}

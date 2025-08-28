@@ -118,7 +118,11 @@ export default function Agents() {
   const runAgent = () => {
     setIsRunning(true);
     // Simulate agent execution
-    setTimeout(() => setIsRunning(false), 3000);
+    console.log("Agent workflow is now executing...");
+    setTimeout(() => {
+      setIsRunning(false);
+      console.log("Agent workflow has finished successfully.");
+    }, 3000);
   };
 
   const nodeCategories = [

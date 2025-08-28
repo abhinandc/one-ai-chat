@@ -383,11 +383,26 @@ function AutomationCard({
 
         {/* Actions */}
         <div className="flex items-center gap-2 pt-2">
-          <Button size="sm" className="flex-1" disabled={automation.status === "error"}>
+          <Button 
+            size="sm" 
+            className="flex-1" 
+            disabled={automation.status === "error"}
+            onClick={() => {
+              // Run/Resume automation
+              console.log(`${automation.status === "paused" ? "Resuming" : "Running"} automation: ${automation.id}`);
+            }}
+          >
             <Play className="h-3 w-3 mr-1" />
             {automation.status === "paused" ? "Resume" : "Run"}
           </Button>
-          <Button variant="outline" size="sm">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => {
+              // Configure automation
+              window.open(`/automations/${automation.id}/settings`, "_blank");
+            }}
+          >
             <Settings className="h-3 w-3" />
           </Button>
         </div>
