@@ -102,7 +102,7 @@ const Index = () => {
           <h2 className="text-xl font-semibold text-text-primary mb-lg">Recent Activity</h2>
           <GlassCard>
             <GlassCardContent className="p-lg">
-              <div className="space-y-lg">
+              <div className="space-y-md">
                 <div className="flex items-center gap-lg p-lg bg-surface-graphite rounded-xl">
                   <div className="p-md bg-accent-blue/10 rounded-xl">
                     <MessageSquare className="h-5 w-5 text-accent-blue" />
