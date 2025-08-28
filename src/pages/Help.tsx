@@ -271,7 +271,7 @@ export default function Help() {
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-7xl mx-auto">
           <Tabs defaultValue="articles" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3 max-w-md">
+            <TabsList className="grid w-full grid-cols-3 max-w-md h-12">
               <TabsTrigger value="articles">Articles</TabsTrigger>
               <TabsTrigger value="tutorials">Tutorials</TabsTrigger>
               <TabsTrigger value="faq">FAQ</TabsTrigger>

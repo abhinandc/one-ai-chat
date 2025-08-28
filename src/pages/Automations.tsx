@@ -174,7 +174,30 @@ export default function Automations() {
               <h1 className="text-3xl font-bold text-text-primary mb-2">Automations</h1>
               <p className="text-text-secondary">Create and manage AI-powered automation workflows</p>
             </div>
-            <Button className="bg-accent-blue hover:bg-accent-blue/90">
+            <Button 
+              className="bg-accent-blue hover:bg-accent-blue/90"
+              onClick={() => {
+                // Create new automation with prompt for basic details
+                const name = prompt("Enter automation name:");
+                if (name) {
+                  const description = prompt("Enter automation description:");
+                  const trigger = prompt("Enter trigger (e.g., 'Every day at 9 AM', 'When email received'):");
+                  const actions = prompt("Enter actions (comma-separated, e.g., 'Send email, Update database'):");
+                  
+                  if (description && trigger && actions) {
+                    console.log("Creating automation:", {
+                      name,
+                      description,
+                      trigger,
+                      actions: actions.split(',').map(a => a.trim()),
+                      status: 'active',
+                      category: 'Custom'
+                    });
+                    alert("Automation created successfully!");
+                  }
+                }
+              }}
+            >
               <Plus className="h-4 w-4 mr-2" />
               Create Automation
             </Button>
