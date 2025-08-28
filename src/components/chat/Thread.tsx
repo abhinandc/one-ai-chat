@@ -90,9 +90,9 @@ function MessageItem({ message, isStreaming }: MessageItemProps) {
             "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
             isUser 
               ? "bg-accent-blue text-white" 
-              : "bg-surface-graphite text-text-secondary"
+              : "bg-gradient-to-br from-accent-blue to-accent-purple text-white"
           )}>
-            {isUser ? "U" : "AI"}
+            {isUser ? "U" : "OneAI"}
           </div>
           
           <div className="flex-1 space-y-sm">
@@ -101,7 +101,7 @@ function MessageItem({ message, isStreaming }: MessageItemProps) {
               "p-lg",
               isUser 
                 ? "bg-accent-blue text-white" 
-                : "bg-card border-border-primary"
+                : "bg-card border border-accent-blue/20 shadow-lg shadow-accent-blue/5"
             )}>
               <div className="space-y-md">
                 <MessageContent content={message.content} />

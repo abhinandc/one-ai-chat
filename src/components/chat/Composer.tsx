@@ -268,8 +268,8 @@ function ModelSelector({ value, onChange }: { value: string; onChange: (value: s
             key={model.id}
             onClick={() => onChange(model.id)}
             className={cn(
-              "text-card-foreground hover:bg-surface-graphite",
-              model.id === value && "bg-interactive-selected text-accent-blue"
+              "text-card-foreground hover:bg-accent-blue/10 cursor-pointer px-sm py-xs",
+              model.id === value && "bg-accent-blue/20 text-accent-blue border-l-2 border-accent-blue"
             )}
           >
             <div className="flex flex-col">

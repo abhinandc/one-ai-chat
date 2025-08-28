@@ -20,12 +20,13 @@ export function InspectorPanel({ conversation, citations, onUpdateSettings }: In
       isCollapsed ? "w-12" : "w-80"
     )}>
       {/* Collapse Toggle */}
-      <div className="p-md border-b border-border-secondary/50 flex justify-end">
+      <div className="p-md border-b border-border-secondary/50 flex items-center justify-between">
+        <h3 className="text-sm font-medium text-text-primary">Inspector</h3>
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="h-8 w-8 p-0 text-text-secondary hover:text-text-primary"
+          className="h-8 w-8 p-0 text-accent-blue hover:text-accent-blue hover:bg-accent-blue/10"
         >
           {isCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </Button>
