@@ -52,13 +52,28 @@ export function TopBar({ onToggleSidebar, onOpenCommandPalette, onLogout }: TopB
           <h1 className="text-lg font-semibold text-text-primary">OneAI</h1>
           <GlassToolbarSeparator />
           <nav className="flex items-center gap-sm">
-            <Button variant="ghost" size="sm" className="text-text-secondary hover:text-text-primary">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-text-secondary hover:text-text-primary"
+              onClick={() => window.location.href = '/'}
+            >
               Home
             </Button>
-            <Button variant="ghost" size="sm" className="text-text-secondary hover:text-text-primary">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-text-secondary hover:text-text-primary"
+              onClick={() => window.location.href = '/chat'}
+            >
               Chat
             </Button>
-            <Button variant="ghost" size="sm" className="text-text-secondary hover:text-text-primary">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-text-secondary hover:text-text-primary"
+              onClick={() => window.location.href = '/agents'}
+            >
               Agents
             </Button>
           </nav>

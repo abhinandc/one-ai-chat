@@ -268,7 +268,7 @@ function ModelSelector({ value, onChange }: { value: string; onChange: (value: s
             key={model.id}
             onClick={() => onChange(model.id)}
             className={cn(
-              "text-card-foreground hover:bg-accent-blue/10 cursor-pointer px-3 py-2 relative",
+              "text-card-foreground hover:bg-accent-blue/10 cursor-pointer px-3 py-3 relative",
               model.id === value && "bg-accent-blue/15 text-accent-blue"
             )}
           >
@@ -276,7 +276,7 @@ function ModelSelector({ value, onChange }: { value: string; onChange: (value: s
               <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-blue rounded-r" />
             )}
             <div className="flex flex-col ml-1">
-              <span className="font-medium">{model.name}</span>
+              <span className="font-medium text-sm">{model.name}</span>
               <span className="text-xs text-text-tertiary">{model.provider}</span>
             </div>
           </DropdownMenuItem>

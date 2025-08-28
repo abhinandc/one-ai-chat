@@ -28,10 +28,10 @@ export function Inspector({ conversation, citations = [], onUpdateSettings }: In
         {/* Header */}
         <div className="p-lg border-b border-border-secondary/50">
           <h2 className="text-lg font-semibold text-text-primary mb-lg">Inspector</h2>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="context" className="text-xs">Context</TabsTrigger>
-            <TabsTrigger value="variables" className="text-xs">Variables</TabsTrigger>
-            <TabsTrigger value="settings" className="text-xs">Settings</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 h-10">
+            <TabsTrigger value="context" className="text-xs h-8 flex items-center justify-center">Context</TabsTrigger>
+            <TabsTrigger value="variables" className="text-xs h-8 flex items-center justify-center">Variables</TabsTrigger>
+            <TabsTrigger value="settings" className="text-xs h-8 flex items-center justify-center">Settings</TabsTrigger>
           </TabsList>
         </div>
 
@@ -131,7 +131,7 @@ export function Inspector({ conversation, citations = [], onUpdateSettings }: In
 
 function CitationCard({ citation }: { citation: Citation }) {
   return (
-    <GlassCard className="p-md hover:border-accent-blue/30 transition-colors">
+    <GlassCard className="p-md hover:border-accent-blue/30 hover:bg-surface-graphite/40 transition-colors">
       <div className="space-y-sm">
         <div className="flex items-start justify-between gap-sm">
           <h4 className="text-sm font-medium text-text-primary line-clamp-2">
