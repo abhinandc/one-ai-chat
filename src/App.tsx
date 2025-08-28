@@ -11,6 +11,12 @@ import LoginPage from "./pages/LoginPage";
 import Index from "./pages/Index";
 import Chat from "./pages/Chat";
 import Agents from "./pages/Agents";
+import ModelsHub from "./pages/ModelsHub";
+import PromptLibrary from "./pages/PromptLibrary";
+import Automations from "./pages/Automations";
+import Playground from "./pages/Playground";
+import ToolsGallery from "./pages/ToolsGallery";
+import Help from "./pages/Help";
 import Theme from "./pages/Theme";
 import NotFound from "./pages/NotFound";
 
@@ -79,8 +85,13 @@ const App = () => {
                   <Route path="/" element={<Index />} />
                   <Route path="/chat" element={<Chat />} />
                   <Route path="/agents" element={<Agents />} />
+                  <Route path="/models" element={<ModelsHub />} />
+                  <Route path="/prompts" element={<PromptLibrary />} />
+                  <Route path="/automations" element={<Automations />} />
+                  <Route path="/playground" element={<Playground />} />
+                  <Route path="/tools" element={<ToolsGallery />} />
+                  <Route path="/help" element={<Help />} />
                   <Route path="/theme" element={<Theme />} />
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </main>
