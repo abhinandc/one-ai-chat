@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ConversationList } from "@/components/chat/ConversationList";
 import { Thread } from "@/components/chat/Thread";
 import { Composer } from "@/components/chat/Composer";
-import { Inspector } from "@/components/chat/Inspector";
+import { InspectorPanel } from "@/components/chat/InspectorPanel";
 import { cn } from "@/lib/utils";
 import type { Conversation, ConversationFolder, Message, Citation } from "@/types";
 
@@ -291,9 +291,9 @@ export default function Chat() {
   };
 
   return (
-    <div className="h-full flex bg-background">
+    <div className="h-full flex bg-background overflow-hidden">
       {/* Left Sidebar - Conversations */}
-      <div className="w-80 flex-shrink-0">
+      <div className="w-80 flex-shrink-0 overflow-hidden">
         <ConversationList
           conversations={conversations}
           folders={folders}
@@ -304,9 +304,9 @@ export default function Chat() {
       </div>
 
       {/* Center - Chat Thread */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="border-b border-border-primary/50 p-lg">
+        <div className="border-b border-border-primary/50 p-lg flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-lg font-semibold text-text-primary">
@@ -341,19 +341,24 @@ export default function Chat() {
 
         {/* Thread */}
         {activeConversation ? (
-          <>
-            <Thread
-              messages={activeConversation.messages}
-              isStreaming={isStreaming}
-              streamingMessage={streamingMessage}
-            />
-            <Composer
-              conversation={activeConversation}
-              onSendMessage={sendMessage}
-              isStreaming={isStreaming}
-              onStopStreaming={stopStreaming}
-            />
-          </>
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 overflow-y-auto">
+              <Thread
+                messages={activeConversation.messages}
+                isStreaming={isStreaming}
+                streamingMessage={streamingMessage}
+              />
+            </div>
+            <div className="flex-shrink-0">
+              <Composer
+                conversation={activeConversation}
+                onSendMessage={sendMessage}
+                isStreaming={isStreaming}
+                onStopStreaming={stopStreaming}
+                onUpdateSettings={updateConversationSettings}
+              />
+            </div>
+          </div>
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
@@ -369,7 +374,7 @@ export default function Chat() {
       </div>
 
       {/* Right Sidebar - Inspector */}
-      <Inspector
+      <InspectorPanel
         conversation={activeConversation}
         citations={mockCitations}
         onUpdateSettings={updateConversationSettings}

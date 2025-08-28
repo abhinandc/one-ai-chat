@@ -27,7 +27,7 @@ export default function Theme() {
   ];
 
   return (
-    <div className="min-h-screen bg-background p-lg">
+    <div className="min-h-screen bg-background p-lg overflow-y-auto">
       <div className="max-w-6xl mx-auto space-y-xl">
         {/* Header */}
         <div className="text-center space-y-md">

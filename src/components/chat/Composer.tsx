@@ -2,6 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import { Send, Paperclip, Mic, Zap, Settings2, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/GlassCard";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { Conversation } from "@/types";
 
@@ -10,9 +16,10 @@ interface ComposerProps {
   onSendMessage: (content: string, settings?: any) => void;
   isStreaming?: boolean;
   onStopStreaming?: () => void;
+  onUpdateSettings?: (settings: any) => void;
 }
 
-export function Composer({ conversation, onSendMessage, isStreaming, onStopStreaming }: ComposerProps) {
+export function Composer({ conversation, onSendMessage, isStreaming, onStopStreaming, onUpdateSettings }: ComposerProps) {
   const [message, setMessage] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const [temperature, setTemperature] = useState(conversation?.settings.temperature || 0.7);
@@ -184,7 +191,13 @@ export function Composer({ conversation, onSendMessage, isStreaming, onStopStrea
             <div className="flex items-center gap-md text-xs text-text-tertiary">
               <span>~{tokenCount} tokens</span>
               {conversation && (
-                <span>Model: {conversation.settings.model}</span>
+                <>
+                  <span>•</span>
+                  <ModelSelector 
+                    value={conversation.settings.model}
+                    onChange={(model) => onUpdateSettings && onUpdateSettings({ model })}
+                  />
+                </>
               )}
             </div>
 
@@ -226,5 +239,46 @@ export function Composer({ conversation, onSendMessage, isStreaming, onStopStrea
         </form>
       </div>
     </div>
+  );
+}
+
+// Model Selector Component
+function ModelSelector({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const models = [
+    { id: "gpt-4", name: "GPT-4", provider: "OpenAI" },
+    { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo", provider: "OpenAI" },
+    { id: "claude-3", name: "Claude 3", provider: "Anthropic" },
+    { id: "llama-2", name: "Llama 2", provider: "Meta" },
+    { id: "gemini-pro", name: "Gemini Pro", provider: "Google" },
+  ];
+
+  const currentModel = models.find(m => m.id === value) || models[0];
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-auto p-0 text-xs text-text-tertiary hover:text-text-primary">
+          <span>Model: {currentModel.name}</span>
+          <ChevronDown className="h-3 w-3 ml-1" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-56 bg-card border-border-primary shadow-lg z-50">
+        {models.map((model) => (
+          <DropdownMenuItem
+            key={model.id}
+            onClick={() => onChange(model.id)}
+            className={cn(
+              "text-card-foreground hover:bg-surface-graphite",
+              model.id === value && "bg-interactive-selected text-accent-blue"
+            )}
+          >
+            <div className="flex flex-col">
+              <span className="font-medium">{model.name}</span>
+              <span className="text-xs text-text-tertiary">{model.provider}</span>
+            </div>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

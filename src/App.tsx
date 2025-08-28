@@ -10,6 +10,7 @@ import { CommandPalette } from "@/components/CommandPalette";
 import LoginPage from "./pages/LoginPage";
 import Index from "./pages/Index";
 import Chat from "./pages/Chat";
+import Agents from "./pages/Agents";
 import Theme from "./pages/Theme";
 import NotFound from "./pages/NotFound";
 
@@ -60,10 +61,11 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <div className="min-h-screen w-full bg-background">
+          <div className="min-h-screen w-full bg-background overflow-hidden">
             <TopBar 
               onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
               onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+              onLogout={handleLogout}
             />
             
             <div className="flex h-[calc(100vh-64px)] w-full">
@@ -72,10 +74,11 @@ const App = () => {
                 onToggleCollapsed={() => setSidebarCollapsed(!sidebarCollapsed)}
               />
               
-              <main className="flex-1 overflow-auto">
+              <main className="flex-1 overflow-hidden">
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/chat" element={<Chat />} />
+                  <Route path="/agents" element={<Agents />} />
                   <Route path="/theme" element={<Theme />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />

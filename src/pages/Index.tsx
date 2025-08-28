@@ -43,7 +43,7 @@ const Index = () => {
   ];
 
   return (
-    <div className="min-h-full bg-background p-lg">
+    <div className="min-h-full bg-background p-lg overflow-y-auto">
       <div className="max-w-7xl mx-auto space-y-xl">
         {/* Welcome Header */}
         <div className="space-y-md">
