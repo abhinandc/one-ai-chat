@@ -101,6 +101,65 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 13%;
   }
+
+  .dark {
+    /* Dark mode color palette */
+    --background: 0 0% 9%;
+    --foreground: 0 0% 95%;
+    
+    /* Dark graphite surfaces */
+    --surface-graphite: 0 0% 12%;
+    --surface-graphite-hover: 0 0% 15%;
+    --surface-graphite-active: 0 0% 18%;
+    
+    /* Dark glass effects */
+    --glass-bg: 0 0% 8%;
+    --glass-bg-opacity: 0.7;
+    --glass-border: 0 0% 20%;
+    --glass-shadow: 0 0% 0%;
+    
+    /* Dark low-ink UI colors */
+    --text-primary: 0 0% 95%;
+    --text-secondary: 0 0% 70%;
+    --text-tertiary: 0 0% 55%;
+    --text-quaternary: 0 0% 40%;
+    
+    /* Dark accent colors */
+    --accent-blue: 211 100% 60%;
+    --accent-blue-hover: 211 100% 65%;
+    --accent-green: 142 71% 55%;
+    --accent-orange: 24 100% 60%;
+    --accent-red: 0 84% 70%;
+    
+    /* Dark interactive states */
+    --interactive-hover: 0 0% 15%;
+    --interactive-active: 0 0% 18%;
+    --interactive-selected: 211 100% 15%;
+    
+    /* Dark borders and dividers */
+    --border-primary: 0 0% 20%;
+    --border-secondary: 0 0% 15%;
+    --divider: 0 0% 18%;
+    
+    /* Legacy tokens for dark mode */
+    --primary: 211 100% 60%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 70%;
+    --accent: 211 100% 15%;
+    --accent-foreground: 211 100% 60%;
+    --destructive: 0 84% 70%;
+    --destructive-foreground: 0 0% 9%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 211 100% 60%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 95%;
+  }
 }
 
 /* Glass-ios26 Utility Classes */
