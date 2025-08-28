@@ -27,10 +27,10 @@ export function Inspector({ conversation, citations = [], onUpdateSettings }: In
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
         {/* Header */}
         <div className="px-4 py-4 border-b border-border-secondary/50">
-          <TabsList className="grid w-full grid-cols-3 h-12 bg-surface-graphite/30">
-            <TabsTrigger value="context" className="text-xs h-10 data-[state=active]:bg-accent-blue/15 data-[state=active]:text-accent-blue">Context</TabsTrigger>
-            <TabsTrigger value="variables" className="text-xs h-10 data-[state=active]:bg-accent-blue/15 data-[state=active]:text-accent-blue">Variables</TabsTrigger>
-            <TabsTrigger value="settings" className="text-xs h-10 data-[state=active]:bg-accent-blue/15 data-[state=active]:text-accent-blue">Settings</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 h-14 bg-surface-graphite/30">
+            <TabsTrigger value="context" className="text-sm h-12 data-[state=active]:bg-accent-blue/15 data-[state=active]:text-accent-blue">Context</TabsTrigger>
+            <TabsTrigger value="variables" className="text-sm h-12 data-[state=active]:bg-accent-blue/15 data-[state=active]:text-accent-blue">Variables</TabsTrigger>
+            <TabsTrigger value="settings" className="text-sm h-12 data-[state=active]:bg-accent-blue/15 data-[state=active]:text-accent-blue">Settings</TabsTrigger>
           </TabsList>
         </div>
 
