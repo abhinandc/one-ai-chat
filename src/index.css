@@ -46,11 +46,16 @@
     --border-secondary: 220 13% 95%;
     --divider: 220 13% 93%;
     
-    /* Shadows and depth */
-    --shadow-sm: 0 1px 2px 0 hsl(220 3% 15% / 0.05);
-    --shadow-md: 0 4px 6px -1px hsl(220 3% 15% / 0.1), 0 2px 4px -1px hsl(220 3% 15% / 0.06);
-    --shadow-lg: 0 10px 15px -3px hsl(220 3% 15% / 0.1), 0 4px 6px -2px hsl(220 3% 15% / 0.05);
-    --shadow-glass: 0 8px 32px 0 hsl(220 3% 15% / 0.12);
+    /* Enhanced shadows and depth */
+    --shadow-sm: 0 1px 3px 0 hsl(220 3% 15% / 0.08);
+    --shadow-md: 0 4px 12px -2px hsl(220 3% 15% / 0.15), 0 2px 6px -1px hsl(220 3% 15% / 0.08);
+    --shadow-lg: 0 20px 25px -5px hsl(220 3% 15% / 0.15), 0 10px 10px -5px hsl(220 3% 15% / 0.04);
+    --shadow-glass: 0 8px 32px 0 hsl(220 3% 15% / 0.18);
+    
+    /* Gradient definitions */
+    --gradient-primary: linear-gradient(135deg, hsl(211 100% 50%) 0%, hsl(211 100% 60%) 100%);
+    --gradient-surface: linear-gradient(135deg, hsl(220 9% 98%) 0%, hsl(220 9% 95%) 100%);
+    --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
     
     /* Backdrop blur levels */
     --blur-sm: 8px;
@@ -103,62 +108,62 @@
   }
 
   .dark {
-    /* Dark mode color palette */
-    --background: 0 0% 9%;
-    --foreground: 0 0% 95%;
+    /* Phenomenal Dark Mode - Rich Color Palette */
+    --background: 210 40% 2%;
+    --foreground: 210 40% 98%;
     
-    /* Dark graphite surfaces */
-    --surface-graphite: 0 0% 12%;
-    --surface-graphite-hover: 0 0% 15%;
-    --surface-graphite-active: 0 0% 18%;
+    /* Rich graphite surfaces with depth */
+    --surface-graphite: 213 40% 6%;
+    --surface-graphite-hover: 213 35% 9%;
+    --surface-graphite-active: 213 30% 12%;
     
-    /* Dark glass effects */
-    --glass-bg: 0 0% 8%;
-    --glass-bg-opacity: 0.7;
-    --glass-border: 0 0% 20%;
-    --glass-shadow: 0 0% 0%;
+    /* Enhanced glass effects */
+    --glass-bg: 213 40% 3%;
+    --glass-bg-opacity: 0.85;
+    --glass-border: 213 25% 25%;
+    --glass-shadow: 213 100% 0%;
     
-    /* Dark low-ink UI colors */
-    --text-primary: 0 0% 95%;
-    --text-secondary: 0 0% 70%;
-    --text-tertiary: 0 0% 55%;
-    --text-quaternary: 0 0% 40%;
+    /* Vibrant text hierarchy */
+    --text-primary: 210 40% 98%;
+    --text-secondary: 210 25% 80%;
+    --text-tertiary: 210 20% 65%;
+    --text-quaternary: 210 15% 50%;
     
-    /* Dark accent colors - more prominent */
-    --accent-blue: 211 100% 70%;
+    /* Brilliant accent colors */
+    --accent-blue: 211 100% 65%;
     --accent-blue-hover: 211 100% 75%;
-    --accent-green: 142 71% 65%;
-    --accent-orange: 24 100% 70%;
-    --accent-red: 0 84% 75%;
+    --accent-green: 142 76% 60%;
+    --accent-orange: 25 95% 65%;
+    --accent-red: 0 86% 70%;
     
-    /* Dark interactive states - more prominent */
-    --interactive-hover: 0 0% 18%;
-    --interactive-active: 0 0% 22%;
-    --interactive-selected: 211 100% 20%;
+    /* Dynamic interactive states */
+    --interactive-hover: 213 30% 12%;
+    --interactive-active: 213 25% 16%;
+    --interactive-selected: 211 85% 15%;
     
-    /* Dark borders and dividers */
-    --border-primary: 0 0% 20%;
-    --border-secondary: 0 0% 15%;
-    --divider: 0 0% 18%;
+    /* Sophisticated borders */
+    --border-primary: 213 25% 20%;
+    --border-secondary: 213 20% 15%;
+    --divider: 213 22% 18%;
     
-    /* Legacy tokens for dark mode - more prominent */
-    --primary: 211 100% 70%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 18%;
-    --secondary-foreground: 0 0% 95%;
-    --muted: 0 0% 18%;
-    --muted-foreground: 0 0% 70%;
-    --accent: 211 100% 20%;
-    --accent-foreground: 211 100% 70%;
-    --destructive: 0 84% 70%;
-    --destructive-foreground: 0 0% 9%;
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
+    /* Enhanced legacy tokens */
+    --primary: 211 100% 65%;
+    --primary-foreground: 210 40% 2%;
+    --secondary: 213 30% 12%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 213 25% 10%;
+    --muted-foreground: 210 25% 75%;
+    --accent: 211 85% 15%;
+    --accent-foreground: 211 100% 65%;
+    --destructive: 0 86% 65%;
+    --destructive-foreground: 210 40% 2%;
+    --border: 213 25% 20%;
+    --input: 213 25% 15%;
     --ring: 211 100% 60%;
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 95%;
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 95%;
+    --card: 213 40% 4%;
+    --card-foreground: 210 40% 98%;
+    --popover: 213 40% 4%;
+    --popover-foreground: 210 40% 98%;
   }
 }
 
@@ -172,8 +177,13 @@
   }
   
   .dark .glass-ios {
-    background: rgba(0, 0, 0, var(--glass-bg-opacity));
+    background: linear-gradient(135deg, 
+      hsla(213, 40%, 8%, var(--glass-bg-opacity)) 0%, 
+      hsla(213, 35%, 6%, var(--glass-bg-opacity)) 100%);
     border: 1px solid hsl(var(--border-primary));
+    box-shadow: 
+      0 8px 32px 0 hsla(213, 100%, 10%, 0.3),
+      inset 0 1px 0 0 hsla(213, 25%, 35%, 0.5);
   }
   
   .glass-toolbar {
@@ -232,8 +242,53 @@
   }
   
   .hover-lift:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 
+      0 20px 40px -12px hsla(var(--accent-blue), 0.25),
+      0 8px 20px -4px hsla(var(--accent-blue), 0.15);
+  }
+  
+  /* Phenomenal glow effects */
+  .glow-primary {
+    box-shadow: 
+      0 0 20px hsla(var(--accent-blue), 0.3),
+      0 0 40px hsla(var(--accent-blue), 0.1);
+  }
+  
+  .glow-accent {
+    box-shadow: 
+      0 0 15px hsla(var(--accent-green), 0.4),
+      0 0 30px hsla(var(--accent-green), 0.2);
+  }
+  
+  /* Enhanced gradients */
+  .bg-gradient-primary {
+    background: linear-gradient(135deg, 
+      hsl(var(--accent-blue)) 0%, 
+      hsl(211 100% 75%) 100%);
+  }
+  
+  .bg-gradient-surface {
+    background: linear-gradient(135deg, 
+      hsl(var(--surface-graphite)) 0%, 
+      hsl(var(--surface-graphite-hover)) 100%);
+  }
+  
+  /* Animated background */
+  .bg-animated {
+    background: linear-gradient(-45deg, 
+      hsl(var(--surface-graphite)), 
+      hsl(var(--surface-graphite-hover)), 
+      hsl(var(--accent-blue) / 0.1), 
+      hsl(var(--surface-graphite)));
+    background-size: 400% 400%;
+    animation: gradient-shift 8s ease infinite;
+  }
+  
+  @keyframes gradient-shift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
   }
 }
 
