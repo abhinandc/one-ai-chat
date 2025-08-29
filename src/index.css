@@ -110,69 +110,69 @@
   }
 
   .dark {
-    /* True Pure Dark Mode - Nearly Black */
-    --background: 220 27% 2%;
+    /* Sophisticated Dark Mode - Not Too Dark */
+    --background: 217 33% 8%;
     --foreground: 210 40% 98%;
     
-    /* Deep dark surfaces with subtle variation */
-    --surface-graphite: 222 30% 4%;
-    --surface-graphite-hover: 222 25% 6%;
-    --surface-graphite-active: 222 20% 8%;
+    /* Elevated surfaces with proper contrast */
+    --surface-graphite: 217 27% 12%;
+    --surface-graphite-hover: 217 25% 15%;
+    --surface-graphite-active: 217 22% 18%;
     
-    /* True dark glass effects */
-    --glass-bg: 222 30% 3%;
-    --glass-bg-opacity: 0.98;
-    --glass-border: 222 15% 12%;
-    --glass-shadow: 222 100% 0%;
+    /* Refined glass effects */
+    --glass-bg: 217 30% 10%;
+    --glass-bg-opacity: 0.9;
+    --glass-border: 217 20% 22%;
+    --glass-shadow: 217 50% 0%;
     
-    /* High contrast text for true dark */
+    /* Balanced text hierarchy */
     --text-primary: 210 40% 98%;
-    --text-secondary: 210 15% 70%;
-    --text-tertiary: 210 10% 55%;
-    --text-quaternary: 210 8% 40%;
+    --text-secondary: 210 25% 80%;
+    --text-tertiary: 210 20% 65%;
+    --text-quaternary: 210 15% 50%;
     
-    /* Refined accents for dark mode */
-    --accent-blue: 217 91% 60%;
-    --accent-blue-hover: 217 91% 70%;
-    --accent-green: 158 64% 52%;
-    --accent-orange: 31 80% 60%;
-    --accent-red: 0 84% 60%;
-    --accent-purple: 262 83% 58%;
-    --accent-cyan: 189 70% 50%;
+    /* Vibrant but refined accents */
+    --accent-blue: 217 91% 65%;
+    --accent-blue-hover: 217 91% 75%;
+    --accent-green: 158 64% 55%;
+    --accent-orange: 31 80% 65%;
+    --accent-red: 0 84% 65%;
+    --accent-purple: 262 83% 65%;
+    --accent-cyan: 189 70% 55%;
     
-    /* Subtle interactive states */
-    --interactive-hover: 222 20% 8%;
-    --interactive-active: 222 15% 10%;
-    --interactive-selected: 217 85% 12%;
+    /* Comfortable interactive states */
+    --interactive-hover: 217 22% 18%;
+    --interactive-active: 217 20% 22%;
+    --interactive-selected: 217 85% 18%;
     
-    /* Dark borders with minimal contrast */
-    --border-primary: 222 15% 10%;
-    --border-secondary: 222 10% 8%;
-    --divider: 222 12% 9%;
+    /* Clear borders with good contrast */
+    --border-primary: 217 20% 20%;
+    --border-secondary: 217 15% 15%;
+    --divider: 217 18% 18%;
     
-    /* Deep shadows for true dark */
-    --shadow-sm: 0 1px 3px 0 hsla(222, 30%, 0%, 0.2), 0 1px 2px 0 hsla(222, 30%, 0%, 0.3);
-    --shadow-md: 0 4px 12px -2px hsla(222, 30%, 0%, 0.3), 0 2px 6px -1px hsla(222, 30%, 0%, 0.15);
-    --shadow-lg: 0 20px 25px -5px hsla(222, 30%, 0%, 0.4), 0 10px 10px -5px hsla(222, 30%, 0%, 0.1);
-    --shadow-glass: 0 8px 32px 0 hsla(222, 30%, 0%, 0.5);
+    /* Proper shadows for depth */
+    --shadow-sm: 0 1px 3px 0 hsla(217, 33%, 0%, 0.15), 0 1px 2px 0 hsla(217, 33%, 0%, 0.25);
+    --shadow-md: 0 4px 12px -2px hsla(217, 33%, 0%, 0.25), 0 2px 6px -1px hsla(217, 33%, 0%, 0.1);
+    --shadow-lg: 0 20px 25px -5px hsla(217, 33%, 0%, 0.3), 0 10px 10px -5px hsla(217, 33%, 0%, 0.05);
+    --shadow-glass: 0 8px 32px 0 hsla(217, 33%, 0%, 0.3);
     
-    /* Legacy tokens - true dark */
-    --primary: 217 91% 60%;
-    --primary-foreground: 220 27% 2%;
-    --secondary: 222 20% 8%;
+    /* Legacy tokens - balanced */
+    --primary: 217 91% 65%;
+    --primary-foreground: 217 33% 8%;
+    --secondary: 217 22% 18%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 222 15% 6%;
-    --muted-foreground: 210 15% 65%;
-    --accent: 217 85% 12%;
-    --accent-foreground: 217 91% 60%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 220 27% 2%;
-    --border: 222 15% 10%;
-    --input: 222 15% 8%;
-    --ring: 217 91% 55%;
-    --card: 222 30% 3%;
+    --muted: 217 20% 15%;
+    --muted-foreground: 210 25% 75%;
+    --accent: 217 85% 18%;
+    --accent-foreground: 217 91% 65%;
+    --destructive: 0 84% 65%;
+    --destructive-foreground: 217 33% 8%;
+    --border: 217 20% 20%;
+    --input: 217 20% 15%;
+    --ring: 217 91% 60%;
+    --card: 217 30% 10%;
     --card-foreground: 210 40% 98%;
-    --popover: 222 30% 3%;
+    --popover: 217 30% 10%;
     --popover-foreground: 210 40% 98%;
   }
 }
@@ -188,12 +188,12 @@
   
   .dark .glass-ios {
     background: linear-gradient(135deg, 
-      hsla(222, 30%, 4%, 0.95) 0%, 
-      hsla(222, 25%, 3%, 0.98) 100%);
+      hsla(217, 30%, 12%, 0.85) 0%, 
+      hsla(217, 27%, 10%, 0.9) 100%);
     border: 1px solid hsl(var(--border-primary));
     box-shadow: 
       var(--shadow-glass),
-      inset 0 1px 0 0 hsla(222, 15%, 15%, 0.3);
+      inset 0 1px 0 0 hsla(217, 20%, 25%, 0.3);
   }
   
   .glass-toolbar {
