@@ -46,7 +46,7 @@ export function TopBar({ onToggleSidebar, onOpenCommandPalette, onLogout }: TopB
   };
 
   return (
-    <header className="glass-toolbar border-b border-border-primary bg-surface-graphite/50 backdrop-blur-xl z-50">
+    <header className="fixed-header glass-toolbar border-b border-border-primary bg-surface-graphite/95 backdrop-blur-xl">
       <div className="max-w-8xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           

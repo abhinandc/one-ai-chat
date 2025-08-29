@@ -83,7 +83,7 @@ const App = () => {
               />
               
               <main className={cn(
-                "main-content transition-all duration-normal",
+                "main-content",
                 sidebarCollapsed ? "ml-16" : "ml-64"
               )}>
                 <Routes>

@@ -3,7 +3,7 @@ import { Heart, Github, Twitter, Linkedin } from "lucide-react";
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="glass-toolbar border-t border-border-primary bg-surface-graphite/50 backdrop-blur-xl">
+    <footer className="fixed-footer glass-toolbar border-t border-border-primary bg-surface-graphite/95 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-text-secondary">
