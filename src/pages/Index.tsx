@@ -43,27 +43,27 @@ const Index = () => {
   ];
 
   return (
-    <div className="min-h-full bg-background p-lg overflow-y-auto">
-      <div className="max-w-7xl mx-auto space-y-xl">
+    <div className="min-h-full bg-background p-8 overflow-y-auto">
+      <div className="max-w-6xl mx-auto space-y-8">
         {/* Welcome Header */}
-        <div className="space-y-md">
-          <h1 className="text-4xl font-bold text-text-primary font-display">
+        <div className="space-y-4">
+          <h1 className="text-3xl font-bold text-text-primary font-display">
             Welcome back
           </h1>
-          <p className="text-lg text-text-secondary">
+          <p className="text-lg text-text-secondary font-medium">
             Your AI workspace is ready. Start building intelligent workflows.
           </p>
         </div>
 
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-lg">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {stats.map((stat) => (
-            <GlassCard key={stat.label} className="p-lg hover-lift group">
-              <div className="space-y-sm">
+            <GlassCard key={stat.label} className="p-6 hover-lift group">
+              <div className="space-y-3">
                 <p className="text-sm text-text-secondary font-medium">{stat.label}</p>
-                <div className="flex items-end gap-sm">
-                  <span className="text-2xl font-semibold text-text-primary">{stat.value}</span>
-                  <span className="text-sm text-accent-green font-medium">{stat.change}</span>
+                <div className="flex items-end gap-2">
+                  <span className="text-2xl font-bold text-text-primary">{stat.value}</span>
+                  <span className="text-sm text-accent-green font-semibold">{stat.change}</span>
                 </div>
               </div>
             </GlassCard>
@@ -72,19 +72,19 @@ const Index = () => {
 
         {/* Quick Actions */}
         <div>
-          <h2 className="text-xl font-semibold text-text-primary mb-lg">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-lg">
+          <h2 className="text-xl font-semibold text-text-primary mb-6">Quick Actions</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {quickActions.map((action) => {
               const Icon = action.icon;
               return (
                 <Link key={action.href} to={action.href} className="group">
-                  <GlassCard className="h-full p-lg hover-lift group-hover:border-accent-blue/50 transition-all duration-normal">
-                    <div className="space-y-md">
-                      <div className={`p-md bg-surface-graphite rounded-xl w-fit ${action.color}`}>
+                  <GlassCard className="h-full p-6 hover-lift group-hover:border-accent-blue/30 transition-all duration-normal">
+                    <div className="space-y-4">
+                      <div className={`p-3 bg-surface-graphite rounded-xl w-fit ${action.color}`}>
                         <Icon className="h-6 w-6" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-text-primary mb-sm">{action.title}</h3>
+                        <h3 className="font-semibold text-text-primary mb-2">{action.title}</h3>
                         <p className="text-sm text-text-secondary leading-relaxed">
                           {action.description}
                         </p>
@@ -99,36 +99,36 @@ const Index = () => {
 
         {/* Recent Activity */}
         <div>
-          <h2 className="text-xl font-semibold text-text-primary mb-lg">Recent Activity</h2>
+          <h2 className="text-xl font-semibold text-text-primary mb-6">Recent Activity</h2>
           <GlassCard>
-            <GlassCardContent className="p-lg">
-              <div className="space-y-md">
-                <div className="flex items-center gap-md p-md bg-surface-graphite rounded-xl">
-                  <div className="p-sm bg-accent-blue/10 rounded-lg">
+            <GlassCardContent className="p-6">
+              <div className="space-y-4">
+                <div className="flex items-center gap-4 p-4 bg-surface-graphite rounded-xl">
+                  <div className="p-2 bg-accent-blue/10 rounded-lg">
                     <MessageSquare className="h-5 w-5 text-accent-blue" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-text-primary">New chat session started</p>
+                    <p className="text-sm font-semibold text-text-primary">New chat session started</p>
                     <p className="text-xs text-text-tertiary">2 minutes ago</p>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-md p-md bg-surface-graphite rounded-xl">
-                  <div className="p-sm bg-accent-green/10 rounded-lg">
+                <div className="flex items-center gap-4 p-4 bg-surface-graphite rounded-xl">
+                  <div className="p-2 bg-accent-green/10 rounded-lg">
                     <Bot className="h-5 w-5 text-accent-green" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-text-primary">Agent "Content Creator" deployed</p>
+                    <p className="text-sm font-semibold text-text-primary">Agent "Content Creator" deployed</p>
                     <p className="text-xs text-text-tertiary">1 hour ago</p>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-md p-md bg-surface-graphite rounded-xl">
-                  <div className="p-sm bg-accent-orange/10 rounded-lg">
+                <div className="flex items-center gap-4 p-4 bg-surface-graphite rounded-xl">
+                  <div className="p-2 bg-accent-orange/10 rounded-lg">
                     <Zap className="h-5 w-5 text-accent-orange" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-text-primary">Automation workflow completed</p>
+                    <p className="text-sm font-semibold text-text-primary">Automation workflow completed</p>
                     <p className="text-xs text-text-tertiary">3 hours ago</p>
                   </div>
                 </div>
@@ -149,22 +149,22 @@ const Index = () => {
             </GlassCardDescription>
           </GlassCardHeader>
           <GlassCardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-md">
-              <Button variant="outline" className="justify-start h-auto py-lg">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Button variant="outline" className="justify-start h-auto py-4">
                 <div className="text-left">
-                  <div className="font-medium">Connect Data Sources</div>
+                  <div className="font-semibold">Connect Data Sources</div>
                   <div className="text-sm text-text-secondary">Link your tools and databases</div>
                 </div>
               </Button>
-              <Button variant="outline" className="justify-start h-auto py-lg">
+              <Button variant="outline" className="justify-start h-auto py-4">
                 <div className="text-left">
-                  <div className="font-medium">Train Custom Agent</div>
+                  <div className="font-semibold">Train Custom Agent</div>
                   <div className="text-sm text-text-secondary">Create your first specialized AI agent</div>
                 </div>
               </Button>
-              <Button variant="outline" className="justify-start h-auto py-lg">
+              <Button variant="outline" className="justify-start h-auto py-4">
                 <div className="text-left">
-                  <div className="font-medium">Setup Notifications</div>
+                  <div className="font-semibold">Setup Notifications</div>
                   <div className="text-sm text-text-secondary">Configure alerts and webhooks</div>
                 </div>
               </Button>

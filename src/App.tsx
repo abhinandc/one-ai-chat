@@ -8,6 +8,7 @@ import { TopBar } from "@/components/shell/TopBar";
 import { SideNav } from "@/components/shell/SideNav";
 import { Footer } from "@/components/shell/Footer";
 import { CommandPalette } from "@/components/CommandPalette";
+import { cn } from "@/lib/utils";
 import LoginPage from "./pages/LoginPage";
 import Index from "./pages/Index";
 import Chat from "./pages/Chat";
@@ -81,7 +82,10 @@ const App = () => {
                 onToggleCollapsed={() => setSidebarCollapsed(!sidebarCollapsed)}
               />
               
-              <main className="main-content">
+              <main className={cn(
+                "main-content transition-all duration-normal",
+                sidebarCollapsed ? "ml-16" : "ml-64"
+              )}>
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/chat" element={<Chat />} />

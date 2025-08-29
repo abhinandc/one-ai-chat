@@ -42,8 +42,7 @@ export function SideNav({ collapsed = false, onToggleCollapsed }: SideNavProps) 
 
   return (
     <div className={cn(
-      "h-full flex flex-col bg-surface-graphite/40 backdrop-blur-sm",
-      "border-r border-border-primary/50",
+      "sidebar-full-height flex flex-col",
       "transition-all duration-normal ease-out",
       collapsed ? "w-16" : "w-64"
     )}>
