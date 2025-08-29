@@ -33,8 +33,10 @@
     --accent-blue: 211 100% 50%;
     --accent-blue-hover: 211 100% 45%;
     --accent-green: 142 71% 45%;
-    --accent-orange: 24 100% 50%;
-    --accent-red: 0 84% 60%;
+    --accent-orange: 25 100% 70%;
+    --accent-red: 0 90% 75%;
+    --accent-purple: 270 80% 75%;
+    --accent-cyan: 180 80% 70%;
     
     /* Interactive states */
     --interactive-hover: 220 9% 96%;
@@ -108,61 +110,63 @@
   }
 
   .dark {
-    /* Phenomenal Dark Mode - Rich Color Palette */
-    --background: 210 40% 2%;
+    /* Phenomenal Dark Mode - Rich Deep Colors */
+    --background: 210 50% 2%;
     --foreground: 210 40% 98%;
     
-    /* Rich graphite surfaces with depth */
-    --surface-graphite: 213 40% 6%;
-    --surface-graphite-hover: 213 35% 9%;
-    --surface-graphite-active: 213 30% 12%;
+    /* Ultra Rich surfaces with depth */
+    --surface-graphite: 213 50% 4%;
+    --surface-graphite-hover: 213 45% 7%;
+    --surface-graphite-active: 213 40% 10%;
     
-    /* Enhanced glass effects */
-    --glass-bg: 213 40% 3%;
-    --glass-bg-opacity: 0.85;
-    --glass-border: 213 25% 25%;
+    /* Premium glass effects */
+    --glass-bg: 213 50% 3%;
+    --glass-bg-opacity: 0.95;
+    --glass-border: 213 30% 30%;
     --glass-shadow: 213 100% 0%;
     
-    /* Vibrant text hierarchy */
+    /* High contrast text hierarchy */
     --text-primary: 210 40% 98%;
-    --text-secondary: 210 25% 80%;
-    --text-tertiary: 210 20% 65%;
-    --text-quaternary: 210 15% 50%;
+    --text-secondary: 210 30% 85%;
+    --text-tertiary: 210 25% 70%;
+    --text-quaternary: 210 20% 55%;
     
-    /* Brilliant accent colors */
-    --accent-blue: 211 100% 65%;
-    --accent-blue-hover: 211 100% 75%;
-    --accent-green: 142 76% 60%;
-    --accent-orange: 25 95% 65%;
-    --accent-red: 0 86% 70%;
+    /* Vibrant accent colors */
+    --accent-blue: 211 100% 70%;
+    --accent-blue-hover: 211 100% 80%;
+    --accent-green: 142 80% 65%;
+    --accent-orange: 25 100% 70%;
+    --accent-red: 0 90% 75%;
+    --accent-purple: 270 80% 75%;
+    --accent-cyan: 180 80% 70%;
     
     /* Dynamic interactive states */
-    --interactive-hover: 213 30% 12%;
-    --interactive-active: 213 25% 16%;
-    --interactive-selected: 211 85% 15%;
+    --interactive-hover: 213 40% 10%;
+    --interactive-active: 213 35% 15%;
+    --interactive-selected: 211 90% 20%;
     
-    /* Sophisticated borders */
-    --border-primary: 213 25% 20%;
-    --border-secondary: 213 20% 15%;
-    --divider: 213 22% 18%;
+    /* Premium borders */
+    --border-primary: 213 30% 25%;
+    --border-secondary: 213 25% 20%;
+    --divider: 213 27% 22%;
     
     /* Enhanced legacy tokens */
-    --primary: 211 100% 65%;
-    --primary-foreground: 210 40% 2%;
-    --secondary: 213 30% 12%;
+    --primary: 211 100% 70%;
+    --primary-foreground: 210 50% 2%;
+    --secondary: 213 40% 10%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 213 25% 10%;
-    --muted-foreground: 210 25% 75%;
-    --accent: 211 85% 15%;
-    --accent-foreground: 211 100% 65%;
-    --destructive: 0 86% 65%;
-    --destructive-foreground: 210 40% 2%;
-    --border: 213 25% 20%;
-    --input: 213 25% 15%;
-    --ring: 211 100% 60%;
-    --card: 213 40% 4%;
+    --muted: 213 35% 8%;
+    --muted-foreground: 210 30% 80%;
+    --accent: 211 90% 20%;
+    --accent-foreground: 211 100% 70%;
+    --destructive: 0 90% 70%;
+    --destructive-foreground: 210 50% 2%;
+    --border: 213 30% 25%;
+    --input: 213 30% 15%;
+    --ring: 211 100% 65%;
+    --card: 213 50% 3%;
     --card-foreground: 210 40% 98%;
-    --popover: 213 40% 4%;
+    --popover: 213 50% 3%;
     --popover-foreground: 210 40% 98%;
   }
 }
@@ -322,8 +326,43 @@
     transition: all var(--duration-normal) ease-out;
   }
   
+  /* Invisible scrollbars */
+  ::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: transparent;
+  }
+  
+  /* Firefox invisible scrollbar */
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
   /* Smooth scrolling */
   html {
     scroll-behavior: smooth;
   }
+  
+  /* Fixed layout structure */
+  .app-layout {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+  
+  .main-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+}
 }

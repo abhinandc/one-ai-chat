@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { TopBar } from "@/components/shell/TopBar";
 import { SideNav } from "@/components/shell/SideNav";
+import { Footer } from "@/components/shell/Footer";
 import { CommandPalette } from "@/components/CommandPalette";
 import LoginPage from "./pages/LoginPage";
 import Index from "./pages/Index";
@@ -67,20 +68,20 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <div className="min-h-screen w-full bg-background overflow-hidden">
+          <div className="app-layout dark">
             <TopBar 
               onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
               onOpenCommandPalette={() => setCommandPaletteOpen(true)}
               onLogout={handleLogout}
             />
             
-            <div className="flex h-[calc(100vh-64px)] w-full">
+            <div className="flex flex-1 overflow-hidden">
               <SideNav 
                 collapsed={sidebarCollapsed}
                 onToggleCollapsed={() => setSidebarCollapsed(!sidebarCollapsed)}
               />
               
-              <main className="flex-1 overflow-hidden">
+              <main className="main-content">
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/chat" element={<Chat />} />
@@ -96,6 +97,8 @@ const App = () => {
                 </Routes>
               </main>
             </div>
+            
+            <Footer />
             
             <CommandPalette 
               open={commandPaletteOpen}
