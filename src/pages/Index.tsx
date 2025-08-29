@@ -1,279 +1,176 @@
 import { Link } from "react-router-dom";
-import { 
-  MessageSquare, Bot, Workflow, Play, BarChart, Zap, 
-  Sparkles, TrendingUp, Users, Globe, Shield, Cpu,
-  Database, Code, Palette, Settings
-} from "lucide-react";
-import { FeatureCard } from "@/components/ui/FeatureCard";
-import { MetricCard } from "@/components/ui/MetricCard";
+import { MessageSquare, Bot, Workflow, Play, BarChart, Zap } from "lucide-react";
+import { GlassCard, GlassCardHeader, GlassCardTitle, GlassCardDescription, GlassCardContent } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/button";
 
 const Index = () => {
-  const primaryFeatures = [
+  const quickActions = [
     {
       icon: MessageSquare,
-      title: "AI Conversations",
-      description: "Engage with advanced AI models for any task or question",
-      accent: "blue" as const,
-      href: "/chat"
+      title: "Start New Chat",
+      description: "Begin a conversation with AI models",
+      href: "/chat",
+      color: "text-accent-blue"
     },
     {
       icon: Bot,
-      title: "Custom Agents",
-      description: "Build specialized AI agents tailored to your workflow",
-      accent: "green" as const,
-      href: "/agents"
+      title: "Create Agent",
+      description: "Build custom AI agents for your workflows",
+      href: "/agents",
+      color: "text-accent-green"
     },
     {
       icon: Workflow,
-      title: "Smart Automations",
-      description: "Create powerful workflows that run on autopilot",
-      accent: "purple" as const,
-      href: "/automations"
+      title: "Setup Automation",
+      description: "Configure triggers and automated workflows",
+      href: "/automations",
+      color: "text-accent-orange"
     },
     {
       icon: Play,
-      title: "AI Playground",
-      description: "Experiment and test models in a safe environment",
-      accent: "orange" as const,
-      href: "/playground"
+      title: "Open Playground",
+      description: "Test and experiment with AI models",
+      href: "/playground",
+      color: "text-accent-blue"
     }
   ];
 
-  const secondaryFeatures = [
-    {
-      icon: Code,
-      title: "Code Generation",
-      description: "Generate, review, and optimize code across languages",
-      accent: "cyan" as const
-    },
-    {
-      icon: Database,
-      title: "Data Analysis",
-      description: "Extract insights from your data with AI assistance", 
-      accent: "blue" as const
-    },
-    {
-      icon: Palette,
-      title: "Creative Tools",
-      description: "Generate content, designs, and creative solutions",
-      accent: "purple" as const
-    },
-    {
-      icon: Shield,
-      title: "Enterprise Security",
-      description: "Bank-level security for your sensitive data",
-      accent: "green" as const
-    }
-  ];
-
-  const metrics = [
-    { label: "Active Conversations", value: "2.4k", change: "+18%", trend: "up" as const },
-    { label: "Agents Deployed", value: "156", change: "+12%", trend: "up" as const },
-    { label: "Automations Running", value: "89", change: "+31%", trend: "up" as const },
-    { label: "API Requests Today", value: "12.8k", change: "+7%", trend: "up" as const }
-  ];
-
-  const recentActivities = [
-    {
-      icon: MessageSquare,
-      title: "New conversation with GPT-4",
-      subtitle: "Code review session completed",
-      time: "2 minutes ago",
-      accent: "blue" as const
-    },
-    {
-      icon: Bot,
-      title: "Agent 'Content Creator' updated",
-      subtitle: "New capabilities added for SEO optimization",
-      time: "15 minutes ago", 
-      accent: "green" as const
-    },
-    {
-      icon: Zap,
-      title: "Automation workflow triggered",
-      subtitle: "Daily report generation completed",
-      time: "1 hour ago",
-      accent: "orange" as const
-    },
-    {
-      icon: TrendingUp,
-      title: "Performance metrics updated",
-      subtitle: "All systems operating at 99.9% uptime",
-      time: "2 hours ago",
-      accent: "purple" as const
-    }
+  const stats = [
+    { label: "Conversations", value: "24", change: "+12%" },
+    { label: "Agents Created", value: "8", change: "+3%" },
+    { label: "Automations", value: "15", change: "+25%" },
+    { label: "API Calls", value: "1.2k", change: "+8%" }
   ];
 
   return (
-    <div className="min-h-full bg-background">
-      <div className="max-w-8xl mx-auto p-8 space-y-12">
-        
-        {/* Hero Section */}
-        <div className="text-center space-y-6 py-12">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-surface rounded-full border border-border-primary">
-            <Sparkles className="h-4 w-4 text-accent-blue animate-gentle-bounce" />
-            <span className="text-sm font-medium text-text-secondary">OneAI Platform</span>
-          </div>
-          
-          <h1 className="text-6xl font-bold text-text-primary font-display leading-tight">
-            Build the{" "}
-            <span className="bg-gradient-primary bg-clip-text text-transparent animate-glow-pulse">
-              Future
-            </span>{" "}
-            of AI
+    <div className="min-h-full bg-background p-lg overflow-y-auto">
+      <div className="max-w-7xl mx-auto space-y-xl">
+        {/* Welcome Header */}
+        <div className="space-y-md">
+          <h1 className="text-4xl font-bold text-text-primary font-display">
+            Welcome back
           </h1>
-          
-          <p className="text-xl text-text-secondary max-w-3xl mx-auto leading-relaxed">
-            Transform your workflows with intelligent agents, automated processes, and powerful AI capabilities.
-            Everything you need to harness artificial intelligence for your business.
+          <p className="text-lg text-text-secondary">
+            Your AI workspace is ready. Start building intelligent workflows.
           </p>
-          
-          <div className="flex items-center justify-center gap-4 pt-4">
-            <Button variant="glow" size="lg" className="text-lg px-8">
-              Get Started
-            </Button>
-            <Button variant="glass" size="lg" className="text-lg px-8">
-              Watch Demo
-            </Button>
-          </div>
         </div>
 
-        {/* Metrics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {metrics.map((metric) => (
-            <MetricCard
-              key={metric.label}
-              label={metric.label}
-              value={metric.value}
-              change={metric.change}
-              trend={metric.trend}
-            />
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-lg">
+          {stats.map((stat) => (
+            <GlassCard key={stat.label} className="p-lg hover-lift group">
+              <div className="space-y-sm">
+                <p className="text-sm text-text-secondary font-medium">{stat.label}</p>
+                <div className="flex items-end gap-sm">
+                  <span className="text-2xl font-semibold text-text-primary">{stat.value}</span>
+                  <span className="text-sm text-accent-green font-medium">{stat.change}</span>
+                </div>
+              </div>
+            </GlassCard>
           ))}
         </div>
 
-        {/* Primary Features */}
-        <div className="space-y-8">
-          <div className="text-center space-y-4">
-            <h2 className="text-4xl font-bold text-text-primary">Core Capabilities</h2>
-            <p className="text-lg text-text-secondary max-w-2xl mx-auto">
-              Powerful tools to accelerate your AI journey and transform how you work
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {primaryFeatures.map((feature) => (
-              <Link key={feature.href} to={feature.href}>
-                <FeatureCard
-                  icon={feature.icon}
-                  title={feature.title}
-                  description={feature.description}
-                  accent={feature.accent}
-                />
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* Secondary Features Grid */}
-        <div className="space-y-8">
-          <div className="text-center space-y-4">
-            <h2 className="text-3xl font-bold text-text-primary">Advanced Features</h2>
-            <p className="text-lg text-text-secondary max-w-2xl mx-auto">
-              Specialized tools for developers, creators, and enterprises
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {secondaryFeatures.map((feature, index) => (
-              <FeatureCard
-                key={index}
-                icon={feature.icon}
-                title={feature.title}
-                description={feature.description}
-                accent={feature.accent}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="space-y-8">
-          <div className="flex items-center justify-between">
-            <h2 className="text-3xl font-bold text-text-primary">Recent Activity</h2>
-            <Button variant="outline" className="gap-2">
-              <Globe className="h-4 w-4" />
-              View All
-            </Button>
-          </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {recentActivities.map((activity, index) => {
-              const Icon = activity.icon;
-              const accentColors = {
-                blue: "text-accent-blue",
-                green: "text-accent-green", 
-                orange: "text-accent-orange",
-                purple: "text-accent-purple",
-                cyan: "text-accent-cyan"
-              };
-              
+        {/* Quick Actions */}
+        <div>
+          <h2 className="text-xl font-semibold text-text-primary mb-lg">Quick Actions</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-lg">
+            {quickActions.map((action) => {
+              const Icon = action.icon;
               return (
-                <div 
-                  key={index}
-                  className="glass-ios p-6 rounded-2xl hover-lift group cursor-pointer"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className={`p-3 bg-gradient-surface rounded-xl group-hover:scale-110 transition-transform duration-normal`}>
-                      <Icon className={`h-5 w-5 ${accentColors[activity.accent]} group-hover:animate-gentle-bounce`} />
+                <Link key={action.href} to={action.href} className="group">
+                  <GlassCard className="h-full p-lg hover-lift group-hover:border-accent-blue/50 transition-all duration-normal">
+                    <div className="space-y-md">
+                      <div className={`p-md bg-surface-graphite rounded-xl w-fit ${action.color}`}>
+                        <Icon className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-text-primary mb-sm">{action.title}</h3>
+                        <p className="text-sm text-text-secondary leading-relaxed">
+                          {action.description}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1 space-y-1">
-                      <h3 className="font-semibold text-text-primary group-hover:text-accent-blue transition-colors duration-normal">
-                        {activity.title}
-                      </h3>
-                      <p className="text-sm text-text-secondary group-hover:text-text-primary transition-colors duration-normal">
-                        {activity.subtitle}
-                      </p>
-                      <p className="text-xs text-text-tertiary">
-                        {activity.time}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                  </GlassCard>
+                </Link>
               );
             })}
           </div>
         </div>
 
-        {/* Quick Actions CTA */}
-        <div className="glass-ios p-8 rounded-3xl glow-accent text-center space-y-6">
-          <div className="space-y-4">
-            <h2 className="text-3xl font-bold text-text-primary">Ready to Get Started?</h2>
-            <p className="text-lg text-text-secondary max-w-2xl mx-auto">
-              Join thousands of users who are already building with OneAI. Start your journey today.
-            </p>
-          </div>
-          
-          <div className="flex items-center justify-center gap-6">
-            <div className="flex items-center gap-3">
-              <Users className="h-5 w-5 text-accent-green" />
-              <span className="text-sm text-text-secondary">10k+ Active Users</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <Cpu className="h-5 w-5 text-accent-blue" />
-              <span className="text-sm text-text-secondary">99.9% Uptime</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <Shield className="h-5 w-5 text-accent-purple" />
-              <span className="text-sm text-text-secondary">Enterprise Security</span>
-            </div>
-          </div>
-          
-          <Button variant="glow" size="lg" className="text-lg px-12">
-            Start Building Now
-          </Button>
+        {/* Recent Activity */}
+        <div>
+          <h2 className="text-xl font-semibold text-text-primary mb-lg">Recent Activity</h2>
+          <GlassCard>
+            <GlassCardContent className="p-lg">
+              <div className="space-y-md">
+                <div className="flex items-center gap-md p-md bg-surface-graphite rounded-xl">
+                  <div className="p-sm bg-accent-blue/10 rounded-lg">
+                    <MessageSquare className="h-5 w-5 text-accent-blue" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-text-primary">New chat session started</p>
+                    <p className="text-xs text-text-tertiary">2 minutes ago</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-md p-md bg-surface-graphite rounded-xl">
+                  <div className="p-sm bg-accent-green/10 rounded-lg">
+                    <Bot className="h-5 w-5 text-accent-green" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-text-primary">Agent "Content Creator" deployed</p>
+                    <p className="text-xs text-text-tertiary">1 hour ago</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-md p-md bg-surface-graphite rounded-xl">
+                  <div className="p-sm bg-accent-orange/10 rounded-lg">
+                    <Zap className="h-5 w-5 text-accent-orange" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-text-primary">Automation workflow completed</p>
+                    <p className="text-xs text-text-tertiary">3 hours ago</p>
+                  </div>
+                </div>
+              </div>
+            </GlassCardContent>
+          </GlassCard>
         </div>
-        
+
+        {/* Getting Started */}
+        <GlassCard variant="elevated">
+          <GlassCardHeader>
+            <GlassCardTitle className="flex items-center gap-2">
+              <BarChart className="h-5 w-5 text-accent-blue" />
+              Getting Started
+            </GlassCardTitle>
+            <GlassCardDescription>
+              Complete these steps to unlock the full potential of OneAI
+            </GlassCardDescription>
+          </GlassCardHeader>
+          <GlassCardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-md">
+              <Button variant="outline" className="justify-start h-auto py-lg">
+                <div className="text-left">
+                  <div className="font-medium">Connect Data Sources</div>
+                  <div className="text-sm text-text-secondary">Link your tools and databases</div>
+                </div>
+              </Button>
+              <Button variant="outline" className="justify-start h-auto py-lg">
+                <div className="text-left">
+                  <div className="font-medium">Train Custom Agent</div>
+                  <div className="text-sm text-text-secondary">Create your first specialized AI agent</div>
+                </div>
+              </Button>
+              <Button variant="outline" className="justify-start h-auto py-lg">
+                <div className="text-left">
+                  <div className="font-medium">Setup Notifications</div>
+                  <div className="text-sm text-text-secondary">Configure alerts and webhooks</div>
+                </div>
+              </Button>
+            </div>
+          </GlassCardContent>
+        </GlassCard>
       </div>
     </div>
   );
