@@ -4,12 +4,12 @@ import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { useModels } from "@/hooks/useModels";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useVirtualKeys } from "@/hooks/useSupabaseData";
+import { useVirtualKeys } from "@/hooks/useVirtualKeys";
 
 const ModelsHub = () => {
   const user = useCurrentUser();
   const { models, loading, error, refetch } = useModels();
-  const { data: virtualKeys, loading: keysLoading } = useVirtualKeys(user?.email);
+  const { virtualKeys, loading: keysLoading } = useVirtualKeys(user?.email);
 
   const groupedByProvider = useMemo(() => {
     const groups = new Map<string, typeof models>();
