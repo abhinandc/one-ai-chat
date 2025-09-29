@@ -47,7 +47,7 @@ export function SideNav({ collapsed = false, onToggleCollapsed }: SideNavProps) 
       collapsed ? "w-16" : "w-64"
     )}>
       {/* Toggle Button */}
-      <div className="p-md border-b border-border-secondary/50">
+      <div className="p-4 border-b border-border-secondary/50 flex-shrink-0">
         <Button
           variant="ghost"
           size="sm"
@@ -60,7 +60,7 @@ export function SideNav({ collapsed = false, onToggleCollapsed }: SideNavProps) 
       </div>
 
       {/* Navigation Items */}
-      <nav className="flex-1 p-md space-y-1">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {navigationItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href);
@@ -93,9 +93,9 @@ export function SideNav({ collapsed = false, onToggleCollapsed }: SideNavProps) 
       </nav>
 
       {/* Footer */}
-      <div className="p-md border-t border-border-secondary/50">
+      <div className="flex-shrink-0 p-6 border-t border-border-secondary/50">
         {!collapsed && (
-          <div className="text-xs text-text-quaternary text-center">
+          <div className="text-xs text-text-quaternary text-center font-medium">
             Powered by OneOrigin
           </div>
         )}

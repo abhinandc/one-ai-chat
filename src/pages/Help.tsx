@@ -39,148 +39,268 @@ interface FAQ {
 const helpArticles: HelpArticle[] = [
   {
     id: "1",
-    title: "Getting Started with OneAI",
-    description: "Learn the basics of using OneAI platform and its core features",
+    title: "Getting Started with OneAI Platform",
+    description: "Complete guide to setting up your OneAI environment with LiteLLM, vLLM, and Ollama integration",
     category: "Getting Started",
-    readTime: "5 min",
-    popularity: 95,
-    lastUpdated: new Date("2024-02-01"),
-    helpful: 234
+    readTime: "8 min",
+    popularity: 98,
+    lastUpdated: new Date("2024-02-15"),
+    helpful: 456
   },
   {
     id: "2",
-    title: "Setting Up Your First Automation",
-    description: "Step-by-step guide to creating your first AI automation workflow",
-    category: "Automations",
-    readTime: "8 min",
-    popularity: 87,
-    lastUpdated: new Date("2024-01-28"),
-    helpful: 189
+    title: "Deploying Models with vLLM",
+    description: "Learn how to deploy and manage AI models using vLLM for high-performance inference",
+    category: "Models",
+    readTime: "12 min",
+    popularity: 94,
+    lastUpdated: new Date("2024-02-12"),
+    helpful: 389
   },
   {
     id: "3",
-    title: "Model Configuration Best Practices",
-    description: "Optimize your AI models for better performance and accuracy",
-    category: "Models",
-    readTime: "12 min",
-    popularity: 92,
-    lastUpdated: new Date("2024-01-25"),
-    helpful: 156
+    title: "Creating Intelligent Agents",
+    description: "Build powerful AI agents with custom tools, capabilities, and MCP integration",
+    category: "Agents",
+    readTime: "15 min",
+    popularity: 96,
+    lastUpdated: new Date("2024-02-10"),
+    helpful: 423
   },
   {
     id: "4",
-    title: "Prompt Engineering Guide",
-    description: "Master the art of writing effective prompts for better AI responses",
+    title: "OnePass MCP Service Guide",
+    description: "Understand and configure the OnePass Model Context Protocol for agent management",
+    category: "MCP",
+    readTime: "10 min",
+    popularity: 91,
+    lastUpdated: new Date("2024-02-08"),
+    helpful: 267
+  },
+  {
+    id: "5",
+    title: "Prompt Library Management",
+    description: "Organize and optimize your prompt templates for consistent AI interactions",
     category: "Prompts",
-    readTime: "15 min",
-    popularity: 98,
+    readTime: "7 min",
+    popularity: 89,
+    lastUpdated: new Date("2024-02-05"),
+    helpful: 234
+  },
+  {
+    id: "6",
+    title: "Tools Gallery Integration",
+    description: "Discover, install, and manage AI tools across your agent ecosystem",
+    category: "Tools",
+    readTime: "9 min",
+    popularity: 87,
     lastUpdated: new Date("2024-02-03"),
-    helpful: 312
+    helpful: 198
+  },
+  {
+    id: "7",
+    title: "Playground Advanced Features",
+    description: "Master the AI Playground with streaming, model switching, and session management",
+    category: "Playground",
+    readTime: "11 min",
+    popularity: 93,
+    lastUpdated: new Date("2024-02-01"),
+    helpful: 345
+  },
+  {
+    id: "8",
+    title: "Docker Deployment Guide",
+    description: "Deploy OneAI infrastructure using Docker Compose with Nginx and OAuth2 proxy",
+    category: "Deployment",
+    readTime: "20 min",
+    popularity: 85,
+    lastUpdated: new Date("2024-01-30"),
+    helpful: 156
   }
 ];
 
 const tutorials: Tutorial[] = [
   {
     id: "1",
-    title: "OneAI Platform Overview",
-    description: "Complete overview of the OneAI platform and its capabilities",
-    duration: "12:34",
+    title: "OneAI Platform Complete Setup",
+    description: "End-to-end setup of OneAI with Docker, LiteLLM, vLLM, and Ollama integration",
+    duration: "24:15",
     difficulty: "beginner",
-    views: 15420,
-    category: "Overview"
+    views: 18750,
+    category: "Setup"
   },
   {
     id: "2",
-    title: "Building Your First Chatbot",
-    description: "Create an intelligent chatbot from scratch using OneAI tools",
-    duration: "28:45",
+    title: "Model Deployment with vLLM",
+    description: "Deploy and optimize AI models using vLLM for production workloads",
+    duration: "19:32",
     difficulty: "intermediate",
-    views: 8934,
-    category: "Chatbots"
+    views: 12340,
+    category: "Models"
   },
   {
     id: "3",
-    title: "Advanced Automation Workflows",
-    description: "Learn to create complex multi-step automation workflows",
-    duration: "35:22",
-    difficulty: "advanced",
-    views: 5672,
-    category: "Automations"
+    title: "Building Intelligent Agents",
+    description: "Create sophisticated AI agents with custom tools and MCP integration",
+    duration: "31:48",
+    difficulty: "intermediate",
+    views: 9876,
+    category: "Agents"
   },
   {
     id: "4",
-    title: "API Integration Tutorial",
-    description: "Integrate OneAI with external services using our REST API",
-    duration: "22:18",
+    title: "OnePass MCP Configuration",
+    description: "Configure and manage the OnePass Model Context Protocol service",
+    duration: "16:22",
+    difficulty: "advanced",
+    views: 6543,
+    category: "MCP"
+  },
+  {
+    id: "5",
+    title: "Chat Interface Customization",
+    description: "Customize the OneAI chat interface with system prompts and model switching",
+    duration: "14:55",
+    difficulty: "beginner",
+    views: 11234,
+    category: "Chat"
+  },
+  {
+    id: "6",
+    title: "Playground Power Features",
+    description: "Master streaming responses, session management, and model comparison",
+    duration: "22:08",
     difficulty: "intermediate",
-    views: 7123,
-    category: "API"
+    views: 8765,
+    category: "Playground"
+  },
+  {
+    id: "7",
+    title: "Docker Infrastructure Deep Dive",
+    description: "Advanced Docker deployment with Nginx, OAuth2, and Cloudflare tunnels",
+    duration: "38:44",
+    difficulty: "advanced",
+    views: 4321,
+    category: "Infrastructure"
+  },
+  {
+    id: "8",
+    title: "Troubleshooting Common Issues",
+    description: "Diagnose and fix common OneAI deployment and configuration problems",
+    duration: "26:17",
+    difficulty: "intermediate",
+    views: 7890,
+    category: "Troubleshooting"
   }
 ];
 
 const faqs: FAQ[] = [
   {
     id: "1",
-    question: "How do I get started with OneAI?",
-    answer: "To get started with OneAI, simply create an account, choose your plan, and follow our getting started guide. You can begin with our free tier which includes basic features and gradually upgrade as your needs grow.",
+    question: "How do I deploy OneAI with Docker?",
+    answer: "OneAI uses Docker Compose for easy deployment. Run 'docker compose -f docker-compose-oneai.yml up -d' in the docker directory. This will start all services including vLLM, LiteLLM, OnePass MCP, and the OneAI UI with Nginx reverse proxy.",
     category: "Getting Started",
-    helpful: 156
+    helpful: 289
   },
   {
     id: "2",
-    question: "What AI models are available?",
-    answer: "OneAI supports a wide range of AI models including GPT-4, Claude 3, Llama 2, DALL-E, and many more. You can access models from OpenAI, Anthropic, Meta, Google, and other leading AI providers through our unified interface.",
+    question: "Which AI models are supported?",
+    answer: "OneAI supports models through vLLM (Nemotron, Qwen, Llama, etc.), Ollama (local models), and LiteLLM proxy (OpenAI, Anthropic, Google, etc.). You can deploy models locally or connect to external APIs through our unified interface.",
     category: "Models",
-    helpful: 203
+    helpful: 345
   },
   {
     id: "3",
-    question: "Can I create custom automations?",
-    answer: "Yes! OneAI provides a powerful automation builder that allows you to create custom workflows. You can chain multiple AI operations, set triggers, and integrate with external services to build sophisticated automation pipelines.",
-    category: "Automations",
-    helpful: 178
+    question: "What is OnePass MCP?",
+    answer: "OnePass MCP (Model Context Protocol) is our agent management service that handles AI agents, tools, capabilities, datasets, guardrails, and routing. It provides a unified API for managing your AI ecosystem at http://localhost:6060.",
+    category: "MCP",
+    helpful: 234
   },
   {
     id: "4",
-    question: "Is there an API available?",
-    answer: "Yes, OneAI provides a comprehensive REST API that allows you to integrate our services into your applications. The API includes endpoints for model inference, automation management, and data processing.",
-    category: "API",
+    question: "How do I create and manage agents?",
+    answer: "Use the Agents tab to create AI agents with custom tools and capabilities. Agents are managed through the OnePass MCP service and can be configured with specific roles, tools, and guardrails for different use cases.",
+    category: "Agents",
+    helpful: 198
+  },
+  {
+    id: "5",
+    question: "Can I use custom prompts and templates?",
+    answer: "Yes! The Prompt Library allows you to create, organize, and reuse prompt templates. You can create custom prompts or use system prompts from existing agents. Prompts support variables and can be loaded directly into chat conversations.",
+    category: "Prompts",
+    helpful: 167
+  },
+  {
+    id: "6",
+    question: "How does the Tools Gallery work?",
+    answer: "The Tools Gallery shows available AI tools from your agents. You can install tools by creating new agents, manage existing tool assignments, and submit custom tools. Tools are shared across agents and managed through the MCP service.",
+    category: "Tools",
+    helpful: 143
+  },
+  {
+    id: "7",
+    question: "What's the difference between Chat and Playground?",
+    answer: "Chat provides a conversational interface with message history, system prompts, and model switching. Playground offers a more experimental environment with streaming toggles, session management, and side-by-side prompt/response comparison.",
+    category: "Chat",
+    helpful: 212
+  },
+  {
+    id: "8",
+    question: "How do I troubleshoot connection issues?",
+    answer: "Check that all Docker containers are running with 'docker ps'. Verify services at http://localhost:3010 (UI), http://localhost:8000 (vLLM), http://localhost:4000 (LiteLLM), and http://localhost:6060 (MCP). Check container logs for specific error messages.",
+    category: "Troubleshooting",
+    helpful: 156
+  },
+  {
+    id: "9",
+    question: "Can I integrate with external services?",
+    answer: "Yes! OneAI supports integration through LiteLLM for external AI APIs, custom tools in agents, and REST API endpoints. You can connect to OpenAI, Anthropic, Google, and other services while maintaining a unified interface.",
+    category: "Integration",
+    helpful: 189
+  },
+  {
+    id: "10",
+    question: "How do I configure Nginx and OAuth2?",
+    answer: "OneAI includes Nginx reverse proxy and OAuth2-proxy for authentication. Configuration files are in the nginx and oauth2-proxy directories. The setup supports Google SSO, Cloudflare tunnels, and custom domain routing.",
+    category: "Configuration",
     helpful: 134
   }
 ];
 
 const quickActions = [
   {
-    title: "Contact Support",
-    description: "Get help from our support team",
-    icon: <MessageCircle className="h-6 w-6" />,
-    action: "contact"
-  },
-  {
-    title: "API Documentation",
-    description: "Explore our comprehensive API docs",
+    title: "OneAI Documentation",
+    description: "Complete setup and usage guides",
     icon: <Book className="h-6 w-6" />,
     action: "docs"
   },
   {
-    title: "Video Tutorials",
-    description: "Watch step-by-step video guides",
-    icon: <Video className="h-6 w-6" />,
-    action: "videos"
+    title: "MCP API Reference",
+    description: "OnePass MCP service endpoints",
+    icon: <FileText className="h-6 w-6" />,
+    action: "api"
   },
   {
-    title: "Community Forum",
-    description: "Join discussions with other users",
-    icon: <MessageCircle className="h-6 w-6" />,
-    action: "forum"
+    title: "Docker Setup Guide",
+    description: "Deploy OneAI with Docker Compose",
+    icon: <Video className="h-6 w-6" />,
+    action: "docker"
+  },
+  {
+    title: "GitHub Repository",
+    description: "Source code and issue tracking",
+    icon: <ExternalLink className="h-6 w-6" />,
+    action: "github"
   }
 ];
 
 export default function Help() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [helpfulItems, setHelpfulItems] = useState<Set<string>>(new Set());
+  const [helpfulCounts, setHelpfulCounts] = useState<Record<string, number>>({});
 
-  const categories = ["All", "Getting Started", "Models", "Automations", "Prompts", "API"];
+  const categories = ["All", "Getting Started", "Models", "Agents", "MCP", "Prompts", "Tools", "Playground", "Deployment", "Chat", "Troubleshooting", "Integration", "Configuration"];
 
   const filteredArticles = helpArticles.filter(article => {
     const matchesSearch = article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -202,6 +322,31 @@ export default function Help() {
       case "intermediate": return "text-accent-orange bg-accent-orange/10";
       case "advanced": return "text-accent-red bg-accent-red/10";
       default: return "text-text-secondary";
+    }
+  };
+
+  const handleHelpful = (type: 'article' | 'faq', id: string, currentCount: number) => {
+    const key = `${type}-${id}`;
+    const isAlreadyMarked = helpfulItems.has(key);
+    
+    if (isAlreadyMarked) {
+      // Remove helpful mark
+      const newHelpfulItems = new Set(helpfulItems);
+      newHelpfulItems.delete(key);
+      setHelpfulItems(newHelpfulItems);
+      setHelpfulCounts(prev => ({
+        ...prev,
+        [key]: Math.max(0, (prev[key] || currentCount) - 1)
+      }));
+    } else {
+      // Add helpful mark
+      const newHelpfulItems = new Set(helpfulItems);
+      newHelpfulItems.add(key);
+      setHelpfulItems(newHelpfulItems);
+      setHelpfulCounts(prev => ({
+        ...prev,
+        [key]: (prev[key] || currentCount) + 1
+      }));
     }
   };
 
@@ -240,14 +385,22 @@ export default function Help() {
                 key={index} 
                 className="p-4 hover:border-accent-blue/30 transition-colors cursor-pointer"
                 onClick={() => {
-                  if (action.action === "contact") {
-                    window.open("mailto:support@oneai.com", "_blank");
-                  } else if (action.action === "docs") {
-                    window.open("https://docs.oneai.com", "_blank");
-                  } else if (action.action === "videos") {
-                    window.open("https://youtube.com/@oneai", "_blank");
-                  } else if (action.action === "forum") {
-                    window.open("https://forum.oneai.com", "_blank");
+                  if (action.action === "docs") {
+                    // Show getting started guide
+                    alert("OneAI Documentation\n\nComplete setup and usage guides for:\n• Docker deployment with docker-compose-oneai.yml\n• vLLM model configuration\n• OnePass MCP service setup\n• Agent creation and management\n• Chat interface customization\n\nThis would normally open comprehensive documentation.");
+                  } else if (action.action === "api") {
+                    // Try to open MCP API, fallback to info
+                    try {
+                      window.open("http://localhost:6060/api", "_blank");
+                    } catch (e) {
+                      alert("MCP API Reference\n\nOnePass MCP service endpoints:\n• GET /api/mcp/agents - List agents\n• POST /api/mcp/agents - Create agent\n• GET /api/mcp/tools - List tools\n• GET /api/mcp/capabilities - List capabilities\n\nService running at: http://localhost:6060");
+                    }
+                  } else if (action.action === "docker") {
+                    // Show Docker setup guide
+                    alert("Docker Setup Guide\n\nDeploy OneAI with Docker Compose:\n\n1. Navigate to F:/LLM_STATE/docker\n2. Run: docker compose -f docker-compose-oneai.yml up -d\n3. Access UI at: http://localhost:3010\n4. Check services: vLLM (8000), LiteLLM (4000), MCP (6060)\n\nThis would normally show detailed deployment instructions.");
+                  } else if (action.action === "github") {
+                    // Show GitHub info
+                    alert("GitHub Repository\n\nOneAI Platform Source Code\n\nFeatures:\n• Docker-based deployment\n• Multi-model support (vLLM, Ollama, LiteLLM)\n• Agent management with MCP\n• Modern React UI with Shadcn\n\nThis would normally open the GitHub repository.");
                   }
                 }}
               >
@@ -324,7 +477,9 @@ export default function Help() {
                           </div>
                           <div className="flex items-center gap-1">
                             <ThumbsUp className="h-3 w-3 text-text-secondary" />
-                            <span className="text-text-secondary">{article.helpful}</span>
+                            <span className="text-text-secondary">
+                              {helpfulCounts[`article-${article.id}`] || article.helpful}
+                            </span>
                           </div>
                         </div>
                         <span className="text-text-tertiary">
@@ -332,15 +487,27 @@ export default function Help() {
                         </span>
                       </div>
 
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="w-full"
-                        onClick={() => window.open(`/help/articles/${article.id}`, "_blank")}
-                      >
-                        <FileText className="h-3 w-3 mr-2" />
-                        Read Article
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1"
+                          onClick={() => {
+                            // Show article content in a modal or navigate to detailed view
+                            alert(`Article: ${article.title}\n\n${article.description}\n\nThis would normally open a detailed article page with full content, code examples, and step-by-step instructions.`);
+                          }}
+                        >
+                          <FileText className="h-3 w-3 mr-2" />
+                          Read Article
+                        </Button>
+                        <Button 
+                          variant={helpfulItems.has(`article-${article.id}`) ? "default" : "ghost"}
+                          size="sm"
+                          onClick={() => handleHelpful('article', article.id, article.helpful)}
+                        >
+                          <ThumbsUp className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                   </GlassCard>
                 ))}
@@ -384,7 +551,10 @@ export default function Help() {
                         variant="outline" 
                         size="sm" 
                         className="w-full"
-                        onClick={() => window.open(`/help/tutorials/${tutorial.id}`, "_blank")}
+                        onClick={() => {
+                          // Show tutorial content or video player
+                          alert(`Tutorial: ${tutorial.title}\n\nDuration: ${tutorial.duration}\nDifficulty: ${tutorial.difficulty}\n\n${tutorial.description}\n\nThis would normally open a video player or detailed tutorial page with interactive content.`);
+                        }}
                       >
                         <Video className="h-3 w-3 mr-2" />
                         Watch Tutorial
@@ -417,19 +587,16 @@ export default function Help() {
                         <div className="flex items-center gap-1">
                           <ThumbsUp className="h-3 w-3 text-text-secondary" />
                           <span className="text-sm text-text-secondary">
-                            {faq.helpful} people found this helpful
+                            {helpfulCounts[`faq-${faq.id}`] || faq.helpful} people found this helpful
                           </span>
                         </div>
                         <Button 
-                          variant="ghost" 
+                          variant={helpfulItems.has(`faq-${faq.id}`) ? "default" : "ghost"}
                           size="sm"
-                          onClick={() => {
-                            // Toggle helpful state
-                            console.log(`Marked FAQ ${faq.id} as helpful`);
-                          }}
+                          onClick={() => handleHelpful('faq', faq.id, faq.helpful)}
                         >
                           <ThumbsUp className="h-3 w-3 mr-1" />
-                          Helpful
+                          {helpfulItems.has(`faq-${faq.id}`) ? "Helpful!" : "Helpful"}
                         </Button>
                       </div>
                     </div>

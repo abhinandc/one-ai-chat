@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Paperclip, Mic, Zap, Settings2, ChevronDown } from "lucide-react";
+import { Send, Paperclip, Mic, Zap, Settings2, ChevronDown, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/GlassCard";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,42 +18,84 @@ interface ComposerProps {
   isStreaming?: boolean;
   onStopStreaming?: () => void;
   onUpdateSettings?: (settings: any) => void;
+  availableModels?: any[];
 }
 
-export function Composer({ conversation, onSendMessage, isStreaming, onStopStreaming, onUpdateSettings }: ComposerProps) {
+export function Composer({ conversation, onSendMessage, isStreaming, onStopStreaming, onUpdateSettings, availableModels = [] }: ComposerProps) {
   const [message, setMessage] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const [temperature, setTemperature] = useState(conversation?.settings.temperature || 0.7);
   const [maxTokens, setMaxTokens] = useState(conversation?.settings.maxTokens || 2048);
-  const [stopSequences, setStopSequences] = useState(conversation?.settings.stopSequences.join(", ") || "");
+  const [stopSequences, setStopSequences] = useState(conversation?.settings.stopSequences?.join(", ") || "");
   const [systemPrompt, setSystemPrompt] = useState(conversation?.settings.systemPrompt || "");
+
+  // Update local state when conversation changes
+  useEffect(() => {
+    if (conversation) {
+      setTemperature(conversation.settings.temperature || 0.7);
+      setMaxTokens(conversation.settings.maxTokens || 2048);
+      setStopSequences(conversation.settings.stopSequences?.join(", ") || "");
+      setSystemPrompt(conversation.settings.systemPrompt || "");
+    }
+  }, [conversation]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-resize textarea
   useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    try {
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+        textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+      }
+    } catch (error) {
+      console.error('Error resizing textarea:', error);
     }
   }, [message]);
 
+  // Update settings in conversation
+  const updateSettings = () => {
+    if (onUpdateSettings) {
+      onUpdateSettings({
+        temperature,
+        maxTokens,
+        stopSequences: stopSequences.split(",").map(s => s.trim()).filter(Boolean),
+        systemPrompt: systemPrompt || undefined,
+      });
+    }
+  };
+
+  const sendMessage = () => {
+    try {
+      if (!message.trim() || isStreaming) return;
+
+      // Update settings before sending
+      updateSettings();
+
+      onSendMessage(message, {
+        temperature,
+        maxTokens,
+        stopSequences: stopSequences.split(",").map(s => s.trim()).filter(Boolean),
+        systemPrompt: systemPrompt || undefined,
+      });
+      setMessage("");
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim() || isStreaming) return;
-
-    onSendMessage(message, {
-      temperature,
-      maxTokens,
-      stopSequences: stopSequences.split(",").map(s => s.trim()).filter(Boolean),
-      systemPrompt: systemPrompt || undefined,
-    });
-    setMessage("");
+    sendMessage();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(e);
+    try {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    } catch (error) {
+      console.error('Error in handleKeyDown:', error);
     }
   };
 
@@ -60,6 +103,19 @@ export function Composer({ conversation, onSendMessage, isStreaming, onStopStrea
 
   return (
     <div className="border-t border-border-primary/50 bg-surface-graphite/20">
+      {/* System Prompt Indicator */}
+      {systemPrompt && (
+        <div className="px-lg pt-3 pb-1 flex items-center gap-2">
+          <Badge variant="outline" className="text-xs flex items-center gap-1 bg-accent-blue/10 border-accent-blue/30">
+            <BookOpen className="h-3 w-3" />
+            System Prompt Active
+          </Badge>
+          <span className="text-xs text-text-tertiary truncate max-w-md">
+            {systemPrompt.slice(0, 60)}...
+          </span>
+        </div>
+      )}
+      
       {/* Settings Panel */}
       {showSettings && (
         <div className="p-lg border-b border-border-secondary/50">
@@ -71,7 +127,15 @@ export function Composer({ conversation, onSendMessage, isStreaming, onStopStrea
               </label>
               <textarea
                 value={systemPrompt}
-                onChange={(e) => setSystemPrompt(e.target.value)}
+                onChange={(e) => {
+                  setSystemPrompt(e.target.value);
+                  // Auto-save system prompt changes
+                  setTimeout(() => {
+                    if (onUpdateSettings) {
+                      onUpdateSettings({ systemPrompt: e.target.value });
+                    }
+                  }, 500);
+                }}
                 placeholder="You are a helpful AI assistant..."
                 className="w-full h-20 px-md py-sm bg-surface-graphite border border-border-primary rounded-lg text-text-primary placeholder:text-text-tertiary resize-none"
               />
@@ -88,7 +152,13 @@ export function Composer({ conversation, onSendMessage, isStreaming, onStopStrea
                 max="2"
                 step="0.1"
                 value={temperature}
-                onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                onChange={(e) => {
+                  const newTemp = parseFloat(e.target.value);
+                  setTemperature(newTemp);
+                  if (onUpdateSettings) {
+                    onUpdateSettings({ temperature: newTemp });
+                  }
+                }}
                 className="w-full h-2 bg-surface-graphite rounded-lg appearance-none cursor-pointer"
               />
               <div className="flex justify-between text-xs text-text-tertiary mt-1">
@@ -105,7 +175,13 @@ export function Composer({ conversation, onSendMessage, isStreaming, onStopStrea
               <input
                 type="number"
                 value={maxTokens}
-                onChange={(e) => setMaxTokens(parseInt(e.target.value))}
+                onChange={(e) => {
+                  const newMaxTokens = parseInt(e.target.value);
+                  setMaxTokens(newMaxTokens);
+                  if (onUpdateSettings) {
+                    onUpdateSettings({ maxTokens: newMaxTokens });
+                  }
+                }}
                 className="w-full px-md py-sm bg-surface-graphite border border-border-primary rounded-lg text-text-primary"
                 min="1"
                 max="4096"
@@ -158,6 +234,21 @@ export function Composer({ conversation, onSendMessage, isStreaming, onStopStrea
                 variant="ghost"
                 size="sm"
                 className="h-8 w-8 p-0 text-text-secondary hover:text-text-primary"
+                onClick={() => {
+                  // File attachment functionality
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.multiple = true;
+                  input.accept = 'image/*,text/*,application/pdf';
+                  input.onchange = (e) => {
+                    const files = (e.target as HTMLInputElement).files;
+                    if (files) {
+                      console.log('Files selected:', Array.from(files).map(f => f.name));
+                      // TODO: Handle file upload
+                    }
+                  };
+                  input.click();
+                }}
               >
                 <Paperclip className="h-4 w-4" />
               </Button>
@@ -167,6 +258,29 @@ export function Composer({ conversation, onSendMessage, isStreaming, onStopStrea
                 variant="ghost"
                 size="sm"
                 className="h-8 w-8 p-0 text-text-secondary hover:text-text-primary"
+                onClick={() => {
+                  // Voice input functionality
+                  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+                    const recognition = new SpeechRecognition();
+                    recognition.continuous = false;
+                    recognition.interimResults = false;
+                    recognition.lang = 'en-US';
+                    
+                    recognition.onresult = (event: any) => {
+                      const transcript = event.results[0][0].transcript;
+                      setMessage(prev => prev + (prev ? ' ' : '') + transcript);
+                    };
+                    
+                    recognition.onerror = (event: any) => {
+                      console.error('Speech recognition error:', event.error);
+                    };
+                    
+                    recognition.start();
+                  } else {
+                    alert('Speech recognition not supported in this browser');
+                  }
+                }}
               >
                 <Mic className="h-4 w-4" />
               </Button>
@@ -196,6 +310,7 @@ export function Composer({ conversation, onSendMessage, isStreaming, onStopStrea
                   <ModelSelector 
                     value={conversation.settings.model}
                     onChange={(model) => onUpdateSettings && onUpdateSettings({ model })}
+                    availableModels={availableModels}
                   />
                 </>
               )}
@@ -219,6 +334,20 @@ export function Composer({ conversation, onSendMessage, isStreaming, onStopStrea
                     variant="ghost"
                     size="sm"
                     className="text-text-secondary hover:text-text-primary"
+                    onClick={() => {
+                      // Slash commands functionality
+                      if (message.trim() === '') {
+                        setMessage('/');
+                        // Focus the textarea
+                        if (textareaRef.current) {
+                          textareaRef.current.focus();
+                        }
+                      } else {
+                        // Show slash commands menu
+                        console.log('Show slash commands menu');
+                        // TODO: Implement slash commands dropdown
+                      }
+                    }}
                   >
                     <Zap className="h-4 w-4 mr-sm" />
                     Slash
@@ -243,16 +372,20 @@ export function Composer({ conversation, onSendMessage, isStreaming, onStopStrea
 }
 
 // Model Selector Component
-function ModelSelector({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  const models = [
-    { id: "gpt-4", name: "GPT-4", provider: "OpenAI" },
-    { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo", provider: "OpenAI" },
-    { id: "claude-3", name: "Claude 3", provider: "Anthropic" },
-    { id: "llama-2", name: "Llama 2", provider: "Meta" },
-    { id: "gemini-pro", name: "Gemini Pro", provider: "Google" },
-  ];
+function ModelSelector({ value, onChange, availableModels = [] }: { value: string; onChange: (value: string) => void; availableModels?: any[] }) {
+  // Use passed models or fallback to default
+  const models = availableModels.length > 0 
+    ? availableModels.map(model => ({
+        id: model.id,
+        name: model.id,
+        provider: model.owned_by || 'vLLM'
+      }))
+    : [
+        { id: "nemotron-9b", name: "Nemotron-9B", provider: "vLLM" },
+        { id: "mamba2-1.4b", name: "Mamba2-1.4B", provider: "vLLM" }
+      ];
 
-  const currentModel = models.find(m => m.id === value) || models[0];
+  const currentModel = models.find(m => m.id === value) || models[0] || { id: value, name: value, provider: "Unknown" };
 
   return (
     <DropdownMenu>

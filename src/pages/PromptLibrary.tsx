@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Search, Filter, Star, Copy, Edit, BookOpen, Bookmark, Hash, Heart } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Filter, Star, Copy, Edit, BookOpen, Bookmark, Hash, Heart, Plus, Trash2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlassInput } from "@/components/ui/GlassInput";
@@ -12,6 +12,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useAgents } from "@/hooks/useAgents";
+import { promptService, PromptTemplate } from "@/services/promptService";
+import { usePrompts } from "@/hooks/usePrompts";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 interface PromptTemplate {
   id: string;
@@ -28,243 +32,57 @@ interface PromptTemplate {
   createdAt: Date;
 }
 
-const mockPrompts: PromptTemplate[] = [
-  {
-    id: "1",
-    title: "Code Review Assistant",
-    description: "Comprehensive code review with best practices and suggestions",
-    content: `Please review the following code and provide feedback on:
-1. Code quality and best practices
-2. Potential bugs or issues
-3. Performance improvements
-4. Security considerations
-5. Maintainability
-
-Code:
-{code}
-
-Please format your response with clear sections for each area.`,
-    category: "Development",
-    tags: ["code-review", "programming", "best-practices"],
-    author: "DevExpert",
-    likes: 245,
-    uses: 1200,
-    difficulty: "intermediate",
-    featured: true,
-    createdAt: new Date("2024-01-15")
-  },
-  {
-    id: "2",
-    title: "Content Writing Assistant",
-    description: "Create engaging blog posts and articles with SEO optimization",
-    content: `Write a comprehensive blog post about {topic} that includes:
-
-1. **Compelling Headline**: Create an attention-grabbing title
-2. **Introduction**: Hook the reader with an interesting opening
-3. **Main Content**: 
-   - Break into clear sections with subheadings
-   - Include practical examples
-   - Add actionable insights
-4. **SEO Elements**:
-   - Naturally incorporate keywords: {keywords}
-   - Include meta description suggestion
-5. **Conclusion**: Summarize key points and include a call-to-action
-
-Target audience: {audience}
-Tone: {tone}
-Word count: {word_count} words`,
-    category: "Content",
-    tags: ["writing", "seo", "blog", "marketing"],
-    author: "ContentPro",
-    likes: 189,
-    uses: 850,
-    difficulty: "beginner",
-    featured: true,
-    createdAt: new Date("2024-02-01")
-  },
-  {
-    id: "3",
-    title: "Data Analysis Expert",
-    description: "Analyze datasets and provide insights with visualizations",
-    content: `Analyze the following dataset and provide insights:
-
-Dataset: {dataset_description}
-Data: {data}
-
-Please provide:
-
-1. **Data Overview**:
-   - Summary statistics
-   - Data quality assessment
-   - Missing values analysis
-
-2. **Key Insights**:
-   - Trends and patterns
-   - Correlations
-   - Outliers and anomalies
-
-3. **Visualizations**:
-   - Suggest appropriate charts/graphs
-   - Provide code for creating them
-
-4. **Recommendations**:
-   - Actionable insights
-   - Next steps for analysis
-
-5. **Business Impact**:
-   - How findings relate to business goals
-   - Potential opportunities`,
-    category: "Analytics",
-    tags: ["data-analysis", "statistics", "visualization"],
-    author: "DataScientist",
-    likes: 156,
-    uses: 420,
-    difficulty: "advanced",
-    featured: false,
-    createdAt: new Date("2024-01-20")
-  },
-  {
-    id: "4",
-    title: "Creative Writing Prompt",
-    description: "Generate creative stories with character development",
-    content: `Create a compelling short story with the following elements:
-
-**Setting**: {setting}
-**Genre**: {genre}
-**Main Character**: {character_description}
-**Conflict**: {conflict_type}
-
-Story Requirements:
-- Length: {word_count} words
-- Include dialogue
-- Show character development
-- Create emotional engagement
-- Use descriptive language
-- Build to a satisfying conclusion
-
-Style Notes:
-- Tone: {tone}
-- Perspective: {narrative_perspective}
-- Target audience: {audience}
-
-Please ensure the story has a clear beginning, middle, and end with proper character arc.`,
-    category: "Creative",
-    tags: ["storytelling", "creative-writing", "fiction"],
-    author: "StoryMaster",
-    likes: 203,
-    uses: 670,
-    difficulty: "intermediate",
-    featured: true,
-    createdAt: new Date("2024-01-10")
-  },
-  {
-    id: "5",
-    title: "Business Strategy Consultant",
-    description: "Strategic business analysis and recommendations",
-    content: `Provide a comprehensive business strategy analysis for {company_name} in the {industry} industry.
-
-**Current Situation**:
-{current_situation}
-
-**Analysis Framework**:
-
-1. **SWOT Analysis**:
-   - Strengths
-   - Weaknesses  
-   - Opportunities
-   - Threats
-
-2. **Market Analysis**:
-   - Industry trends
-   - Competitive landscape
-   - Target market assessment
-
-3. **Strategic Recommendations**:
-   - Short-term actions (3-6 months)
-   - Medium-term strategy (6-18 months)
-   - Long-term vision (2-5 years)
-
-4. **Implementation Plan**:
-   - Key milestones
-   - Resource requirements
-   - Success metrics
-
-5. **Risk Assessment**:
-   - Potential challenges
-   - Mitigation strategies
-
-Please provide actionable insights with specific recommendations.`,
-    category: "Business",
-    tags: ["strategy", "consulting", "analysis", "planning"],
-    author: "BizConsultant",
-    likes: 178,
-    uses: 390,
-    difficulty: "advanced",
-    featured: false,
-    createdAt: new Date("2024-01-25")
-  },
-  {
-    id: "6",
-    title: "Email Marketing Template",
-    description: "High-converting email campaigns with personalization",
-    content: `Create a high-converting email for {campaign_type}:
-
-**Email Details**:
-- Target audience: {audience}
-- Goal: {campaign_goal}
-- Product/Service: {product_service}
-
-**Email Structure**:
-
-1. **Subject Line**: 
-   - Create 3 compelling options
-   - A/B testing variations
-
-2. **Preview Text**:
-   - Complement the subject line
-   - Increase open rates
-
-3. **Email Body**:
-   - Personalized greeting
-   - Attention-grabbing opening
-   - Clear value proposition
-   - Social proof/testimonials
-   - Strong call-to-action
-   - Contact information
-
-4. **Design Notes**:
-   - Mobile-responsive layout
-   - Visual hierarchy
-   - Brand consistency
-
-**Personalization Variables**:
-- {first_name}
-- {company}
-- {previous_purchase}
-- {location}
-
-Tone: {tone}
-Email length: {length} words`,
-    category: "Marketing",
-    tags: ["email", "marketing", "conversion", "personalization"],
-    author: "EmailExpert",
-    likes: 312,
-    uses: 950,
-    difficulty: "beginner",
-    featured: true,
-    createdAt: new Date("2024-02-05")
-  }
-];
-
-const categories = ["All", "Development", "Content", "Analytics", "Creative", "Business", "Marketing"];
+const categories = ["All", "research", "product", "executive", "vip", "General"];
 
 export default function PromptLibrary() {
-  const [prompts] = useState<PromptTemplate[]>(mockPrompts);
+  const [prompts, setPrompts] = useState<PromptTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("all");
   const [likedPrompts, setLikedPrompts] = useState<string[]>([]);
   const { toast } = useToast();
+  
+  const { agents, loading: agentsLoading } = useAgents({ env: 'prod' });
+
+  // Generate prompts from agents
+  useEffect(() => {
+    if (!agentsLoading) {
+      if (agents && agents.length > 0) {
+        const agentPrompts: PromptTemplate[] = agents.map(agent => ({
+          id: agent.id,
+          title: `${agent.name} System Prompt`,
+          description: `System prompt template for ${agent.name} agent`,
+          content: `You are ${agent.name}, an AI agent designed for ${agent.labels?.join(', ') || 'general tasks'}.
+
+Your capabilities include:
+${agent.tools?.map(tool => `- ${tool.slug}: ${tool.scopes.join(', ')}`).join('\n') || '- General assistance'}
+
+Your role is to help users with tasks related to your expertise areas.
+
+Instructions:
+1. Always stay in character as ${agent.name}
+2. Use your available tools when appropriate
+3. Provide helpful, accurate, and actionable responses
+4. Ask clarifying questions when needed
+
+{user_input}`,
+          category: agent.labels?.[0] || "General",
+          tags: agent.labels || ["agent"],
+          author: agent.owner,
+          likes: Math.floor(Math.random() * 100) + 50,
+          uses: Math.floor(Math.random() * 500) + 100,
+          difficulty: "intermediate" as const,
+          featured: agent.published ? true : false,
+          createdAt: new Date(),
+        }));
+        setPrompts(agentPrompts);
+      } else {
+        setPrompts([]);
+      }
+      setLoading(false);
+    }
+  }, [agents, agentsLoading]);
 
   const filteredPrompts = prompts.filter(prompt => {
     const matchesSearch = prompt.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -293,6 +111,70 @@ export default function PromptLibrary() {
         ? prev.filter(id => id !== promptId)
         : [...prev, promptId]
     );
+    
+    // Update prompt likes count
+    setPrompts(prev => prev.map(prompt => 
+      prompt.id === promptId 
+        ? { ...prompt, likes: likedPrompts.includes(promptId) ? prompt.likes - 1 : prompt.likes + 1 }
+        : prompt
+    ));
+  };
+
+  const createNewPrompt = async () => {
+    try {
+      const title = prompt("Prompt Title:");
+      if (!title?.trim()) return;
+
+      const description = prompt("Description:");
+      if (!description?.trim()) return;
+
+      const content = prompt("Prompt Content (use {variable} for placeholders):");
+      if (!content?.trim()) return;
+
+      const newPrompt: PromptTemplate = {
+        id: `custom-${Date.now()}`,
+        title: title.trim(),
+        description: description.trim(),
+        content: content.trim(),
+        category: "General",
+        tags: ["custom"],
+        author: "User",
+        likes: 0,
+        uses: 0,
+        difficulty: "beginner",
+        featured: false,
+        createdAt: new Date(),
+      };
+
+      setPrompts(prev => [newPrompt, ...prev]);
+      toast({
+        title: "Prompt created!",
+        description: `"${title}" has been added to your library.`,
+      });
+    } catch (error) {
+      console.error('Failed to create prompt:', error);
+    }
+  };
+
+  const usePrompt = (prompt: PromptTemplate) => {
+    // Navigate to chat with this prompt as system prompt
+    // Replace {user_input} placeholder with instruction for the user
+    const processedContent = prompt.content.replace(
+      '{user_input}', 
+      'Please follow the instructions above and help the user with their request.'
+    );
+    const encodedPrompt = encodeURIComponent(processedContent);
+    window.location.href = `/chat?prompt=${encodedPrompt}&title=${encodeURIComponent(prompt.title)}`;
+  };
+
+  const deletePrompt = (promptId: string) => {
+    if (confirm('Are you sure you want to delete this prompt?')) {
+      setPrompts(prev => prev.filter(p => p.id !== promptId));
+      toast({
+        title: "Prompt deleted",
+        description: "The prompt has been removed from your library.",
+      });
+    }
   };
 
   const getDifficultyColor = (difficulty: string) => {
@@ -316,12 +198,9 @@ export default function PromptLibrary() {
             </div>
             <Button 
               className="bg-accent-blue hover:bg-accent-blue/90"
-              onClick={() => {
-                // Navigate to prompt creation
-                window.open("/prompts/create", "_blank");
-              }}
+              onClick={createNewPrompt}
             >
-              <Edit className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4 mr-2" />
               Create Prompt
             </Button>
           </div>
@@ -345,6 +224,26 @@ export default function PromptLibrary() {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
                   <Filter className="h-4 w-4 mr-2" />
+                  Category: {selectedCategory}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-48 bg-card border-border-primary shadow-lg z-50">
+                {categories.map((category) => (
+                  <DropdownMenuItem 
+                    key={category}
+                    onClick={() => setSelectedCategory(category)} 
+                    className="text-card-foreground hover:bg-accent-blue/10"
+                  >
+                    {category}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Hash className="h-4 w-4 mr-2" />
                   Difficulty: {selectedDifficulty === "all" ? "All" : selectedDifficulty}
                 </Button>
               </DropdownMenuTrigger>
@@ -364,32 +263,23 @@ export default function PromptLibrary() {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-
-          {/* Categories */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2">
-            {categories.map((category) => (
-              <Button
-                key={category}
-                variant={selectedCategory === category ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedCategory(category)}
-                className={cn(
-                  "whitespace-nowrap",
-                  selectedCategory === category && "bg-accent-blue hover:bg-accent-blue/90"
-                )}
-              >
-                {category}
-              </Button>
-            ))}
-          </div>
         </div>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-7xl mx-auto space-y-8">
+          {/* Loading State */}
+          {loading && (
+            <div className="text-center py-12">
+              <BookOpen className="h-16 w-16 text-text-quaternary mx-auto mb-4 animate-pulse" />
+              <h3 className="text-lg font-medium text-text-primary mb-2">Loading prompts...</h3>
+              <p className="text-text-secondary">Generating prompts from your MCP agents</p>
+            </div>
+          )}
+
           {/* Featured Prompts */}
-          {featuredPrompts.length > 0 && (
+          {!loading && featuredPrompts.length > 0 && (
             <section>
               <h2 className="text-xl font-semibold text-text-primary mb-4 flex items-center gap-2">
                 <Star className="h-5 w-5 text-accent-orange" />
@@ -403,7 +293,10 @@ export default function PromptLibrary() {
                     featured 
                     onCopy={copyPrompt}
                     onLike={toggleLike}
+                    onUse={usePrompt}
+                    onDelete={deletePrompt}
                     isLiked={likedPrompts.includes(prompt.id)}
+                    getDifficultyColor={getDifficultyColor}
                   />
                 ))}
               </div>
@@ -411,28 +304,47 @@ export default function PromptLibrary() {
           )}
 
           {/* All Prompts */}
-          <section>
-            <h2 className="text-xl font-semibold text-text-primary mb-4">
-              All Prompts ({otherPrompts.length})
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {otherPrompts.map((prompt) => (
-                <PromptCard 
-                  key={prompt.id} 
-                  prompt={prompt} 
-                  onCopy={copyPrompt}
-                  onLike={toggleLike}
-                  isLiked={likedPrompts.includes(prompt.id)}
-                />
-              ))}
-            </div>
-          </section>
+          {!loading && (
+            <section>
+              <h2 className="text-xl font-semibold text-text-primary mb-4">
+                All Prompts ({otherPrompts.length})
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {otherPrompts.map((prompt) => (
+                  <PromptCard 
+                    key={prompt.id} 
+                    prompt={prompt} 
+                    onCopy={copyPrompt}
+                    onLike={toggleLike}
+                    onUse={usePrompt}
+                    onDelete={deletePrompt}
+                    isLiked={likedPrompts.includes(prompt.id)}
+                    getDifficultyColor={getDifficultyColor}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
 
-          {filteredPrompts.length === 0 && (
+          {!loading && filteredPrompts.length === 0 && (
             <div className="text-center py-12">
               <BookOpen className="h-16 w-16 text-text-quaternary mx-auto mb-4" />
               <h3 className="text-lg font-medium text-text-primary mb-2">No prompts found</h3>
-              <p className="text-text-secondary">Try adjusting your search or filters</p>
+              <p className="text-text-secondary">
+                {prompts.length === 0 
+                  ? "Create your first prompt to get started"
+                  : "Try adjusting your search or filters"
+                }
+              </p>
+              {prompts.length === 0 && (
+                <Button 
+                  className="mt-4"
+                  onClick={createNewPrompt}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create First Prompt
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -446,22 +358,20 @@ function PromptCard({
   featured = false, 
   onCopy, 
   onLike, 
-  isLiked 
+  onUse,
+  onDelete,
+  isLiked,
+  getDifficultyColor
 }: { 
   prompt: PromptTemplate; 
   featured?: boolean;
   onCopy: (content: string, title: string) => void;
   onLike: (id: string) => void;
+  onUse: (prompt: PromptTemplate) => void;
+  onDelete: (id: string) => void;
   isLiked: boolean;
+  getDifficultyColor: (difficulty: string) => string;
 }) {
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case "beginner": return "text-accent-green";
-      case "intermediate": return "text-accent-orange";
-      case "advanced": return "text-accent-red";
-      default: return "text-text-secondary";
-    }
-  };
 
   return (
     <GlassCard className={cn(
@@ -491,8 +401,7 @@ function PromptCard({
             {prompt.difficulty}
           </Badge>
           {prompt.tags.slice(0, 2).map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-xs">
-              <Hash className="h-2 w-2 mr-1" />
+            <Badge key={tag} variant="outline" className="text-xs">
               {tag}
             </Badge>
           ))}
@@ -523,18 +432,41 @@ function PromptCard({
           <Button 
             size="sm" 
             className="flex-1"
-            onClick={() => onCopy(prompt.content, prompt.title)}
+            onClick={() => onUse(prompt)}
           >
-            <Copy className="h-3 w-3 mr-1" />
-            Copy Prompt
+            <Zap className="h-3 w-3 mr-1" />
+            Use Prompt
           </Button>
+          
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => onCopy(prompt.content, prompt.title)}
+            title="Copy to clipboard"
+          >
+            <Copy className="h-3 w-3" />
+          </Button>
+          
           <Button 
             variant="outline" 
             size="sm"
             onClick={() => onLike(prompt.id)}
+            title="Like prompt"
           >
             <Heart className={cn("h-3 w-3", isLiked && "text-accent-red fill-current")} />
           </Button>
+          
+          {prompt.author === "User" && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => onDelete(prompt.id)}
+              className="text-accent-red hover:text-accent-red"
+              title="Delete prompt"
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          )}
         </div>
       </div>
     </GlassCard>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useState } from "react";
 import { Eye, EyeOff, Moon, Sun } from "lucide-react";
 import {
   GlassCard,
@@ -196,7 +196,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       const givenName = merged.given_name;
       const familyName = merged.family_name;
       const displayName =
-        merged.name ?? ([givenName, familyName].filter(Boolean).join(" ") || email);
+        merged.name ?? [givenName, familyName].filter(Boolean).join(" ") || email;
       const picture = merged.picture;
 
       storeUserLocally({

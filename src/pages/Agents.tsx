@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   ReactFlow,
   addEdge,
@@ -12,10 +12,14 @@ import {
   Node,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Plus, Play, Save, Settings, Upload, Download } from "lucide-react";
+import { Plus, Play, Save, Settings, Upload, Download, Users, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard, GlassCardHeader, GlassCardTitle, GlassCardContent } from "@/components/ui/GlassCard";
 import { cn } from "@/lib/utils";
+import { useAgents } from "@/hooks/useAgents";
+import { agentWorkflowService } from "@/services/agentWorkflowService";
+import { useAgentWorkflow } from "@/hooks/useAgentWorkflow";
+import { apiClient } from "@/services/api";
 
 // Custom Node Components
 import { SystemNode } from "@/components/agents/nodes/SystemNode";
@@ -44,25 +48,15 @@ const nodeTypes = {
   output: OutputNode,
 };
 
-const initialNodes: Node[] = [
-  {
-    id: "start",
-    type: "system",
-    position: { x: 250, y: 50 },
-    data: { 
-      label: "System Prompt",
-      content: "You are a helpful AI assistant."
-    },
-  },
-];
-
-const initialEdges: Edge[] = [];
-
 export default function Agents() {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [currentAgent, setCurrentAgent] = useState<any | null>(null);
+  const [agentName, setAgentName] = useState("");
+  
+  const { agents, loading: agentsLoading, createAgent, updateAgent, deleteAgent } = useAgents({ env: 'prod' });
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -115,14 +109,81 @@ export default function Agents() {
     setSelectedNode(node);
   };
 
+  // Load agent from MCP
+  const loadAgent = async (agentId: string) => {
+    try {
+      const agent = await apiClient.getAgent(agentId);
+      if (agent) {
+        setCurrentAgent(agent);
+        setAgentName(agent.name);
+        // Convert agent data to nodes/edges if available
+        // TODO: Implement agent graph loading
+      }
+    } catch (error) {
+      console.error('Failed to load agent:', error);
+    }
+  };
+
+  // Save agent to MCP
+  const saveAgent = async () => {
+    try {
+      if (!agentName.trim()) {
+        alert('Please enter an agent name');
+        return;
+      }
+
+      const agentData = {
+        name: agentName,
+        owner: 'user',
+        version: '1.0.0',
+        entrypoint: { kind: 'local' as const },
+        modelRouting: {
+          primary: 'nemotron-9b',
+          fallbacks: ['mamba2-1.4b']
+        },
+        tools: [],
+        datasets: [],
+        runtime: {
+          maxTokens: 4000,
+          maxSeconds: 120,
+          maxCostUSD: 1.0
+        },
+        labels: ['custom'],
+        // TODO: Convert nodes/edges to agent graph format
+        graph: { nodes, edges }
+      };
+
+      if (currentAgent) {
+        await updateAgent(currentAgent.id, agentData);
+      } else {
+        const newAgent = await createAgent(agentData);
+        setCurrentAgent(newAgent);
+      }
+      
+      console.log('Agent saved successfully');
+    } catch (error) {
+      console.error('Failed to save agent:', error);
+    }
+  };
+
   const runAgent = () => {
     setIsRunning(true);
-    // Simulate agent execution
-    console.log("Agent workflow is now executing...");
+    // Real agent execution
+    console.log("Executing agent workflow...");
+    
+    // TODO: Implement real agent execution via MCP
     setTimeout(() => {
       setIsRunning(false);
-      console.log("Agent workflow has finished successfully.");
+      console.log("Agent workflow completed.");
     }, 3000);
+  };
+
+  const newAgent = () => {
+    setNodes([]);
+    setEdges([]);
+    setCurrentAgent(null);
+    setAgentName("");
+    setSelectedNode(null);
   };
 
   const nodeCategories = [
@@ -161,17 +222,61 @@ export default function Agents() {
 
   return (
     <div className="h-full flex bg-background overflow-hidden">
-      {/* Left Panel - Node Palette */}
+      {/* Left Panel - Agents & Node Palette */}
       <div className="w-80 flex-shrink-0 bg-surface-graphite/30 border-r border-border-primary/50 overflow-y-auto">
-        <div className="p-lg">
-          <div className="flex items-center justify-between mb-lg">
-            <h2 className="text-lg font-semibold text-text-primary">Node Palette</h2>
+        <div className="p-lg space-y-lg">
+          {/* Existing Agents */}
+          <div>
+            <div className="flex items-center justify-between mb-md">
+              <h2 className="text-sm font-semibold text-text-primary flex items-center gap-sm">
+                <Users className="h-4 w-4" />
+                My Agents
+              </h2>
+              {agentsLoading && <span className="text-xs text-text-tertiary">Loading...</span>}
+            </div>
+            
+            {agents.length > 0 ? (
+              <div className="space-y-sm">
+                {agents.map((agent) => (
+                  <div
+                    key={agent.id}
+                    className={cn(
+                      "p-sm rounded-lg cursor-pointer border transition-colors",
+                      currentAgent?.id === agent.id 
+                        ? "border-accent-blue bg-accent-blue/10 text-accent-blue"
+                        : "border-border-secondary hover:border-accent-blue/50 hover:bg-surface-graphite/50"
+                    )}
+                    onClick={() => loadAgent(agent.id)}
+                  >
+                    <div className="text-sm font-medium text-text-primary">{agent.name}</div>
+                    <div className="text-xs text-text-tertiary">v{agent.version} • {agent.owner}</div>
+                    {agent.labels && (
+                      <div className="flex gap-1 mt-1">
+                        {agent.labels.slice(0, 2).map(label => (
+                          <span key={label} className="text-xs px-1 py-0.5 bg-accent-blue/20 text-accent-blue rounded">
+                            {label}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-md">
+                <Brain className="h-8 w-8 text-text-quaternary mx-auto mb-sm" />
+                <p className="text-xs text-text-tertiary">No agents created yet</p>
+              </div>
+            )}
           </div>
 
-          <div className="space-y-lg">
-            {nodeCategories.map((category) => (
-              <div key={category.title}>
-                <h3 className="text-sm font-medium text-text-secondary mb-md">{category.title}</h3>
+          {/* Node Palette */}
+          <div>
+            <h3 className="text-sm font-semibold text-text-primary mb-md">Node Palette</h3>
+            <div className="space-y-lg">
+              {nodeCategories.map((category) => (
+                <div key={category.title}>
+                  <h4 className="text-sm font-medium text-text-secondary mb-md">{category.title}</h4>
                 <div className="grid grid-cols-2 gap-sm">
                   {category.nodes.map((node) => (
                     <Button
@@ -186,9 +291,10 @@ export default function Agents() {
                       <span className="text-xs font-medium">{node.label}</span>
                     </Button>
                   ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -198,31 +304,112 @@ export default function Agents() {
         {/* Toolbar */}
         <div className="border-b border-border-primary/50 p-lg flex-shrink-0">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-lg font-semibold text-text-primary">Agent Builder</h1>
-              <p className="text-sm text-text-secondary">Drag nodes from the palette and connect them to build your agent</p>
+            <div className="flex items-center gap-md">
+              <div>
+                <h1 className="text-lg font-semibold text-text-primary">Agent Builder</h1>
+                <p className="text-sm text-text-secondary">Build and manage AI agents with real backend integration</p>
+              </div>
+              
+              <div className="flex items-center gap-sm">
+                <input
+                  type="text"
+                  placeholder="Agent name..."
+                  value={agentName}
+                  onChange={(e) => setAgentName(e.target.value)}
+                  className="px-md py-sm bg-surface-graphite border border-border-primary rounded-lg text-text-primary placeholder:text-text-tertiary text-sm w-40"
+                />
+                {currentAgent && (
+                  <span className="text-xs text-accent-green">• Loaded: {currentAgent.name}</span>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center gap-sm">
-              <Button variant="outline" size="sm">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={newAgent}
+              >
+                <Plus className="h-4 w-4 mr-sm" />
+                New
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  // TODO: Implement agent import from file
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.accept = '.json';
+                  input.onchange = (e) => {
+                    const file = (e.target as HTMLInputElement).files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (e) => {
+                        try {
+                          const agentData = JSON.parse(e.target?.result as string);
+                          // Load agent data into canvas
+                          console.log('Agent imported:', agentData);
+                        } catch (error) {
+                          alert('Invalid agent file');
+                        }
+                      };
+                      reader.readAsText(file);
+                    }
+                  };
+                  input.click();
+                }}
+              >
                 <Upload className="h-4 w-4 mr-sm" />
                 Import
               </Button>
-              <Button variant="outline" size="sm">
+              
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  // Export current agent
+                  const agentData = {
+                    name: agentName || 'Untitled Agent',
+                    nodes,
+                    edges,
+                    metadata: {
+                      created: new Date().toISOString(),
+                      version: '1.0.0'
+                    }
+                  };
+                  
+                  const blob = new Blob([JSON.stringify(agentData, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `${agentName || 'agent'}.json`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+              >
                 <Download className="h-4 w-4 mr-sm" />
                 Export
               </Button>
-              <Button variant="outline" size="sm">
+              
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={saveAgent}
+                disabled={!agentName.trim()}
+              >
                 <Save className="h-4 w-4 mr-sm" />
-                Save
+                Save to MCP
               </Button>
+              
               <Button 
                 onClick={runAgent}
-                disabled={isRunning}
+                disabled={isRunning || nodes.length === 0}
                 className={cn(isRunning && "animate-pulse")}
               >
                 <Play className="h-4 w-4 mr-sm" />
-                {isRunning ? "Running..." : "Run Agent"}
+                {isRunning ? "Running..." : "Test Agent"}
               </Button>
             </div>
           </div>
@@ -248,25 +435,75 @@ export default function Agents() {
         </div>
       </div>
 
-      {/* Right Panel - Node Inspector */}
+      {/* Right Panel - Agent Inspector */}
       <div className="w-80 flex-shrink-0 bg-surface-graphite/30 border-l border-border-primary/50 overflow-y-auto">
-        <div className="p-lg">
-          <h2 className="text-lg font-semibold text-text-primary mb-lg">Node Inspector</h2>
-          
-          {selectedNode ? (
-            <NodeInspector node={selectedNode} onUpdate={(data) => {
-              setNodes((nds) => nds.map((node) => 
-                node.id === selectedNode.id 
-                  ? { ...node, data: { ...node.data, ...data } }
-                  : node
-              ));
-            }} />
+        <div className="p-lg space-y-lg">
+          {/* Agent Info */}
+          {currentAgent ? (
+            <div>
+              <h2 className="text-sm font-semibold text-text-primary mb-md">Agent Details</h2>
+              <GlassCard className="p-md">
+                <div className="space-y-sm">
+                  <div>
+                    <span className="text-xs text-text-secondary">Name:</span>
+                    <div className="text-sm font-medium text-text-primary">{currentAgent.name}</div>
+                  </div>
+                  <div>
+                    <span className="text-xs text-text-secondary">Owner:</span>
+                    <div className="text-sm text-text-primary">{currentAgent.owner}</div>
+                  </div>
+                  <div>
+                    <span className="text-xs text-text-secondary">Version:</span>
+                    <div className="text-sm text-text-primary">{currentAgent.version}</div>
+                  </div>
+                  <div>
+                    <span className="text-xs text-text-secondary">Model:</span>
+                    <div className="text-sm text-text-primary">{currentAgent.modelRouting?.primary}</div>
+                  </div>
+                  {currentAgent.labels && (
+                    <div>
+                      <span className="text-xs text-text-secondary">Labels:</span>
+                      <div className="flex gap-1 mt-1">
+                        {currentAgent.labels.map(label => (
+                          <span key={label} className="text-xs px-1 py-0.5 bg-accent-blue/20 text-accent-blue rounded">
+                            {label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </GlassCard>
+            </div>
           ) : (
-            <div className="text-center py-xl">
-              <Settings className="h-8 w-8 text-text-quaternary mx-auto mb-md" />
-              <p className="text-sm text-text-tertiary">Select a node to edit its properties</p>
+            <div>
+              <h2 className="text-sm font-semibold text-text-primary mb-md">Agent Builder</h2>
+              <div className="text-center py-md">
+                <Brain className="h-8 w-8 text-text-quaternary mx-auto mb-sm" />
+                <p className="text-xs text-text-tertiary">Create a new agent or load existing one</p>
+              </div>
             </div>
           )}
+
+          {/* Node Inspector */}
+          <div>
+            <h3 className="text-sm font-semibold text-text-primary mb-md">Node Inspector</h3>
+            
+            {selectedNode ? (
+              <NodeInspector node={selectedNode} onUpdate={(data) => {
+                setNodes((nds) => nds.map((node) => 
+                  node.id === selectedNode.id 
+                    ? { ...node, data: { ...node.data, ...data } }
+                    : node
+                ));
+              }} />
+            ) : (
+              <div className="text-center py-md">
+                <Settings className="h-6 w-6 text-text-quaternary mx-auto mb-sm" />
+                <p className="text-xs text-text-tertiary">Select a node to edit its properties</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

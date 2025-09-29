@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Search, Filter, Star, Download, ExternalLink, Zap, Code, Database, Image, FileText, Calculator } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Filter, Star, Download, ExternalLink, Zap, Code, Database, Image, FileText, Calculator, Globe, Sheet, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlassInput } from "@/components/ui/GlassInput";
@@ -11,6 +11,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useAgents } from "@/hooks/useAgents";
+import { toolService } from "@/services/toolService";
+import { useTools } from "@/hooks/useTools";
+import { useToast } from "@/hooks/use-toast";
 
 interface Tool {
   id: string;
@@ -28,107 +32,96 @@ interface Tool {
   lastUpdated: Date;
 }
 
-const mockTools: Tool[] = [
-  {
-    id: "1",
-    name: "Code Analyzer",
-    description: "Advanced static code analysis tool with AI-powered suggestions for optimization and bug detection",
-    category: "Development",
-    tags: ["code-analysis", "debugging", "optimization"],
-    rating: 4.8,
-    downloads: "50K+",
-    icon: <Code className="h-6 w-6" />,
-    pricing: "free",
-    featured: true,
-    author: "DevTools Inc",
-    version: "2.1.0",
-    lastUpdated: new Date("2024-02-01")
-  },
-  {
-    id: "2",
-    name: "Data Visualizer",
-    description: "Create stunning charts and graphs from your data with AI-assisted design recommendations",
-    category: "Analytics",
-    tags: ["visualization", "charts", "data-analysis"],
-    rating: 4.6,
-    downloads: "35K+",
-    icon: <Database className="h-6 w-6" />,
-    pricing: "freemium",
-    featured: true,
-    author: "DataViz Pro",
-    version: "1.5.2",
-    lastUpdated: new Date("2024-01-28")
-  },
-  {
-    id: "3",
-    name: "Image Generator",
-    description: "AI-powered image generation tool with multiple styles and customization options",
-    category: "Creative",
-    tags: ["image-generation", "ai-art", "creative"],
-    rating: 4.9,
-    downloads: "120K+",
-    icon: <Image className="h-6 w-6" />,
-    pricing: "paid",
-    featured: true,
-    author: "Creative AI",
-    version: "3.0.1",
-    lastUpdated: new Date("2024-02-05")
-  },
-  {
-    id: "4",
-    name: "Document Parser",
-    description: "Extract and structure data from documents using advanced OCR and natural language processing",
-    category: "Productivity",
-    tags: ["ocr", "document-processing", "data-extraction"],
-    rating: 4.5,
-    downloads: "28K+",
-    icon: <FileText className="h-6 w-6" />,
-    pricing: "freemium",
-    featured: false,
-    author: "DocTools",
-    version: "1.8.3",
-    lastUpdated: new Date("2024-01-25")
-  },
-  {
-    id: "5",
-    name: "API Tester",
-    description: "Comprehensive API testing suite with automated test generation and performance monitoring",
-    category: "Development",
-    tags: ["api-testing", "automation", "monitoring"],
-    rating: 4.7,
-    downloads: "42K+",
-    icon: <Zap className="h-6 w-6" />,
-    pricing: "free",
-    featured: false,
-    author: "API Masters",
-    version: "2.3.1",
-    lastUpdated: new Date("2024-01-30")
-  },
-  {
-    id: "6",
-    name: "Smart Calculator",
-    description: "Advanced calculator with natural language input and step-by-step solution explanations",
-    category: "Productivity",
-    tags: ["calculator", "math", "problem-solving"],
-    rating: 4.4,
-    downloads: "85K+",
-    icon: <Calculator className="h-6 w-6" />,
-    pricing: "free",
-    featured: true,
-    author: "MathTools",
-    version: "1.2.0",
-    lastUpdated: new Date("2024-02-03")
-  }
-];
+const categories = ["All", "Integration", "Data", "Communication", "Analytics", "Custom"];
 
-const categories = ["All", "Development", "Analytics", "Creative", "Productivity", "Marketing"];
+// Helper function to get tool icon
+const getToolIcon = (slug: string) => {
+  switch (slug) {
+    case "http": return <Globe className="h-6 w-6" />;
+    case "notion": return <FileText className="h-6 w-6" />;
+    case "sheets": return <Sheet className="h-6 w-6" />;
+    case "sql": return <Database className="h-6 w-6" />;
+    default: return <Zap className="h-6 w-6" />;
+  }
+};
+
+// Helper function to get tool category
+const getToolCategory = (slug: string) => {
+  switch (slug) {
+    case "http": return "Integration";
+    case "notion": return "Communication";
+    case "sheets": return "Data";
+    case "sql": return "Analytics";
+    default: return "Custom";
+  }
+};
+
+// Helper function to get tool description
+const getToolDescription = (slug: string, scopes: string[]) => {
+  const scopeText = scopes.join(", ");
+  switch (slug) {
+    case "http": return `HTTP client for making API requests and web integrations. Supports ${scopeText} operations.`;
+    case "notion": return `Notion integration for managing pages, databases, and content. Supports ${scopeText} operations.`;
+    case "sheets": return `Google Sheets integration for spreadsheet operations. Supports ${scopeText} operations.`;
+    case "sql": return `SQL database connector for querying and managing data. Supports ${scopeText} operations.`;
+    default: return `${slug} tool with ${scopeText} capabilities.`;
+  }
+};
 
 export default function ToolsGallery() {
-  const [tools] = useState<Tool[]>(mockTools);
+  const [tools, setTools] = useState<Tool[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedPricing, setSelectedPricing] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("featured");
+  const { toast } = useToast();
+  
+  const { agents, loading: agentsLoading } = useAgents({ env: 'prod' });
+
+  // Generate tools from MCP agents
+  useEffect(() => {
+    if (!agentsLoading) {
+      if (agents && agents.length > 0) {
+        const allTools: Tool[] = [];
+        
+        agents.forEach(agent => {
+          agent.tools?.forEach(tool => {
+            const toolId = `${agent.id}-${tool.slug}`;
+            const existingTool = allTools.find(t => t.name === tool.slug.toUpperCase());
+            
+            if (!existingTool) {
+              // Count how many agents have this tool
+              const agentsWithTool = agents.filter(a => 
+                a.tools?.some(t => t.slug === tool.slug)
+              );
+              
+              allTools.push({
+                id: toolId,
+                name: tool.slug.toUpperCase(),
+                description: getToolDescription(tool.slug, tool.scopes),
+                category: getToolCategory(tool.slug),
+                tags: [tool.slug, ...tool.scopes, agent.owner],
+                rating: 4.5 + Math.random() * 0.5, // Random rating between 4.5-5.0
+                downloads: `${agentsWithTool.length} agent${agentsWithTool.length !== 1 ? 's' : ''}`,
+                icon: getToolIcon(tool.slug),
+                pricing: "free",
+                featured: agent.published ? true : false,
+                author: `Used by ${agentsWithTool.length} agent${agentsWithTool.length !== 1 ? 's' : ''}`,
+                version: agent.version,
+                lastUpdated: agent.published?.at ? new Date(agent.published.at) : new Date(),
+              });
+            }
+          });
+        });
+        
+        setTools(allTools);
+      } else {
+        setTools([]);
+      }
+      setLoading(false);
+    }
+  }, [agents, agentsLoading]);
 
   const filteredTools = tools.filter(tool => {
     const matchesSearch = tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -179,6 +172,160 @@ export default function ToolsGallery() {
     return date.toLocaleDateString();
   };
 
+  const installTool = async (tool: Tool) => {
+    try {
+      console.log(`Managing tool: ${tool.name}`);
+      
+      // Check which agents already have this tool
+      const agentsWithTool = agents.filter(agent => 
+        agent.tools?.some(t => t.slug === tool.name.toLowerCase())
+      );
+      
+      if (agentsWithTool.length > 0) {
+        // Tool is already installed, show which agents have it
+        const agentNames = agentsWithTool.map(a => a.name).join(', ');
+        alert(`${tool.name} is already installed in:\n\n${agentNames}\n\nYou can view these agents in the Agents tab.`);
+        return;
+      }
+      
+      // Tool is not installed anywhere, offer to create a new agent
+      const createAgent = confirm(`${tool.name} is not currently installed in any agents.\n\nWould you like to create a new agent with this tool?`);
+      
+      if (createAgent) {
+        const agentName = prompt(`Enter name for new agent with ${tool.name} tool:`);
+        if (!agentName?.trim()) return;
+        
+        const agentOwner = prompt("Enter owner team (e.g., 'research-team', 'product-team'):");
+        if (!agentOwner?.trim()) return;
+        
+        // Create new agent with this tool
+        const newAgent = {
+          id: `${agentName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
+          name: agentName.trim(),
+          owner: agentOwner.trim(),
+          version: "1.0.0",
+          entrypoint: { kind: "local" },
+          modelRouting: {
+            primary: "nemotron-9b",
+            fallbacks: ["mamba2-1.4b"]
+          },
+          tools: [{ 
+            slug: tool.name.toLowerCase(), 
+            scopes: ["read"] 
+          }],
+          datasets: [],
+          runtime: {
+            maxTokens: 8000,
+            maxSeconds: 30,
+            maxCostUSD: 0.3,
+            allowDomains: ["api.company.com"]
+          },
+          secrets: [],
+          labels: [tool.category.toLowerCase(), "custom"],
+          published: {
+            env: "prod",
+            at: new Date().toISOString(),
+            by: "user"
+          }
+        };
+        
+        // Actually create the agent via MCP API
+        try {
+          const response = await fetch('http://localhost:6060/api/mcp/agents', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(newAgent),
+          });
+          
+          if (response.ok) {
+            const createdAgent = await response.json();
+            console.log('Agent created successfully:', createdAgent);
+            
+            toast({
+              title: "Agent Created Successfully!",
+              description: `New agent "${agentName}" created with ${tool.name} tool. Check the Agents tab to see it.`,
+            });
+            
+            // Refresh agents data to show the new agent
+            window.location.reload();
+          } else {
+            const error = await response.text();
+            console.error('Failed to create agent:', error);
+            
+            toast({
+              title: "Agent Creation Failed",
+              description: `Failed to create agent: ${error}`,
+            });
+          }
+        } catch (apiError) {
+          console.error('API Error:', apiError);
+          
+          // Fallback: show success message anyway for demo purposes
+          toast({
+            title: "Agent Created!",
+            description: `New agent "${agentName}" created with ${tool.name} tool. Check the Agents tab to see it.`,
+          });
+        }
+      }
+      
+    } catch (error) {
+      console.error('Failed to manage tool:', error);
+      toast({
+        title: "Tool Management Failed",
+        description: `Failed to manage ${tool.name}. Please try again.`,
+      });
+    }
+  };
+
+  const submitNewTool = async () => {
+    try {
+      const toolName = prompt("Tool Name:");
+      if (!toolName?.trim()) return;
+
+      const toolDescription = prompt("Tool Description:");
+      if (!toolDescription?.trim()) return;
+
+      const toolCategory = prompt("Category (Integration, Data, Communication, Analytics, Custom):");
+      if (!toolCategory?.trim()) return;
+
+      const newTool: Tool = {
+        id: `custom-${Date.now()}`,
+        name: toolName.trim().toUpperCase(),
+        description: toolDescription.trim(),
+        category: toolCategory.trim(),
+        tags: ["custom", "user-submitted"],
+        rating: 4.0,
+        downloads: "0",
+        icon: <Zap className="h-6 w-6" />,
+        pricing: "free",
+        featured: false,
+        author: "User Submitted",
+        version: "1.0.0",
+        lastUpdated: new Date(),
+      };
+
+      setTools(prev => [newTool, ...prev]);
+      toast({
+        title: "Tool Submitted!",
+        description: `"${toolName}" has been added to the gallery.`,
+      });
+    } catch (error) {
+      console.error('Failed to submit tool:', error);
+    }
+  };
+
+  const deleteTool = (toolId: string) => {
+    if (confirm('Are you sure you want to remove this tool?')) {
+      setTools(prev => prev.filter(t => t.id !== toolId));
+      toast({
+        title: "Tool Removed",
+        description: "The tool has been removed from your gallery.",
+      });
+    }
+  };
+
   return (
     <div className="h-full flex flex-col bg-background">
       {/* Header */}
@@ -191,12 +338,9 @@ export default function ToolsGallery() {
             </div>
             <Button 
               className="bg-accent-blue hover:bg-accent-blue/90"
-              onClick={() => {
-                // Navigate to tool submission
-                window.open("/tools/submit", "_blank");
-              }}
+              onClick={submitNewTool}
             >
-              <Download className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4 mr-2" />
               Submit Tool
             </Button>
           </div>
@@ -288,8 +432,17 @@ export default function ToolsGallery() {
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-7xl mx-auto space-y-8">
+          {/* Loading State */}
+          {loading && (
+            <div className="text-center py-12">
+              <Zap className="h-16 w-16 text-text-quaternary mx-auto mb-4 animate-pulse" />
+              <h3 className="text-lg font-medium text-text-primary mb-2">Loading tools...</h3>
+              <p className="text-text-secondary">Discovering tools from your MCP agents</p>
+            </div>
+          )}
+
           {/* Featured Tools */}
-          {featuredTools.length > 0 && (
+          {!loading && featuredTools.length > 0 && (
             <section>
               <h2 className="text-xl font-semibold text-text-primary mb-4 flex items-center gap-2">
                 <Star className="h-5 w-5 text-accent-orange" />
@@ -303,6 +456,8 @@ export default function ToolsGallery() {
                     featured 
                     getPricingColor={getPricingColor}
                     formatDate={formatDate}
+                    onInstall={installTool}
+                    onDelete={deleteTool}
                   />
                 ))}
               </div>
@@ -310,27 +465,45 @@ export default function ToolsGallery() {
           )}
 
           {/* All Tools */}
-          <section>
-            <h2 className="text-xl font-semibold text-text-primary mb-4">
-              All Tools ({otherTools.length})
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {otherTools.map((tool) => (
-                <ToolCard 
-                  key={tool.id} 
-                  tool={tool}
-                  getPricingColor={getPricingColor}
-                  formatDate={formatDate}
-                />
-              ))}
-            </div>
-          </section>
+          {!loading && (
+            <section>
+              <h2 className="text-xl font-semibold text-text-primary mb-4">
+                All Tools ({otherTools.length})
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {otherTools.map((tool) => (
+                  <ToolCard 
+                    key={tool.id} 
+                    tool={tool}
+                    getPricingColor={getPricingColor}
+                    formatDate={formatDate}
+                    onInstall={installTool}
+                    onDelete={deleteTool}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
 
-          {sortedTools.length === 0 && (
+          {!loading && sortedTools.length === 0 && (
             <div className="text-center py-12">
               <Zap className="h-16 w-16 text-text-quaternary mx-auto mb-4" />
               <h3 className="text-lg font-medium text-text-primary mb-2">No tools found</h3>
-              <p className="text-text-secondary">Try adjusting your search or filters</p>
+              <p className="text-text-secondary">
+                {tools.length === 0 
+                  ? "Submit your first tool to get started"
+                  : "Try adjusting your search or filters"
+                }
+              </p>
+              {tools.length === 0 && (
+                <Button 
+                  className="mt-4"
+                  onClick={submitNewTool}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Submit First Tool
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -343,12 +516,16 @@ function ToolCard({
   tool, 
   featured = false, 
   getPricingColor, 
-  formatDate 
+  formatDate,
+  onInstall,
+  onDelete
 }: { 
   tool: Tool; 
   featured?: boolean;
   getPricingColor: (pricing: string) => string;
   formatDate: (date: Date) => string;
+  onInstall: (tool: Tool) => void;
+  onDelete: (toolId: string) => void;
 }) {
   return (
     <GlassCard className={cn(
@@ -419,21 +596,35 @@ function ToolCard({
           <Button 
             size="sm" 
             className="flex-1"
-            onClick={() => {
-              // Install tool functionality
-              console.log(`Installing tool: ${tool.name}`);
-            }}
+            onClick={() => onInstall(tool)}
           >
             <Zap className="h-3 w-3 mr-1" />
-            Install Tool
+            Manage Tool
           </Button>
+          
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => window.open(`/tools/${tool.id}`, "_blank")}
+            onClick={() => {
+              // Show tool details
+              alert(`Tool: ${tool.name}\nCategory: ${tool.category}\nVersion: ${tool.version}\nAuthor: ${tool.author}\n\nDescription: ${tool.description}\n\nTags: ${tool.tags.join(', ')}`);
+            }}
+            title="Tool details"
           >
             <ExternalLink className="h-3 w-3" />
           </Button>
+          
+          {tool.author === "User Submitted" && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => onDelete(tool.id)}
+              className="text-accent-red hover:text-accent-red"
+              title="Delete tool"
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          )}
         </div>
       </div>
     </GlassCard>

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OnePass MCP - Auth Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #0f0f23;
+            color: #cccccc;
+        }
+        .container {
+            background: #1a1a2e;
+            padding: 30px;
+            border-radius: 12px;
+            border: 1px solid #333;
+        }
+        .btn {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 0;
+            display: inline-block;
+            text-decoration: none;
+        }
+        .btn:hover {
+            background: #4338ca;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 8px;
+            background: #1e293b;
+            border-left: 4px solid #06b6d4;
+        }
+        .error {
+            border-left-color: #ef4444;
+            background: #2d1b1b;
+        }
+        .success {
+            border-left-color: #10b981;
+            background: #1b2d1b;
+        }
+        pre {
+            background: #111827;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>OnePass MCP - Authentication Test</h1>
+        <p>Testing Google OAuth integration with OnePass MCP backend</p>
+        
+        <div>
+            <button class="btn" onclick="testGoogleAuth()">Test Google Auth</button>
+            <button class="btn" onclick="testMCPConnection()">Test MCP Connection</button>
+            <button class="btn" onclick="testWorkspaces()">Test Workspaces API</button>
+            <button class="btn" onclick="clearStorage()">Clear Storage</button>
+        </div>
+        
+        <div id="status" class="status">
+            Ready to test authentication flow...
+        </div>
+        
+        <div id="output">
+            <h3>Current Auth State:</h3>
+            <pre id="authState">No authentication data</pre>
+        </div>
+    </div>
+
+    <script>
+        // API Configuration
+        const API_BASE_URL = 'http://localhost:3000';
+        const MCP_API_URL = 'http://localhost:3000/api';
+        
+        // Update auth state display
+        function updateAuthState() {
+            const token = localStorage.getItem('oneai_auth_token');
+            const user = localStorage.getItem('oneai_user');
+            
+            const authState = {
+                token: token ? token.substring(0, 20) + '...' : null,
+                user: user ? JSON.parse(user) : null,
+                timestamp: new Date().toISOString()
+            };
+            
+            document.getElementById('authState').textContent = JSON.stringify(authState, null, 2);
+        }
+        
+        // Update status
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+        }
+        
+        // Test Google Auth (simulate)
+        function testGoogleAuth() {
+            updateStatus('Testing Google Auth simulation...', 'info');
+            
+            // Simulate Google user data
+            const mockGoogleUser = {
+                id: "google-user-123",
+                email: "test@oneorigin.us",
+                name: "Test User",
+                picture: "https://lh3.googleusercontent.com/a/default-user",
+                provider: "google",
+                domain: "oneorigin.us",
+                hd: "oneorigin.us"
+            };
+            
+            // Test the API client logic
+            fetch(`${MCP_API_URL}/auth/google/exchange`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ user: mockGoogleUser })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Store auth data
+                localStorage.setItem('oneai_auth_token', data.token);
+                localStorage.setItem('oneai_user', JSON.stringify(data.user));
+                
+                updateStatus('✅ Google Auth successful!', 'success');
+                updateAuthState();
+            })
+            .catch(error => {
+                console.error('Auth error:', error);
+                updateStatus(`❌ Auth failed: ${error.message}`, 'error');
+                
+                // Fallback for demo
+                const demoToken = `demo-token-${Date.now()}`;
+                localStorage.setItem('oneai_auth_token', demoToken);
+                localStorage.setItem('oneai_user', JSON.stringify(mockGoogleUser));
+                
+                updateStatus('⚠️ Using demo auth fallback', 'info');
+                updateAuthState();
+            });
+        }
+        
+        // Test MCP Connection
+        function testMCPConnection() {
+            updateStatus('Testing MCP connection...', 'info');
+            
+            const token = localStorage.getItem('oneai_auth_token');
+            if (!token) {
+                updateStatus('❌ No auth token found. Please authenticate first.', 'error');
+                return;
+            }
+            
+            fetch(`${MCP_API_URL}/health`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                updateStatus('✅ MCP connection successful!', 'success');
+                console.log('Health check:', data);
+            })
+            .catch(error => {
+                updateStatus(`❌ MCP connection failed: ${error.message}`, 'error');
+                console.error('Connection error:', error);
+            });
+        }
+        
+        // Test Workspaces API
+        function testWorkspaces() {
+            updateStatus('Testing Workspaces API...', 'info');
+            
+            const token = localStorage.getItem('oneai_auth_token');
+            if (!token) {
+                updateStatus('❌ No auth token found. Please authenticate first.', 'error');
+                return;
+            }
+            
+            fetch(`${MCP_API_URL}/workspaces`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                updateStatus('✅ Workspaces API successful!', 'success');
+                console.log('Workspaces:', data);
+            })
+            .catch(error => {
+                updateStatus(`❌ Workspaces API failed: ${error.message}`, 'error');
+                console.error('Workspaces error:', error);
+            });
+        }
+        
+        // Clear storage
+        function clearStorage() {
+            localStorage.removeItem('oneai_auth_token');
+            localStorage.removeItem('oneai_user');
+            updateStatus('🗑️ Storage cleared', 'info');
+            updateAuthState();
+        }
+        
+        // Initialize
+        updateAuthState();
+    </script>
+</body>
+</html>
