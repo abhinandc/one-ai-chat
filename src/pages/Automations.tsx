@@ -11,170 +11,134 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { useAgents } from "@/hooks/useAgents";
-import { automationService, AutomationExecution } from "@/services/automationService";
-import { apiClient } from "@/services/api";
+import { useAutomations } from "@/hooks/useAutomations";
+import { useToast } from "@/hooks/use-toast";
 
-
-interface Automation {
-  id: string;
-  name: string;
-  description: string;
-  trigger: string;
-  actions: string[];
-  status: "active" | "paused" | "error" | "draft";
-  lastRun: Date;
-  totalRuns: number;
-  successRate: number;
-  category: string;
-  tags: string[];
-  createdAt: Date;
-}
+const categories = ["All", "research", "product", "executive", "vip", "General"];
 
 export default function Automations() {
-  const [automations, setAutomations] = useState<Automation[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
-  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  
-  const { automations, loading, error, executeAutomation, pauseAutomation, resumeAutomation, deleteAutomation, createAutomation } = useAutomations();
+  const { 
+    automations, 
+    loading, 
+    error, 
+    executeAutomation, 
+    pauseAutomation, 
+    resumeAutomation, 
+    deleteAutomation, 
+    createAutomation 
+  } = useAutomations();
 
-  // Convert agents to automations (agents can be used as automation templates)
-  useEffect(() => {
+  const handleRunAutomation = async (automationId: string) => {
     try {
-      if (!agentsLoading) {
-        if (agents && agents.length > 0) {
-          const agentAutomations: Automation[] = agents.map(agent => ({
-            id: agent.id,
-            name: agent.name,
-            description: `Automated workflow using ${agent.name} agent with ${agent.tools?.length || 0} tools`,
-            trigger: agent.published ? "API/Webhook" : "Manual",
-            actions: agent.tools?.map(tool => tool.slug) || ["Process", "Execute", "Respond"],
-            status: agent.published ? "active" : "draft" as const,
-            lastRun: agent.published ? new Date(agent.published.at) : new Date(),
-            totalRuns: agent.published ? Math.floor(Math.random() * 50) + 10 : 0,
-            successRate: agent.published ? Math.floor(Math.random() * 15) + 85 : 100,
-            category: agent.labels?.[0] || "General",
-            tags: agent.labels || [],
-            createdAt: new Date(),
-          }));
-          setAutomations(agentAutomations);
-        } else {
-          setAutomations([]);
-        }
-        setLoading(false);
-      }
+      const execution = await executeAutomation(automationId, {
+        timestamp: new Date().toISOString(),
+        source: "manual_trigger"
+      });
+      
+      toast({
+        title: "Automation Executed",
+        description: `Automation completed with status: ${execution.status}`,
+      });
     } catch (error) {
-      console.error('Error processing agents:', error);
-      setAutomations([]);
-      setLoading(false);
-    }
-  }, [agents, agentsLoading]);
-
-  const categories = ["All", "research", "product", "executive", "vip", "General"];
-
-  // Real automation management functions
-  const runAutomation = async (automationId: string) => {
-    try {
-      console.log(`Running automation: ${automationId}`);
-      // TODO: Implement real automation execution via MCP
-      // For now, update the lastRun time
-      setAutomations(prev => prev.map(auto => 
-        auto.id === automationId 
-          ? { ...auto, lastRun: new Date(), totalRuns: auto.totalRuns + 1 }
-          : auto
-      ));
-    } catch (error) {
-      console.error('Failed to run automation:', error);
+      toast({
+        title: "Execution Failed",
+        description: error instanceof Error ? error.message : "Failed to execute automation",
+        variant: "destructive",
+      });
     }
   };
 
-  const pauseAutomation = async (automationId: string) => {
+  const handlePauseAutomation = async (automationId: string) => {
     try {
-      setAutomations(prev => prev.map(auto => 
-        auto.id === automationId 
-          ? { ...auto, status: auto.status === 'active' ? 'paused' : 'active' as const }
-          : auto
-      ));
+      await pauseAutomation(automationId);
+      toast({
+        title: "Automation Paused",
+        description: "Automation has been paused successfully",
+      });
     } catch (error) {
-      console.error('Failed to pause automation:', error);
+      toast({
+        title: "Failed to Pause",
+        description: error instanceof Error ? error.message : "Failed to pause automation",
+        variant: "destructive",
+      });
     }
   };
 
-  const deleteAutomation = async (automationId: string) => {
+  const handleDeleteAutomation = async (automationId: string) => {
+    if (!confirm("Are you sure you want to delete this automation?")) return;
+    
     try {
-      if (confirm('Are you sure you want to delete this automation?')) {
-        setAutomations(prev => prev.filter(auto => auto.id !== automationId));
-        // TODO: Delete from MCP backend
-      }
+      await deleteAutomation(automationId);
+      toast({
+        title: "Automation Deleted",
+        description: "Automation has been deleted successfully",
+      });
     } catch (error) {
-      console.error('Failed to delete automation:', error);
+      toast({
+        title: "Failed to Delete",
+        description: error instanceof Error ? error.message : "Failed to delete automation",
+        variant: "destructive",
+      });
     }
   };
 
-  const createNewAutomation = async () => {
+  const handleCreateAutomation = async () => {
+    const name = prompt("Automation Name:");
+    if (!name?.trim()) return;
+
+    const description = prompt("Description:");
+    if (!description?.trim()) return;
+
     try {
-      const name = prompt("Automation Name:");
-      if (!name?.trim()) return;
-
-      const description = prompt("Description:");
-      if (!description?.trim()) return;
-
-      const newAutomation: Automation = {
-        id: `custom-${Date.now()}`,
+      await createAutomation({
         name: name.trim(),
         description: description.trim(),
-        trigger: "Manual",
-        actions: ["Process", "Execute", "Complete"],
-        status: "draft",
-        lastRun: new Date(),
-        totalRuns: 0,
-        successRate: 100,
-        category: "Custom",
-        tags: ["custom"],
-        createdAt: new Date(),
-      };
-
-      setAutomations(prev => [newAutomation, ...prev]);
-      console.log('Automation created:', newAutomation);
+        enabled: true,
+      });
+      
+      toast({
+        title: "Automation Created",
+        description: `"${name}" has been created successfully`,
+      });
     } catch (error) {
-      console.error('Failed to create automation:', error);
+      toast({
+        title: "Failed to Create",
+        description: error instanceof Error ? error.message : "Failed to create automation",
+        variant: "destructive",
+      });
     }
   };
 
   const filteredAutomations = automations.filter(automation => {
     const matchesSearch = automation.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         automation.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         automation.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesCategory = selectedCategory === "All" || automation.category === selectedCategory;
-    const matchesStatus = selectedStatus === "all" || automation.status === selectedStatus;
+                         automation.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === "All" || automation.description.toLowerCase().includes(selectedCategory.toLowerCase());
+    const matchesStatus = selectedStatus === "all" || 
+                         (selectedStatus === "active" && automation.enabled) ||
+                         (selectedStatus === "paused" && !automation.enabled);
     
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "active": return <CheckCircle className="h-4 w-4 text-accent-green" />;
-      case "paused": return <Clock className="h-4 w-4 text-accent-orange" />;
-      case "error": return <AlertCircle className="h-4 w-4 text-accent-red" />;
-      case "draft": return <Settings className="h-4 w-4 text-text-secondary" />;
-      default: return null;
-    }
+  const getStatusIcon = (automation: any) => {
+    if (automation.enabled) return <CheckCircle className="h-4 w-4 text-accent-green" />;
+    if (!automation.enabled) return <AlertCircle className="h-4 w-4 text-accent-orange" />;
+    return <Clock className="h-4 w-4 text-text-tertiary" />;
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active": return "text-accent-green bg-accent-green/10 border-accent-green/20";
-      case "paused": return "text-accent-orange bg-accent-orange/10 border-accent-orange/20";
-      case "error": return "text-accent-red bg-accent-red/10 border-accent-red/20";
-      case "draft": return "text-text-secondary bg-surface-graphite/20 border-border-primary";
-      default: return "text-text-secondary";
-    }
+  const getStatusColor = (automation: any) => {
+    if (automation.enabled) return "text-accent-green";
+    if (!automation.enabled) return "text-accent-orange";
+    return "text-text-tertiary";
   };
 
-  const formatLastRun = (date: Date) => {
+  const formatLastRun = (date?: Date) => {
+    if (!date) return "Never";
     try {
       const now = new Date();
       const diff = now.getTime() - date.getTime();
@@ -190,14 +154,13 @@ export default function Automations() {
     }
   };
 
-  // Error boundary
-  if (agentsError) {
+  if (error) {
     return (
       <div className="h-full flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="text-6xl mb-4">⚠️</div>
+          <div className="text-6xl mb-4">??</div>
           <h2 className="text-xl font-semibold text-text-primary mb-2">Automations Error</h2>
-          <p className="text-text-secondary mb-4">{agentsError}</p>
+          <p className="text-text-secondary mb-4">{error}</p>
           <Button onClick={() => window.location.reload()}>
             Reload Page
           </Button>
@@ -214,11 +177,11 @@ export default function Automations() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-3xl font-bold text-text-primary mb-2">Automations</h1>
-              <p className="text-text-secondary">Create and manage AI-powered automation workflows</p>
+              <p className="text-text-secondary">Manage and execute your AI-powered automation workflows</p>
             </div>
             <Button 
               className="bg-accent-blue hover:bg-accent-blue/90"
-              onClick={createNewAutomation}
+              onClick={handleCreateAutomation}
             >
               <Plus className="h-4 w-4 mr-2" />
               Create Automation
@@ -226,7 +189,7 @@ export default function Automations() {
           </div>
 
           {/* Search and Filters */}
-          <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center gap-4">
             <div className="flex-1 max-w-md">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-text-tertiary" />
@@ -244,6 +207,26 @@ export default function Automations() {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
                   <Filter className="h-4 w-4 mr-2" />
+                  Category: {selectedCategory}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-48 bg-card border-border-primary shadow-lg z-50">
+                {categories.map((category) => (
+                  <DropdownMenuItem 
+                    key={category}
+                    onClick={() => setSelectedCategory(category)} 
+                    className="text-card-foreground hover:bg-accent-blue/10"
+                  >
+                    {category}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Filter className="h-4 w-4 mr-2" />
                   Status: {selectedStatus === "all" ? "All" : selectedStatus}
                 </Button>
               </DropdownMenuTrigger>
@@ -252,41 +235,13 @@ export default function Automations() {
                   All Status
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setSelectedStatus("active")} className="text-card-foreground hover:bg-accent-blue/10">
-                  <CheckCircle className="h-4 w-4 mr-2 text-accent-green" />
                   Active
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setSelectedStatus("paused")} className="text-card-foreground hover:bg-accent-blue/10">
-                  <Clock className="h-4 w-4 mr-2 text-accent-orange" />
                   Paused
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSelectedStatus("error")} className="text-card-foreground hover:bg-accent-blue/10">
-                  <AlertCircle className="h-4 w-4 mr-2 text-accent-red" />
-                  Error
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSelectedStatus("draft")} className="text-card-foreground hover:bg-accent-blue/10">
-                  <Settings className="h-4 w-4 mr-2 text-text-secondary" />
-                  Draft
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
-
-          {/* Categories */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2">
-            {categories.map((category) => (
-              <Button
-                key={category}
-                variant={selectedCategory === category ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedCategory(category)}
-                className={cn(
-                  "whitespace-nowrap",
-                  selectedCategory === category && "bg-accent-blue hover:bg-accent-blue/90"
-                )}
-              >
-                {category}
-              </Button>
-            ))}
           </div>
         </div>
       </div>
@@ -294,32 +249,6 @@ export default function Automations() {
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-7xl mx-auto">
-          {/* Stats */}
-          {!loading && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <StatsCard
-              title="Total Automations"
-              value={automations.length.toString()}
-              icon={<Zap className="h-5 w-5 text-accent-blue" />}
-            />
-            <StatsCard
-              title="Active"
-              value={automations.filter(a => a.status === "active").length.toString()}
-              icon={<CheckCircle className="h-5 w-5 text-accent-green" />}
-            />
-            <StatsCard
-              title="Total Runs"
-              value={automations.reduce((sum, a) => sum + a.totalRuns, 0).toLocaleString()}
-              icon={<Play className="h-5 w-5 text-accent-orange" />}
-            />
-            <StatsCard
-              title="Avg Success Rate"
-              value={automations.length > 0 ? `${(automations.reduce((sum, a) => sum + a.successRate, 0) / automations.length).toFixed(1)}%` : "0%"}
-              icon={<CheckCircle className="h-5 w-5 text-accent-green" />}
-            />
-            </div>
-          )}
-
           {/* Loading State */}
           {loading && (
             <div className="text-center py-12">
@@ -339,9 +268,9 @@ export default function Automations() {
                   getStatusIcon={getStatusIcon}
                   getStatusColor={getStatusColor}
                   formatLastRun={formatLastRun}
-                  onRun={runAutomation}
-                  onPause={pauseAutomation}
-                  onDelete={deleteAutomation}
+                  onRun={handleRunAutomation}
+                  onPause={handlePauseAutomation}
+                  onDelete={handleDeleteAutomation}
                 />
               ))}
             </div>
@@ -360,7 +289,7 @@ export default function Automations() {
               {automations.length === 0 && (
                 <Button 
                   className="mt-4"
-                  onClick={createNewAutomation}
+                  onClick={handleCreateAutomation}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Create First Automation
@@ -370,27 +299,11 @@ export default function Automations() {
           )}
         </div>
       </div>
-
-
     </div>
   );
 }
 
-function StatsCard({ title, value, icon }: { title: string; value: string; icon: React.ReactNode }) {
-  return (
-    <GlassCard className="p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-text-secondary">{title}</p>
-          <p className="text-2xl font-bold text-text-primary">{value}</p>
-        </div>
-        {icon}
-      </div>
-    </GlassCard>
-  );
-}
-
-function AutomationCard({ 
+function AutomationCard({
   automation, 
   getStatusIcon, 
   getStatusColor, 
@@ -399,10 +312,10 @@ function AutomationCard({
   onPause,
   onDelete
 }: { 
-  automation: Automation;
-  getStatusIcon: (status: string) => React.ReactNode;
-  getStatusColor: (status: string) => string;
-  formatLastRun: (date: Date) => string;
+  automation: any;
+  getStatusIcon: (automation: any) => React.ReactNode;
+  getStatusColor: (automation: any) => string;
+  formatLastRun: (date?: Date) => string;
   onRun?: (id: string) => void;
   onPause?: (id: string) => void;
   onDelete?: (id: string) => void;
@@ -412,56 +325,41 @@ function AutomationCard({
       <div className="space-y-4">
         {/* Header */}
         <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <h3 className="font-semibold text-text-primary group-hover:text-accent-blue transition-colors line-clamp-1">
-              {automation.name}
-            </h3>
-            <p className="text-sm text-text-secondary">{automation.category}</p>
-          </div>
-          <Badge className={cn("text-xs border", getStatusColor(automation.status))}>
-            <div className="flex items-center gap-1">
-              {getStatusIcon(automation.status)}
-              <span className="capitalize">{automation.status}</span>
+          <div className="flex items-center gap-3">
+            {getStatusIcon(automation)}
+            <div>
+              <h3 className="font-semibold text-text-primary group-hover:text-accent-blue transition-colors">
+                {automation.name}
+              </h3>
+              <p className="text-sm text-text-secondary">{automation.description}</p>
             </div>
-          </Badge>
-        </div>
-
-        {/* Description */}
-        <p className="text-sm text-text-secondary line-clamp-2">{automation.description}</p>
-
-        {/* Trigger */}
-        <div className="flex items-center gap-2">
-          <Zap className="h-3 w-3 text-accent-blue" />
-          <span className="text-xs text-text-secondary">Trigger: {automation.trigger}</span>
-        </div>
-
-        {/* Actions */}
-        <div className="space-y-1">
-          <span className="text-xs text-text-secondary">Actions:</span>
-          <div className="flex flex-wrap gap-1">
-            {automation.actions.slice(0, 2).map((action, index) => (
-              <Badge key={index} variant="outline" className="text-xs">
-                {action}
-              </Badge>
-            ))}
-            {automation.actions.length > 2 && (
-              <Badge variant="outline" className="text-xs">
-                +{automation.actions.length - 2} more
-              </Badge>
-            )}
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Metrics */}
         <div className="flex items-center justify-between text-sm">
-          <div className="space-y-1">
-            <div className="text-text-secondary">
-              Last run: {formatLastRun(automation.lastRun)}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1">
+              <Clock className="h-3 w-3 text-text-secondary" />
+              <span className="text-text-secondary">
+                {automation.totalRuns} runs
+              </span>
             </div>
-            <div className="text-text-secondary">
-              {automation.totalRuns} runs • {automation.successRate}% success
+            <div className="flex items-center gap-1">
+              <CheckCircle className="h-3 w-3 text-accent-green" />
+              <span className="text-text-secondary">
+                {automation.successRate.toFixed(1)}% success
+              </span>
             </div>
           </div>
+          <span className={cn("text-sm font-medium", getStatusColor(automation))}>
+            {automation.enabled ? "Active" : "Paused"}
+          </span>
+        </div>
+
+        {/* Last Run */}
+        <div className="text-xs text-text-tertiary">
+          Last run: {formatLastRun(automation.lastRun)}
         </div>
 
         {/* Actions */}
@@ -469,20 +367,19 @@ function AutomationCard({
           <Button 
             size="sm" 
             className="flex-1" 
-            disabled={automation.status === "error"}
             onClick={() => onRun?.(automation.id)}
           >
             <Play className="h-3 w-3 mr-1" />
-            {automation.status === "paused" ? "Resume" : "Run"}
+            Run
           </Button>
           
           <Button 
             variant="outline" 
             size="sm"
             onClick={() => onPause?.(automation.id)}
-            title={automation.status === "active" ? "Pause" : "Resume"}
+            title={automation.enabled ? "Pause" : "Resume"}
           >
-            {automation.status === "active" ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+            {automation.enabled ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
           </Button>
           
           <Button 
@@ -494,6 +391,22 @@ function AutomationCard({
           >
             <Trash2 className="h-3 w-3" />
           </Button>
+        </div>
+      </div>
+    </GlassCard>
+  );
+}
+
+function StatsCard({ title, value, icon }: { title: string; value: string; icon: React.ReactNode }) {
+  return (
+    <GlassCard className="p-6">
+      <div className="flex items-center space-x-4">
+        <div className="p-3 bg-accent-blue/10 rounded-xl">
+          {icon}
+        </div>
+        <div>
+          <p className="text-sm font-medium text-text-secondary">{title}</p>
+          <p className="text-2xl font-bold text-text-primary">{value}</p>
         </div>
       </div>
     </GlassCard>
