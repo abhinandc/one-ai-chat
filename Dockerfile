@@ -1,19 +1,13 @@
-FROM node:20-alpine AS builder
+﻿FROM node:20-alpine AS builder
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci --legacy-peer-deps
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 COPY . .
-RUN npm run build
-RUN node - <<'NODE'
-const fs = require('fs');
-const path = require('path');
-const htmlPath = path.join('dist', 'index.html');
-const cssPath = path.join('dist', 'assets', 'index.css');
-let html = fs.readFileSync(htmlPath, 'utf8');
-const css = fs.existsSync(cssPath) ? fs.readFileSync(cssPath, 'utf8') : '';
-html = html.replace(/<link rel="stylesheet"[^>]+>/, `<style>${css}</style>`);
-fs.writeFileSync(htmlPath, html);
-NODE
+RUN pnpm run build
 
 FROM nginx:alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
