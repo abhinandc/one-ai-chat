@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Search, Book, MessageCircle, Video, FileText, ExternalLink, ChevronRight, Star, ThumbsUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -298,6 +298,8 @@ export default function Help() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [helpfulItems, setHelpfulItems] = useState<Set<string>>(new Set());
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogContent, setDialogContent] = useState<{ title: string; content: string }>({ title: "", content: "" });
   const [helpfulCounts, setHelpfulCounts] = useState<Record<string, number>>({});
 
   const categories = ["All", "Getting Started", "Models", "Agents", "MCP", "Prompts", "Tools", "Playground", "Deployment", "Chat", "Troubleshooting", "Integration", "Configuration"];
@@ -387,20 +389,20 @@ export default function Help() {
                 onClick={() => {
                   if (action.action === "docs") {
                     // Show getting started guide
-                    alert("OneAI Documentation\n\nComplete setup and usage guides for:\n• Docker deployment with docker-compose-oneai.yml\n• vLLM model configuration\n• OnePass MCP service setup\n• Agent creation and management\n• Chat interface customization\n\nThis would normally open comprehensive documentation.");
+                    alert("OneAI Documentation\n\nComplete setup and usage guides for:\nâ€¢ Docker deployment with docker-compose-oneai.yml\nâ€¢ vLLM model configuration\nâ€¢ OnePass MCP service setup\nâ€¢ Agent creation and management\nâ€¢ Chat interface customization\n\nThis would normally open comprehensive documentation.");
                   } else if (action.action === "api") {
                     // Try to open MCP API, fallback to info
                     try {
                       window.open("http://localhost:6060/api", "_blank");
                     } catch (e) {
-                      alert("MCP API Reference\n\nOnePass MCP service endpoints:\n• GET /api/mcp/agents - List agents\n• POST /api/mcp/agents - Create agent\n• GET /api/mcp/tools - List tools\n• GET /api/mcp/capabilities - List capabilities\n\nService running at: http://localhost:6060");
+                      alert("MCP API Reference\n\nOnePass MCP service endpoints:\nâ€¢ GET /api/mcp/agents - List agents\nâ€¢ POST /api/mcp/agents - Create agent\nâ€¢ GET /api/mcp/tools - List tools\nâ€¢ GET /api/mcp/capabilities - List capabilities\n\nService running at: http://localhost:6060");
                     }
                   } else if (action.action === "docker") {
                     // Show Docker setup guide
-                    alert("Docker Setup Guide\n\nDeploy OneAI with Docker Compose:\n\n1. Navigate to F:/LLM_STATE/docker\n2. Run: docker compose -f docker-compose-oneai.yml up -d\n3. Access UI at: http://localhost:3010\n4. Check services: vLLM (8000), LiteLLM (4000), MCP (6060)\n\nThis would normally show detailed deployment instructions.");
+                    setDialogContent({ title: "Docker Setup Guide", content: "Deploy OneAI with Docker Compose:\n\n1. Navigate to F:/LLM_STATE/docker\n2. Run: docker compose -f docker-compose-oneai.yml up -d\n3. Access UI at: http://localhost:3010\n4. Check services: vLLM (8000), LiteLLM (4000), MCP (6060)" }); setDialogOpen(true);
                   } else if (action.action === "github") {
                     // Show GitHub info
-                    alert("GitHub Repository\n\nOneAI Platform Source Code\n\nFeatures:\n• Docker-based deployment\n• Multi-model support (vLLM, Ollama, LiteLLM)\n• Agent management with MCP\n• Modern React UI with Shadcn\n\nThis would normally open the GitHub repository.");
+                    alert("GitHub Repository\n\nOneAI Platform Source Code\n\nFeatures:\nâ€¢ Docker-based deployment\nâ€¢ Multi-model support (vLLM, Ollama, LiteLLM)\nâ€¢ Agent management with MCP\nâ€¢ Modern React UI with Shadcn\n\nThis would normally open the GitHub repository.");
                   }
                 }}
               >
@@ -494,7 +496,7 @@ export default function Help() {
                           className="flex-1"
                           onClick={() => {
                             // Show article content in a modal or navigate to detailed view
-                            alert(`Article: ${article.title}\n\n${article.description}\n\nThis would normally open a detailed article page with full content, code examples, and step-by-step instructions.`);
+                            setDialogContent({ title: article.title, content: article.description }); setDialogOpen(true);
                           }}
                         >
                           <FileText className="h-3 w-3 mr-2" />
@@ -553,7 +555,7 @@ export default function Help() {
                         className="w-full"
                         onClick={() => {
                           // Show tutorial content or video player
-                          alert(`Tutorial: ${tutorial.title}\n\nDuration: ${tutorial.duration}\nDifficulty: ${tutorial.difficulty}\n\n${tutorial.description}\n\nThis would normally open a video player or detailed tutorial page with interactive content.`);
+                          setDialogContent({ title: tutorial.title, content: `Duration: ${tutorial.duration}\nDifficulty: ${tutorial.difficulty}\n\n${tutorial.description}` }); setDialogOpen(true);
                         }}
                       >
                         <Video className="h-3 w-3 mr-2" />
@@ -620,3 +622,6 @@ export default function Help() {
     </div>
   );
 }
+
+
+
