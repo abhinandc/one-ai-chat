@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ConversationList } from "@/components/chat/ConversationList";
 import { Thread } from "@/components/chat/Thread";
@@ -7,616 +7,396 @@ import { InspectorPanel } from "@/components/chat/InspectorPanel";
 import { useChat } from "@/hooks/useChat";
 import { useModels } from "@/hooks/useModels";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useConversations } from "@/hooks/useConversations";
+import { conversationService } from "@/services/conversationService";
+import { analyticsService } from "@/services/analyticsService";
+import { useToast } from "@/hooks/use-toast";
 import type { Conversation, ConversationFolder, Message, Citation } from "@/types";
 
-const STORAGE_PREFIX = "oneai.chat.";
-
-interface StoredMessage {
-  id: string;
-  role: Message["role"];
-  content: string;
-  timestamp: string;
-  metadata?: Message["metadata"];
-}
-
-interface StoredConversation {
-  id: string;
-  title: string;
-  messages: StoredMessage[];
-  folderId?: string;
-  pinned: boolean;
-  shared: boolean;
-  unread: boolean;
-  tags: string[];
-  settings: Conversation["settings"];
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface StoredState {
-  conversations: StoredConversation[];
-  activeConversationId: string | null;
-  selectedModel: string | null;
-  provider: Conversation["settings"]["provider"];
-}
-
-const serializeConversation = (conversation: Conversation): StoredConversation => ({
-  id: conversation.id,
-  title: conversation.title,
-  folderId: conversation.folderId,
-  pinned: conversation.pinned,
-  shared: conversation.shared,
-  unread: conversation.unread,
-  tags: conversation.tags,
-  settings: conversation.settings,
-  createdAt: conversation.createdAt.toISOString(),
-  updatedAt: conversation.updatedAt.toISOString(),
-  messages: conversation.messages.map((message) => ({
-    id: message.id,
-    role: message.role,
-    content: message.content,
-    timestamp: message.timestamp.toISOString(),
-    metadata: message.metadata,
-  })),
-});
-
-const deserializeConversation = (stored: StoredConversation): Conversation => {
-  const baseCreatedAt = new Date(stored.createdAt);
-  const baseUpdatedAt = new Date(stored.updatedAt);
-  const createdAt = Number.isNaN(baseCreatedAt.getTime()) ? new Date() : baseCreatedAt;
-  const updatedAt = Number.isNaN(baseUpdatedAt.getTime()) ? createdAt : baseUpdatedAt;
-
-  const storedSettings = stored.settings ?? {
-    model: "",
-    provider: "litellm" as const,
-    temperature: 0.7,
-    topP: 0.9,
-    maxTokens: 2048,
-    stopSequences: [],
-    tools: [],
-  };
-
-  return {
-    id: stored.id,
-    title: stored.title ?? "Conversation",
-    folderId: stored.folderId,
-    pinned: Boolean(stored.pinned),
-    shared: Boolean(stored.shared),
-    unread: Boolean(stored.unread),
-    tags: Array.isArray(stored.tags) ? stored.tags : [],
-    settings: {
-      ...storedSettings,
-      stopSequences: Array.isArray(storedSettings.stopSequences) ? storedSettings.stopSequences : [],
-      tools: Array.isArray(storedSettings.tools) ? storedSettings.tools : [],
-    },
-    createdAt,
-    updatedAt,
-    messages: Array.isArray(stored.messages)
-      ? stored.messages.map((message) => {
-          const parsedTimestamp = new Date(message.timestamp);
-          const timestamp = Number.isNaN(parsedTimestamp.getTime()) ? updatedAt : parsedTimestamp;
-          return {
-            id: message.id,
-            role: message.role,
-            content: message.content,
-            timestamp,
-            metadata: message.metadata,
-          };
-        })
-      : [],
-  };
-};
-
-export default function Chat() {
+const Chat = () => {
   const user = useCurrentUser();
-  const storageKey = useMemo(
-    () => (user?.email ? `${STORAGE_PREFIX}${user.email}` : null),
-    [user?.email],
-  );
-
+  const { toast } = useToast();
   const { models, loading: modelsLoading } = useModels();
-
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [folders] = useState<ConversationFolder[]>([]);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const [provider, setProvider] = useState<Conversation["settings"]["provider"]>("litellm");
+  const { conversations: supabaseConversations, loading: conversationsLoading, saveConversation, deleteConversation } = useConversations(user?.email);
+  
+  const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>("");
-  const [hydrated, setHydrated] = useState(false);
-
-  const paramsRef = useRef<{ prompt?: string; title?: string; model?: string } | null>(null);
-  const previousConversationIdRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    paramsRef.current = {
-      prompt: urlParams.get("prompt") ?? undefined,
-      title: urlParams.get("title") ?? undefined,
-      model: urlParams.get("model") ?? undefined,
-    };
-  }, []);
-
-  const chat = useChat({
+  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [showConversations, setShowConversations] = useState(true);
+  const [systemPrompt, setSystemPrompt] = useState("");
+  const [temperature, setTemperature] = useState(0.7);
+  const [maxTokens, setMaxTokens] = useState(4000);
+  
+  const {
+    messages,
+    isLoading,
+    sendMessage,
+    clearMessages,
+    regenerateLastMessage,
+    stopGeneration,
+    isStreaming
+  } = useChat({
     model: selectedModel,
-    temperature: 0.7,
-    maxTokens: 2048,
-    onError: (error) => {
-      console.error("Chat error:", error);
-    },
+    systemPrompt,
+    temperature,
+    maxTokens,
+    onMessage: (message) => {
+      // Track API usage
+      if (user?.email && message.role === 'assistant') {
+        analyticsService.recordAPICall(
+          user.email,
+          selectedModel,
+          message.metadata?.tokens || 0,
+          message.metadata?.cost || 0
+        );
+        
+        analyticsService.trackEvent(
+          user.email,
+          'message_sent',
+          'chat',
+          currentConversation?.id || 'new',
+          { model: selectedModel, tokens: message.metadata?.tokens }
+        );
+      }
+    }
   });
 
-  const {
-    clearMessages: resetChatMessages,
-    setMessages: syncChatMessages,
-    stopStreaming: haltStreaming,
-  } = chat;
-
-  const activeConversation = useMemo(
-    () => conversations.find((conversation) => conversation.id === activeConversationId) ?? null,
-    [conversations, activeConversationId],
-  );
-
+  // Initialize with first available model
   useEffect(() => {
-    setConversations([]);
-    setActiveConversationId(null);
-    setProvider("litellm");
-    setSelectedModel("");
-
-    if (!storageKey) {
-      setHydrated(true);
-      return;
+    if (models.length > 0 && !selectedModel) {
+      setSelectedModel(models[0].id);
     }
+  }, [models, selectedModel]);
+
+  // Auto-save conversation when messages change
+  useEffect(() => {
+    if (user?.email && messages.length > 0) {
+      saveCurrentConversation();
+    }
+  }, [messages, user?.email]);
+
+  const saveCurrentConversation = async () => {
+    if (!user?.email || !currentConversation || messages.length === 0) return;
 
     try {
-      const raw = localStorage.getItem(storageKey);
-      if (raw) {
-        const parsed = JSON.parse(raw) as StoredState;
-        const hydratedConversations = Array.isArray(parsed.conversations)
-          ? parsed.conversations
-              .map((item) => {
-                try {
-                  return deserializeConversation(item);
-                } catch (error) {
-                  console.warn("Skipping invalid stored conversation", error);
-                  return null;
-                }
-              })
-              .filter((conversation): conversation is Conversation => Boolean(conversation))
-          : [];
-
-        if (hydratedConversations.length > 0) {
-          setConversations(hydratedConversations);
-
-          const preferredId =
-            parsed.activeConversationId &&
-            hydratedConversations.some((conversation) => conversation.id === parsed.activeConversationId)
-              ? parsed.activeConversationId
-              : hydratedConversations[0].id;
-
-          setActiveConversationId(preferredId);
-          previousConversationIdRef.current = preferredId;
-
-          const storedProvider = parsed.provider === "openwebui" ? "openwebui" : "litellm";
-          setProvider(storedProvider);
-
-          const storedModel =
-            parsed.selectedModel ??
-            hydratedConversations.find((conversation) => conversation.id === preferredId)?.settings.model ??
-            "";
-
-          setSelectedModel(storedModel ?? "");
-        }
-      }
-    } catch (error) {
-      console.warn("Failed to hydrate chat history:", error);
-    } finally {
-      setHydrated(true);
-    }
-  }, [storageKey]);
-
-  useEffect(() => {
-    if (!hydrated) {
-      return;
-    }
-
-    if (conversations.length === 0) {
-      const params = paramsRef.current;
-      const now = new Date();
-      const preferredModel =
-        (params?.model && params.model.trim().length > 0 ? params.model : "") ||
-        selectedModel ||
-        (models.length > 0 ? models[0].id : "");
-
-      if (preferredModel && !selectedModel) {
-        setSelectedModel(preferredModel);
-      }
-
-      const newConversation: Conversation = {
-        id: `${Date.now()}`,
-        title: params?.title ? `${params.title} Session` : "New Conversation",
-        messages: [],
-        pinned: false,
-        shared: false,
-        unread: false,
-        tags: [],
-        settings: {
-          model: preferredModel,
-          provider,
-          temperature: 0.7,
-          topP: 0.9,
-          maxTokens: 2048,
-          stopSequences: [],
-          tools: [],
-          systemPrompt: params?.prompt ?? undefined,
-        },
-        createdAt: now,
-        updatedAt: now,
-      };
-
-      setConversations([newConversation]);
-      setActiveConversationId(newConversation.id);
-      previousConversationIdRef.current = newConversation.id;
-      paramsRef.current = null;
-      haltStreaming();
-      resetChatMessages();
-    }
-  }, [hydrated, conversations.length, provider, selectedModel, models, haltStreaming, resetChatMessages]);
-
-  useEffect(() => {
-    if (!hydrated || models.length === 0) {
-      return;
-    }
-
-    setSelectedModel((prev) => {
-      if (prev && models.some((model) => model.id === prev)) {
-        return prev;
-      }
-
-      const activeModel = activeConversation?.settings.model;
-      if (activeModel && models.some((model) => model.id === activeModel)) {
-        return activeModel;
-      }
-
-      return models[0].id;
-    });
-  }, [hydrated, models, activeConversation]);
-
-  useEffect(() => {
-    if (!storageKey || !hydrated) {
-      return;
-    }
-
-    try {
-      const payload: StoredState = {
-        conversations: conversations.map(serializeConversation),
-        activeConversationId,
-        selectedModel: selectedModel || null,
-        provider,
-      };
-      localStorage.setItem(storageKey, JSON.stringify(payload));
-    } catch (error) {
-      console.warn("Failed to persist chat history:", error);
-    }
-  }, [storageKey, hydrated, conversations, activeConversationId, selectedModel, provider]);
-
-  useEffect(() => {
-    if (previousConversationIdRef.current === activeConversationId) {
-      return;
-    }
-    previousConversationIdRef.current = activeConversationId;
-
-    if (!activeConversationId) {
-      haltStreaming();
-      resetChatMessages();
-      return;
-    }
-
-    const conversation = conversations.find((item) => item.id === activeConversationId);
-    if (!conversation) {
-      haltStreaming();
-      resetChatMessages();
-      return;
-    }
-
-    haltStreaming();
-    resetChatMessages();
-    if (conversation.messages.length > 0) {
-      syncChatMessages(
-        conversation.messages.map((message) => ({
-          role: message.role,
-          content: message.content,
+      await saveConversation({
+        id: currentConversation.id,
+        user_email: user.email,
+        title: currentConversation.title,
+        messages: messages.map(msg => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp.toISOString(),
+          metadata: msg.metadata
         })),
-      );
-    }
-
-    if (conversation.settings.model) {
-      setSelectedModel(conversation.settings.model);
-    }
-    setProvider(conversation.settings.provider);
-  }, [activeConversationId, conversations, haltStreaming, resetChatMessages, syncChatMessages]);
-
-  useEffect(() => {
-    if (!hydrated || !activeConversationId || !selectedModel) {
-      return;
-    }
-
-    setConversations((prev) =>
-      prev.map((conversation) => {
-        if (conversation.id !== activeConversationId) {
-          return conversation;
+        folder_id: currentConversation.folderId,
+        pinned: currentConversation.pinned,
+        shared: currentConversation.shared,
+        unread: currentConversation.unread,
+        tags: currentConversation.tags,
+        settings: {
+          model: selectedModel,
+          systemPrompt,
+          temperature,
+          maxTokens
         }
-        if (conversation.settings.model && conversation.settings.model.length > 0) {
-          return conversation;
-        }
-        return {
-          ...conversation,
-          settings: {
-            ...conversation.settings,
-            model: selectedModel,
-          },
-        };
-      }),
-    );
-  }, [hydrated, activeConversationId, selectedModel]);
+      });
+    } catch (error) {
+      console.error('Failed to save conversation:', error);
+    }
+  };
 
   const createNewConversation = () => {
-    const fallbackModel =
-      selectedModel || (models.length > 0 ? models[0].id : "");
-
-    if (!selectedModel && fallbackModel) {
-      setSelectedModel(fallbackModel);
-    }
-
-    const now = new Date();
     const newConversation: Conversation = {
-      id: `${Date.now()}`,
+      id: `conv_${Date.now()}`,
       title: "New Conversation",
       messages: [],
       pinned: false,
       shared: false,
       unread: false,
       tags: [],
+      lastActivity: new Date(),
       settings: {
-        model: fallbackModel,
-        provider,
-        temperature: 0.7,
-        topP: 0.9,
-        maxTokens: 2048,
-        stopSequences: [],
-        tools: [],
-      },
-      createdAt: now,
-      updatedAt: now,
+        model: selectedModel,
+        systemPrompt,
+        temperature,
+        maxTokens
+      }
     };
-
-    setConversations((prev) => [newConversation, ...prev]);
-    setActiveConversationId(newConversation.id);
-    previousConversationIdRef.current = newConversation.id;
-    haltStreaming();
-    resetChatMessages();
+    
+    setCurrentConversation(newConversation);
+    clearMessages();
+    
+    if (user?.email) {
+      analyticsService.trackEvent(
+        user.email,
+        'conversation_created',
+        'chat',
+        newConversation.id
+      );
+    }
   };
 
-  const sendMessage = async (content: string, settings?: Partial<Conversation["settings"]>) => {
-    if (!activeConversationId || !content.trim()) {
+  const loadConversation = async (conversationId: string) => {
+    const supabaseConv = supabaseConversations.find(c => c.id === conversationId);
+    if (!supabaseConv) return;
+
+    const conversation: Conversation = {
+      id: supabaseConv.id,
+      title: supabaseConv.title,
+      messages: supabaseConv.messages.map(msg => ({
+        id: msg.id,
+        role: msg.role as Message['role'],
+        content: msg.content,
+        timestamp: new Date(msg.timestamp),
+        metadata: msg.metadata
+      })),
+      folderId: supabaseConv.folder_id,
+      pinned: supabaseConv.pinned,
+      shared: supabaseConv.shared,
+      unread: supabaseConv.unread,
+      tags: supabaseConv.tags,
+      lastActivity: new Date(supabaseConv.updated_at),
+      settings: supabaseConv.settings
+    };
+
+    setCurrentConversation(conversation);
+    
+    // Load conversation settings
+    if (conversation.settings) {
+      setSelectedModel(conversation.settings.model || selectedModel);
+      setSystemPrompt(conversation.settings.systemPrompt || "");
+      setTemperature(conversation.settings.temperature || 0.7);
+      setMaxTokens(conversation.settings.maxTokens || 4000);
+    }
+
+    if (user?.email) {
+      analyticsService.trackEvent(
+        user.email,
+        'conversation_loaded',
+        'chat',
+        conversationId
+      );
+    }
+  };
+
+  const handleDeleteConversation = async (conversationId: string) => {
+    try {
+      await deleteConversation(conversationId);
+      
+      if (currentConversation?.id === conversationId) {
+        createNewConversation();
+      }
+      
+      toast({
+        title: "Conversation deleted",
+        description: "The conversation has been removed"
+      });
+
+      if (user?.email) {
+        analyticsService.trackEvent(
+          user.email,
+          'conversation_deleted',
+          'chat',
+          conversationId
+        );
+      }
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+      toast({
+        title: "Failed to delete conversation",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleSendMessage = async (content: string, attachments?: File[]) => {
+    if (!selectedModel) {
+      toast({
+        title: "No model selected",
+        description: "Please select a model to send messages",
+        variant: "destructive"
+      });
       return;
     }
 
-    const conversation = conversations.find((item) => item.id === activeConversationId);
-    if (!conversation) {
-      return;
+    if (!currentConversation) {
+      createNewConversation();
     }
-
-    let targetModel = settings?.model ?? conversation.settings.model ?? selectedModel;
-    if (!targetModel) {
-      if (modelsLoading) {
-        console.warn("Models are still loading. Please wait before sending a message.");
-        return;
-      }
-      if (models.length === 0) {
-        console.warn("No models available to handle the chat request.");
-        return;
-      }
-      targetModel = models[0].id;
-      setSelectedModel(targetModel);
-    }
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content,
-      timestamp: new Date(),
-    };
-
-    const nextSettings: Conversation["settings"] = {
-      ...conversation.settings,
-      ...settings,
-      model: targetModel,
-    };
-
-    setConversations((prev) =>
-      prev.map((item) =>
-        item.id === activeConversationId
-          ? {
-              ...item,
-              messages: [...item.messages, userMessage],
-              settings: nextSettings,
-              title:
-                item.messages.length === 0
-                  ? `${content.slice(0, 50)}${content.length > 50 ? "..." : ""}`
-                  : item.title,
-              updatedAt: new Date(),
-            }
-          : item,
-      ),
-    );
-
-    setSelectedModel(targetModel);
-    setProvider(nextSettings.provider);
-    haltStreaming();
 
     try {
-      await chat.sendMessage(content, {
-        model: targetModel,
-        systemPrompt: nextSettings.systemPrompt,
-        temperature: nextSettings.temperature,
-        maxTokens: nextSettings.maxTokens,
-        topP: nextSettings.topP,
-      });
+      await sendMessage(content, attachments);
+      
+      // Update conversation title if it's the first message
+      if (currentConversation && currentConversation.title === "New Conversation" && content.length > 0) {
+        const newTitle = content.slice(0, 50) + (content.length > 50 ? "..." : "");
+        setCurrentConversation(prev => prev ? { ...prev, title: newTitle } : null);
+      }
     } catch (error) {
-      console.error("Chat error:", error);
+      console.error('Failed to send message:', error);
+      toast({
+        title: "Failed to send message",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive"
+      });
     }
   };
 
+  // Convert Supabase conversations to UI format
+  const uiConversations: Conversation[] = useMemo(() => {
+    return supabaseConversations.map(conv => ({
+      id: conv.id,
+      title: conv.title,
+      messages: conv.messages.map(msg => ({
+        id: msg.id,
+        role: msg.role as Message['role'],
+        content: msg.content,
+        timestamp: new Date(msg.timestamp),
+        metadata: msg.metadata
+      })),
+      folderId: conv.folder_id,
+      pinned: conv.pinned,
+      shared: conv.shared,
+      unread: conv.unread,
+      tags: conv.tags,
+      lastActivity: new Date(conv.updated_at),
+      settings: conv.settings
+    }));
+  }, [supabaseConversations]);
+
+  // Initialize with new conversation if none exists
   useEffect(() => {
-    if (!activeConversation || chat.isStreaming || chat.isLoading) {
-      return;
+    if (!currentConversation && !conversationsLoading) {
+      createNewConversation();
     }
+  }, [conversationsLoading]);
 
-    if (chat.messages.length <= activeConversation.messages.length) {
-      return;
-    }
-
-    const lastMessage = chat.messages[chat.messages.length - 1];
-    if (!lastMessage || lastMessage.role !== "assistant") {
-      return;
-    }
-
-    setConversations((prev) =>
-      prev.map((conversation) =>
-        conversation.id === activeConversation.id
-          ? {
-              ...conversation,
-              messages: [
-                ...conversation.messages,
-                {
-                  id: `${conversation.id}-${Date.now()}`,
-                  role: lastMessage.role,
-                  content: lastMessage.content ?? "",
-                  timestamp: new Date(),
-                  metadata: {
-                    model: selectedModel,
-                    provider,
-                    tokens: lastMessage.content ? Math.ceil(lastMessage.content.length / 4) : undefined,
-                  },
-                },
-              ],
-              updatedAt: new Date(),
-            }
-          : conversation,
-      ),
-    );
-  }, [chat.messages, chat.isStreaming, chat.isLoading, activeConversation, provider, selectedModel]);
-
-  const stopStreaming = () => {
-    haltStreaming();
-  };
-
-  const updateConversationSettings = (settings: Partial<Conversation["settings"]>) => {
-    if (!activeConversationId) {
-      return;
-    }
-
-    setConversations((prev) =>
-      prev.map((conversation) =>
-        conversation.id === activeConversationId
-          ? {
-              ...conversation,
-              settings: {
-                ...conversation.settings,
-                ...settings,
-              },
-            }
-          : conversation,
-      ),
-    );
-
-    if (settings.model) {
-      setSelectedModel(settings.model);
-    }
-    if (settings.provider) {
-      setProvider(settings.provider);
-    }
-  };
-
-  const emptyCitations = useMemo<Citation[]>(() => [], []);
-
-  if (chat.error) {
+  if (conversationsLoading || modelsLoading) {
     return (
       <div className="h-full flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="text-6xl mb-4">??</div>
-          <h2 className="text-xl font-semibold text-text-primary mb-2">Chat Error</h2>
-          <p className="text-text-secondary mb-4">{chat.error}</p>
-          <Button onClick={() => window.location.reload()}>Reload Page</Button>
+          <div className="w-8 h-8 border-2 border-accent-blue border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-text-secondary">Loading chat...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="h-full flex items-center justify-center bg-background">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-text-primary mb-2">Authentication Required</h2>
+          <p className="text-text-secondary">Please log in to use the chat feature</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex bg-background overflow-hidden">
-      <div className="w-80 flex-shrink-0 overflow-hidden">
-        <ConversationList
-          conversations={conversations}
-          folders={folders}
-          activeId={activeConversationId || ""}
-          onSelectConversation={setActiveConversationId}
-          onNewConversation={createNewConversation}
-        />
-      </div>
+    <div className="h-full flex bg-background">
+      {/* Conversation Sidebar */}
+      {showConversations && (
+        <div className="w-80 border-r border-border-primary bg-surface-secondary">
+          <ConversationList
+            conversations={uiConversations}
+            folders={[]} // TODO: Implement folders
+            currentConversationId={currentConversation?.id}
+            onSelectConversation={loadConversation}
+            onDeleteConversation={handleDeleteConversation}
+            onCreateNew={createNewConversation}
+            loading={conversationsLoading}
+          />
+        </div>
+      )}
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="border-b border-border-primary/50 p-lg flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-lg font-semibold text-text-primary">
-                {activeConversation?.title || "Select a conversation"}
-              </h1>
-              {activeConversation && (
-                <p className="text-sm text-text-secondary">
-                  {activeConversation.messages.length} messages
-                </p>
-              )}
-            </div>
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Chat Header */}
+        <div className="flex items-center justify-between p-md border-b border-border-primary bg-surface-primary">
+          <div className="flex items-center gap-md">
+            <Button
+              onClick={() => setShowConversations(!showConversations)}
+              variant="ghost"
+              size="sm"
+              className="text-text-secondary hover:text-text-primary"
+            >
+              ?
+            </Button>
+            <h1 className="text-lg font-semibold text-text-primary">
+              {currentConversation?.title || "New Conversation"}
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-sm">
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="px-md py-sm bg-surface-graphite border border-border-primary rounded-lg text-text-primary text-sm"
+              disabled={modelsLoading}
+            >
+              <option value="">Select Model...</option>
+              {models.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.name} ({model.provider})
+                </option>
+              ))}
+            </select>
+
+            <Button
+              onClick={() => setInspectorOpen(!inspectorOpen)}
+              variant="ghost"
+              size="sm"
+              className="text-text-secondary hover:text-text-primary"
+            >
+              Inspector
+            </Button>
           </div>
         </div>
 
-        {activeConversation ? (
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto">
-              <Thread
-                messages={activeConversation.messages}
-                isStreaming={chat.isStreaming}
-                streamingMessage={chat.streamingMessage}
-              />
-            </div>
-            <div className="flex-shrink-0">
-              <Composer
-                conversation={activeConversation}
-                onSendMessage={sendMessage}
-                isStreaming={chat.isStreaming}
-                onStopStreaming={stopStreaming}
-                onUpdateSettings={updateConversationSettings}
-                availableModels={models}
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <div className="text-6xl mb-lg">??</div>
-              <h2 className="text-xl font-semibold text-text-primary mb-md">Welcome to Chat</h2>
-              <p className="text-text-secondary mb-lg">Select a conversation or start a new one</p>
-              <Button onClick={createNewConversation}>Start New Conversation</Button>
-            </div>
-          </div>
-        )}
+        {/* Messages Thread */}
+        <div className="flex-1 min-h-0">
+          <Thread
+            messages={messages}
+            isLoading={isLoading}
+            isStreaming={isStreaming}
+            onRegenerateMessage={regenerateLastMessage}
+            onStopGeneration={stopGeneration}
+          />
+        </div>
+
+        {/* Message Composer */}
+        <div className="border-t border-border-primary bg-surface-primary">
+          <Composer
+            onSendMessage={handleSendMessage}
+            disabled={isLoading || !selectedModel}
+            model={selectedModel}
+            placeholder={!selectedModel ? "Select a model to start chatting..." : undefined}
+          />
+        </div>
       </div>
 
-      <InspectorPanel
-        conversation={activeConversation}
-        citations={emptyCitations}
-        onUpdateSettings={updateConversationSettings}
-      />
+      {/* Inspector Panel */}
+      {inspectorOpen && (
+        <div className="w-80 border-l border-border-primary bg-surface-secondary">
+          <InspectorPanel
+            conversation={currentConversation}
+            systemPrompt={systemPrompt}
+            onSystemPromptChange={setSystemPrompt}
+            temperature={temperature}
+            onTemperatureChange={setTemperature}
+            maxTokens={maxTokens}
+            onMaxTokensChange={setMaxTokens}
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+            models={models}
+          />
+        </div>
+      )}
     </div>
   );
-}
+};
+
+export default Chat;

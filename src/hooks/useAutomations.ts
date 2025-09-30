@@ -5,100 +5,71 @@ export interface UseAutomationsResult {
   automations: Automation[];
   loading: boolean;
   error: string | null;
-  executeAutomation: (id: string, input?: any) => Promise<AutomationExecution>;
-  pauseAutomation: (id: string) => Promise<void>;
-  resumeAutomation: (id: string) => Promise<void>;
-  deleteAutomation: (id: string) => Promise<void>;
   createAutomation: (automation: Partial<Automation>) => Promise<Automation>;
+  executeAutomation: (id: string, input: any) => Promise<AutomationExecution>;
+  deleteAutomation: (id: string) => Promise<void>;
   refetch: () => Promise<void>;
 }
 
-export function useAutomations(): UseAutomationsResult {
+export function useAutomations(userEmail?: string): UseAutomationsResult {
   const [automations, setAutomations] = useState<Automation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchAutomations = async () => {
+    if (!userEmail) {
+      setAutomations([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
-      const data = await automationService.getAutomations();
+      const data = await automationService.getAutomations(userEmail);
       setAutomations(data);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch automations';
-      setError(errorMessage);
-      console.error('Failed to fetch automations:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch automations');
+      setAutomations([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const executeAutomation = async (id: string, input: any = {}) => {
-    try {
-      const execution = await automationService.executeAutomation(id, input);
-      // Refresh automations to update metrics
-      await fetchAutomations();
-      return execution;
-    } catch (error) {
-      console.error('Failed to execute automation:', error);
-      throw error;
-    }
-  };
-
-  const pauseAutomation = async (id: string) => {
-    try {
-      await automationService.pauseAutomation(id);
-      await fetchAutomations();
-    } catch (error) {
-      console.error('Failed to pause automation:', error);
-      throw error;
-    }
-  };
-
-  const resumeAutomation = async (id: string) => {
-    try {
-      await automationService.resumeAutomation(id);
-      await fetchAutomations();
-    } catch (error) {
-      console.error('Failed to resume automation:', error);
-      throw error;
-    }
-  };
-
-  const deleteAutomation = async (id: string) => {
-    try {
-      await automationService.deleteAutomation(id);
-      await fetchAutomations();
-    } catch (error) {
-      console.error('Failed to delete automation:', error);
-      throw error;
-    }
-  };
-
-  const createAutomation = async (automation: Partial<Automation>) => {
-    try {
-      const newAutomation = await automationService.createAutomation(automation);
-      await fetchAutomations();
-      return newAutomation;
-    } catch (error) {
-      console.error('Failed to create automation:', error);
-      throw error;
-    }
-  };
-
   useEffect(() => {
     fetchAutomations();
-  }, []);
+  }, [userEmail]);
+
+  const createAutomation = async (automation: Partial<Automation>): Promise<Automation> => {
+    if (!userEmail) throw new Error('User email required');
+    
+    const created = await automationService.createAutomation(automation, userEmail);
+    await fetchAutomations(); // Refresh list
+    return created;
+  };
+
+  const executeAutomation = async (id: string, input: any): Promise<AutomationExecution> => {
+    if (!userEmail) throw new Error('User email required');
+    
+    const execution = await automationService.executeAutomation(id, input, userEmail);
+    await fetchAutomations(); // Refresh to update stats
+    return execution;
+  };
+
+  const deleteAutomation = async (id: string): Promise<void> => {
+    if (!userEmail) throw new Error('User email required');
+    
+    await automationService.deleteAutomation(id, userEmail);
+    await fetchAutomations(); // Refresh list
+  };
 
   return {
     automations,
     loading,
     error,
-    executeAutomation,
-    pauseAutomation,
-    resumeAutomation,
-    deleteAutomation,
     createAutomation,
+    executeAutomation,
+    deleteAutomation,
     refetch: fetchAutomations,
   };
 }

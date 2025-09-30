@@ -1,97 +1,69 @@
-import { apiClient } from './api';
 import supabaseClient from './supabaseClient';
 
 export interface PromptTemplate {
   id: string;
+  user_email: string;
   title: string;
   description: string;
   content: string;
   category: string;
   tags: string[];
-  author: string;
-  isPublic: boolean;
-  userEmail: string;
-  createdAt: Date;
-  updatedAt: Date;
+  is_public: boolean;
+  likes_count: number;
+  uses_count: number;
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  created_at: string;
+  updated_at: string;
 }
 
 class PromptService {
   async getPrompts(userEmail: string): Promise<PromptTemplate[]> {
-    try {
-      if (!supabaseClient) return this.getLocalPrompts();
+    const { data, error } = await supabaseClient
+      .from('prompt_templates')
+      .select('*')
+      .or(`user_email.eq.${userEmail},is_public.eq.true`)
+      .order('created_at', { ascending: false });
 
-      const { data, error } = await supabaseClient
-        .from('prompt_templates')
-        .select('*')
-        .or(`user_email.eq.${userEmail},is_public.eq.true`)
-        .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  }
 
-      if (error) throw error;
+  async createPrompt(prompt: Omit<PromptTemplate, 'id' | 'created_at' | 'updated_at' | 'likes_count' | 'uses_count'>): Promise<PromptTemplate> {
+    const { data, error } = await supabaseClient
+      .from('prompt_templates')
+      .insert({ ...prompt, likes_count: 0, uses_count: 0 })
+      .select()
+      .single();
 
-      return data.map(item => ({
-        id: item.id,
-        title: item.title,
-        description: item.description,
-        content: item.content,
-        category: item.category,
-        tags: item.tags || [],
-        author: item.author || 'User',
-        isPublic: item.is_public || false,
-        userEmail: item.user_email,
-        createdAt: new Date(item.created_at),
-        updatedAt: new Date(item.updated_at),
-      }));
-    } catch (error) {
-      console.error('Failed to fetch prompts:', error);
-      return this.getLocalPrompts();
+    if (error) throw error;
+    return data;
+  }
+
+  async likePrompt(promptId: string, userEmail: string): Promise<void> {
+    const { data: existing } = await supabaseClient
+      .from('prompt_likes')
+      .select('*')
+      .eq('prompt_id', promptId)
+      .eq('user_email', userEmail)
+      .single();
+
+    if (existing) {
+      await supabaseClient.from('prompt_likes').delete().eq('prompt_id', promptId).eq('user_email', userEmail);
+      await supabaseClient.rpc('decrement_prompt_likes', { prompt_id: promptId });
+    } else {
+      await supabaseClient.from('prompt_likes').insert({ prompt_id: promptId, user_email: userEmail });
+      await supabaseClient.rpc('increment_prompt_likes', { prompt_id: promptId });
     }
   }
 
-  private getLocalPrompts(): PromptTemplate[] {
-    try {
-      const stored = localStorage.getItem('oneai.prompts');
-      if (!stored) return [];
-      return JSON.parse(stored);
-    } catch {
-      return [];
-    }
-  }
+  async deletePrompt(id: string, userEmail: string): Promise<void> {
+    const { error } = await supabaseClient
+      .from('prompt_templates')
+      .delete()
+      .eq('id', id)
+      .eq('user_email', userEmail);
 
-  async savePrompt(prompt: Omit<PromptTemplate, 'id' | 'createdAt' | 'updatedAt'>): Promise<PromptTemplate> {
-    const newPrompt: PromptTemplate = {
-      ...prompt,
-      id: `prompt-${Date.now()}`,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    try {
-      if (supabaseClient) {
-        await supabaseClient.from('prompt_templates').insert(newPrompt);
-      } else {
-        const prompts = this.getLocalPrompts();
-        prompts.push(newPrompt);
-        localStorage.setItem('oneai.prompts', JSON.stringify(prompts));
-      }
-      return newPrompt;
-    } catch (error) {
-      console.error('Failed to save prompt:', error);
-      throw error;
-    }
-  }
-
-  async deletePrompt(id: string): Promise<void> {
-    try {
-      if (supabaseClient) {
-        await supabaseClient.from('prompt_templates').delete().eq('id', id);
-      } else {
-        const prompts = this.getLocalPrompts().filter(p => p.id !== id);
-        localStorage.setItem('oneai.prompts', JSON.stringify(prompts));
-      }
-    } catch (error) {
-      console.error('Failed to delete prompt:', error);
-      throw error;
-    }
+    if (error) throw error;
   }
 }
 

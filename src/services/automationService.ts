@@ -3,86 +3,90 @@ import supabaseClient from './supabaseClient';
 
 export interface AutomationExecution {
   id: string;
-  automationId: string;
+  automation_id: string;
+  user_email: string;
   status: 'running' | 'completed' | 'failed' | 'cancelled';
-  startedAt: Date;
-  completedAt?: Date;
-  input: any;
-  output?: any;
-  error?: string;
+  started_at: string;
+  completed_at?: string;
+  input_data: any;
+  output_data?: any;
+  error_message?: string;
   metrics: {
-    duration: number;
-    tokensUsed: number;
-    cost: number;
+    duration_ms: number;
+    tokens_used: number;
+    cost_usd: number;
   };
 }
 
 export interface Automation {
   id: string;
+  user_email: string;
   name: string;
   description: string;
-  agentId: string;
+  agent_id: string;
+  trigger_config: {
+    type: 'schedule' | 'webhook' | 'manual' | 'event';
+    config: any;
+  };
   enabled: boolean;
-  lastRun?: Date;
-  totalRuns: number;
-  successRate: number;
-  createdAt: Date;
-  updatedAt: Date;
+  last_run_at?: string;
+  total_runs: number;
+  success_rate: number;
+  created_at: string;
+  updated_at: string;
 }
 
 class AutomationService {
-  async getAutomations(): Promise<Automation[]> {
-    try {
-      const agents = await apiClient.getAgents({ env: 'prod' });
-      return agents.map(agent => ({
-        id: `automation-${agent.id}`,
-        name: `${agent.name} Automation`,
-        description: `Automated workflow using ${agent.name} agent`,
-        agentId: agent.id,
-        enabled: Boolean(agent.published),
-        lastRun: agent.published ? new Date(agent.published.at) : undefined,
-        totalRuns: this.getStoredRuns(agent.id),
-        successRate: this.getStoredSuccessRate(agent.id),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }));
-    } catch (error) {
-      console.error('Failed to fetch automations:', error);
-      return [];
-    }
+  async getAutomations(userEmail: string): Promise<Automation[]> {
+    const { data, error } = await supabaseClient
+      .from('automations')
+      .select('*')
+      .eq('user_email', userEmail)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
   }
 
-  private getStoredRuns(agentId: string): number {
-    try {
-      const stored = localStorage.getItem(`oneai.automation.${agentId}.runs`);
-      return stored ? parseInt(stored, 10) : 0;
-    } catch {
-      return 0;
-    }
+  async createAutomation(automation: Omit<Automation, 'id' | 'created_at' | 'updated_at' | 'total_runs' | 'success_rate'>, userEmail: string): Promise<Automation> {
+    const { data, error } = await supabaseClient
+      .from('automations')
+      .insert({
+        ...automation,
+        user_email: userEmail,
+        total_runs: 0,
+        success_rate: 100
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
   }
 
-  private getStoredSuccessRate(agentId: string): number {
-    try {
-      const stored = localStorage.getItem(`oneai.automation.${agentId}.successRate`);
-      return stored ? parseFloat(stored) : 100;
-    } catch {
-      return 100;
-    }
-  }
-
-  async executeAutomation(automationId: string, input: any = {}): Promise<AutomationExecution> {
-    const execution: AutomationExecution = {
-      id: `exec-${Date.now()}`,
-      automationId,
-      status: 'running',
-      startedAt: new Date(),
-      input,
-      metrics: { duration: 0, tokensUsed: 0, cost: 0 },
+  async executeAutomation(automationId: string, input: any, userEmail: string): Promise<AutomationExecution> {
+    const execution = {
+      automation_id: automationId,
+      user_email: userEmail,
+      status: 'running' as const,
+      started_at: new Date().toISOString(),
+      input_data: input,
+      metrics: { duration_ms: 0, tokens_used: 0, cost_usd: 0 }
     };
 
+    const { data: execData, error: execError } = await supabaseClient
+      .from('automation_executions')
+      .insert(execution)
+      .select()
+      .single();
+
+    if (execError) throw execError;
+
     try {
-      const agentId = automationId.replace('automation-', '');
-      const agent = await apiClient.getAgent(agentId);
+      const automation = await this.getAutomation(automationId, userEmail);
+      if (!automation) throw new Error('Automation not found');
+
+      const agent = await apiClient.getAgent(automation.agent_id);
       if (!agent) throw new Error('Agent not found');
 
       const result = await apiClient.createChatCompletion({
@@ -95,56 +99,60 @@ class AutomationService {
         max_tokens: agent.runtime.maxTokens || 4000,
       });
 
-      execution.status = 'completed';
-      execution.completedAt = new Date();
-      execution.output = result.choices[0]?.message?.content;
-      execution.metrics = {
-        duration: execution.completedAt.getTime() - execution.startedAt.getTime(),
-        tokensUsed: result.usage?.total_tokens || 0,
-        cost: (result.usage?.total_tokens || 0) * 0.0001,
-      };
+      const completedAt = new Date().toISOString();
+      const output = result.choices[0]?.message?.content;
 
-      // Update metrics
-      const currentRuns = this.getStoredRuns(agentId);
-      localStorage.setItem(`oneai.automation.${agentId}.runs`, (currentRuns + 1).toString());
+      const { data, error } = await supabaseClient
+        .from('automation_executions')
+        .update({
+          status: 'completed',
+          completed_at: completedAt,
+          output_data: output,
+          metrics: {
+            duration_ms: Date.now() - new Date(execData.started_at).getTime(),
+            tokens_used: result.usage?.total_tokens || 0,
+            cost_usd: (result.usage?.total_tokens || 0) * 0.0001
+          }
+        })
+        .eq('id', execData.id)
+        .select()
+        .single();
 
+      if (error) throw error;
+      await this.updateAutomationStats(automationId, true);
+      return data;
     } catch (error) {
-      execution.status = 'failed';
-      execution.completedAt = new Date();
-      execution.error = error instanceof Error ? error.message : 'Unknown error';
+      await supabaseClient
+        .from('automation_executions')
+        .update({
+          status: 'failed',
+          completed_at: new Date().toISOString(),
+          error_message: error instanceof Error ? error.message : 'Unknown error'
+        })
+        .eq('id', execData.id);
+
+      await this.updateAutomationStats(automationId, false);
+      throw error;
     }
-
-    return execution;
   }
 
-  async createAutomation(automation: Partial<Automation>): Promise<Automation> {
-    const agent = await apiClient.createAgent({
-      name: automation.name || 'New Automation',
-      owner: 'user',
-      version: '1.0.0',
-      modelRouting: { primary: 'nemotron-9b' },
-      tools: [],
-      datasets: [],
-      runtime: { maxTokens: 4000, maxSeconds: 120, maxCostUSD: 1.0 },
-      labels: ['automation'],
+  async getAutomation(id: string, userEmail: string): Promise<Automation | null> {
+    const { data, error } = await supabaseClient
+      .from('automations')
+      .select('*')
+      .eq('id', id)
+      .eq('user_email', userEmail)
+      .single();
+
+    if (error) return null;
+    return data;
+  }
+
+  private async updateAutomationStats(automationId: string, success: boolean): Promise<void> {
+    await supabaseClient.rpc('update_automation_stats', {
+      automation_id: automationId,
+      success: success
     });
-
-    return {
-      id: `automation-${agent.id}`,
-      name: agent.name,
-      description: automation.description || '',
-      agentId: agent.id,
-      enabled: Boolean(agent.published),
-      totalRuns: 0,
-      successRate: 100,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-  }
-
-  async deleteAutomation(automationId: string): Promise<void> {
-    const agentId = automationId.replace('automation-', '');
-    await apiClient.deleteAgent(agentId);
   }
 }
 
