@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { Search, Filter, Star, Copy, Edit, BookOpen, Bookmark, Hash, Heart, Plus, Trash2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -16,6 +16,17 @@ import { useAgents } from "@/hooks/useAgents";
 import { promptService, PromptTemplate } from "@/services/promptService";
 import { usePrompts } from "@/hooks/usePrompts";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { CreatePromptModal } from "@/components/modals/CreatePromptModal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface PromptTemplate {
   id: string;
@@ -41,6 +52,9 @@ export default function PromptLibrary() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("all");
   const [likedPrompts, setLikedPrompts] = useState<string[]>([]);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [promptToDelete, setPromptToDelete] = useState<string | null>(null);
   const { toast } = useToast();
   
   const { agents, loading: agentsLoading } = useAgents({ env: 'prod' });
@@ -120,39 +134,35 @@ Instructions:
     ));
   };
 
-  const createNewPrompt = async () => {
+  const handleCreatePrompt = async (data: { title: string; description: string; content: string; category: string; difficulty: string }) => {
     try {
-      const title = prompt("Prompt Title:");
-      if (!title?.trim()) return;
-
-      const description = prompt("Description:");
-      if (!description?.trim()) return;
-
-      const content = prompt("Prompt Content (use {variable} for placeholders):");
-      if (!content?.trim()) return;
-
       const newPrompt: PromptTemplate = {
         id: `custom-${Date.now()}`,
-        title: title.trim(),
-        description: description.trim(),
-        content: content.trim(),
-        category: "General",
-        tags: ["custom"],
-        author: "User",
+        title: data.title,
+        description: data.description,
+        content: data.content,
+        category: data.category,
+        tags: [],
+        author: user?.email || "Unknown",
         likes: 0,
         uses: 0,
-        difficulty: "beginner",
+        difficulty: data.difficulty as "beginner" | "intermediate" | "advanced",
         featured: false,
-        createdAt: new Date(),
+        createdAt: new Date()
       };
 
       setPrompts(prev => [newPrompt, ...prev]);
       toast({
-        title: "Prompt created!",
-        description: `"${title}" has been added to your library.`,
+        title: "Prompt created",
+        description: `"${data.title}" has been added to your library.`,
       });
     } catch (error) {
-      console.error('Failed to create prompt:', error);
+      console.error("Failed to create prompt:", error);
+      toast({
+        title: "Failed to create",
+        description: "Could not create the prompt. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -167,14 +177,21 @@ Instructions:
     window.location.href = `/chat?prompt=${encodedPrompt}&title=${encodeURIComponent(prompt.title)}`;
   };
 
-  const deletePrompt = (promptId: string) => {
-    if (confirm('Are you sure you want to delete this prompt?')) {
-      setPrompts(prev => prev.filter(p => p.id !== promptId));
+  const handleDeletePrompt = (promptId: string) => {
+    setPromptToDelete(promptId);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (promptToDelete) {
+      setPrompts(prev => prev.filter(p => p.id !== promptToDelete));
       toast({
         title: "Prompt deleted",
         description: "The prompt has been removed from your library.",
       });
+      setPromptToDelete(null);
     }
+    setDeleteDialogOpen(false);
   };
 
   const getDifficultyColor = (difficulty: string) => {
@@ -198,7 +215,7 @@ Instructions:
             </div>
             <Button 
               className="bg-accent-blue hover:bg-accent-blue/90"
-              onClick={createNewPrompt}
+              onClick={() => setCreateModalOpen(true)}
             >
               <Plus className="h-4 w-4 mr-2" />
               Create Prompt
@@ -339,7 +356,7 @@ Instructions:
               {prompts.length === 0 && (
                 <Button 
                   className="mt-4"
-                  onClick={createNewPrompt}
+                  onClick={() => setCreateModalOpen(true)}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Create First Prompt
@@ -472,3 +489,8 @@ function PromptCard({
     </GlassCard>
   );
 }
+
+
+
+
+
