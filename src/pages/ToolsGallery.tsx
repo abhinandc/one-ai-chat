@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { Search, Filter, Star, Download, ExternalLink, Zap, Code, Database, Image, FileText, Calculator, Globe, Sheet, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -15,6 +15,25 @@ import { useAgents } from "@/hooks/useAgents";
 import { toolService } from "@/services/toolService";
 import { useTools } from "@/hooks/useTools";
 import { useToast } from "@/hooks/use-toast";
+import { CreateToolModal } from "@/components/modals/CreateToolModal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Tool {
   id: string;
@@ -184,7 +203,10 @@ export default function ToolsGallery() {
       if (agentsWithTool.length > 0) {
         // Tool is already installed, show which agents have it
         const agentNames = agentsWithTool.map(a => a.name).join(', ');
-        alert(`${tool.name} is already installed in:\n\n${agentNames}\n\nYou can view these agents in the Agents tab.`);
+        toast({
+          title: `${tool.name} Already Installed`,
+          description: `This tool is already installed in: ${agentNames}. You can view these agents in the Agents tab.`,
+        });
         return;
       }
       
@@ -279,51 +301,51 @@ export default function ToolsGallery() {
     }
   };
 
-  const submitNewTool = async () => {
+  const handleSubmitTool = async (data: { name: string; description: string; category: string }) => {
     try {
-      const toolName = prompt("Tool Name:");
-      if (!toolName?.trim()) return;
-
-      const toolDescription = prompt("Tool Description:");
-      if (!toolDescription?.trim()) return;
-
-      const toolCategory = prompt("Category (Integration, Data, Communication, Analytics, Custom):");
-      if (!toolCategory?.trim()) return;
-
-      const newTool: Tool = {
+      const newTool = {
         id: `custom-${Date.now()}`,
-        name: toolName.trim().toUpperCase(),
-        description: toolDescription.trim(),
-        category: toolCategory.trim(),
-        tags: ["custom", "user-submitted"],
-        rating: 4.0,
-        downloads: "0",
-        icon: <Zap className="h-6 w-6" />,
-        pricing: "free",
-        featured: false,
-        author: "User Submitted",
+        name: data.name,
+        description: data.description,
+        category: data.category,
         version: "1.0.0",
-        lastUpdated: new Date(),
+        author: user?.email || "Unknown",
+        tags: [data.category.toLowerCase()],
+        downloads: 0,
+        rating: 0,
+        featured: false
       };
 
       setTools(prev => [newTool, ...prev]);
       toast({
-        title: "Tool Submitted!",
-        description: `"${toolName}" has been added to the gallery.`,
+        title: "Tool submitted",
+        description: `"${data.name}" has been added to your tools.`,
       });
     } catch (error) {
-      console.error('Failed to submit tool:', error);
+      console.error("Failed to submit tool:", error);
+      toast({
+        title: "Failed to submit",
+        description: "Could not submit the tool. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
-  const deleteTool = (toolId: string) => {
-    if (confirm('Are you sure you want to remove this tool?')) {
-      setTools(prev => prev.filter(t => t.id !== toolId));
+  const handleDeleteTool = (toolId: string) => {
+    setToolToDelete(toolId);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (toolToDelete) {
+      setTools(prev => prev.filter(t => t.id !== toolToDelete));
       toast({
-        title: "Tool Removed",
+        title: "Tool removed",
         description: "The tool has been removed from your gallery.",
       });
+      setToolToDelete(null);
     }
+    setDeleteDialogOpen(false);
   };
 
   return (
@@ -338,7 +360,7 @@ export default function ToolsGallery() {
             </div>
             <Button 
               className="bg-accent-blue hover:bg-accent-blue/90"
-              onClick={submitNewTool}
+              onClick={() => setSubmitModalOpen(true)}
             >
               <Plus className="h-4 w-4 mr-2" />
               Submit Tool
@@ -498,7 +520,7 @@ export default function ToolsGallery() {
               {tools.length === 0 && (
                 <Button 
                   className="mt-4"
-                  onClick={submitNewTool}
+                  onClick={() => setSubmitModalOpen(true)}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Submit First Tool
@@ -630,3 +652,9 @@ function ToolCard({
     </GlassCard>
   );
 }
+
+
+
+
+
+
