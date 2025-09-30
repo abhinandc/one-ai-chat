@@ -1,212 +1,282 @@
-import { Link } from "react-router-dom";
-import { MessageSquare, Bot, Workflow, Play, BarChart, Zap } from "lucide-react";
-import { GlassCard, GlassCardHeader, GlassCardTitle, GlassCardDescription, GlassCardContent } from "@/components/ui/GlassCard";
+﻿import { useState, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { Search, Sparkles, TrendingUp, Clock, MessageSquare, Bot, Zap, Command, ArrowRight } from "lucide-react";
+import { GlassCard } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { useModels } from "@/hooks/useModels";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useVirtualKeys, useActivityFeed, useUsageSummary } from "@/hooks/useSupabaseData";
 
 const Index = () => {
-  const quickActions = [
+  const user = useCurrentUser();
+  const navigate = useNavigate();
+  const { models, loading: modelsLoading } = useModels();
+  const { data: virtualKeys } = useVirtualKeys(user?.email);
+  const { data: activity } = useActivityFeed(user?.email, 5);
+  const { data: usage } = useUsageSummary(user?.email);
+  
+  const [spotlightQuery, setSpotlightQuery] = useState("");
+  const [spotlightFocused, setSpotlightFocused] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState<any>(null);
+
+  // AI-powered model recommendation
+  const recommendModel = useCallback((query: string) => {
+    if (!query.trim() || models.length === 0) {
+      setAiSuggestion(null);
+      return;
+    }
+
+    const lowerQuery = query.toLowerCase();
+    let recommended = null;
+
+    // Intelligent model selection based on task
+    if (lowerQuery.includes("code") || lowerQuery.includes("program") || lowerQuery.includes("debug")) {
+      recommended = models.find(m => m.id.includes("code") || m.id.includes("deepseek")) || models[0];
+    } else if (lowerQuery.includes("chat") || lowerQuery.includes("talk") || lowerQuery.includes("conversation")) {
+      recommended = models.find(m => m.id.includes("gpt") || m.id.includes("chat")) || models[0];
+    } else if (lowerQuery.includes("analyze") || lowerQuery.includes("data") || lowerQuery.includes("report")) {
+      recommended = models.find(m => m.id.includes("analyst") || m.id.includes("qwen")) || models[0];
+    } else if (lowerQuery.includes("write") || lowerQuery.includes("content") || lowerQuery.includes("article")) {
+      recommended = models.find(m => m.id.includes("writer") || m.id.includes("llama")) || models[0];
+    } else {
+      recommended = models[0];
+    }
+
+    setAiSuggestion({
+      model: recommended,
+      reason: getRecommendationReason(lowerQuery, recommended),
+      action: "/chat?model=" + recommended.id + "&prompt=" + encodeURIComponent(query)
+    });
+  }, [models]);
+
+  const getRecommendationReason = (query: string, model: any) => {
+    if (query.includes("code")) return "Best for coding tasks";
+    if (query.includes("chat")) return "Optimized for conversations";
+    if (query.includes("analyze")) return "Great for data analysis";
+    if (query.includes("write")) return "Perfect for content creation";
+    return "General purpose model";
+  };
+
+  const handleSpotlightSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (aiSuggestion?.action) {
+      navigate(aiSuggestion.action);
+    }
+  };
+
+  const stats = useMemo(() => [
     {
-      icon: MessageSquare,
-      title: "Start New Chat",
-      description: "Begin a conversation with AI models",
-      href: "/chat",
+      label: "API Requests",
+      value: usage.totalRequests || 0,
+      change: "All time",
+      icon: TrendingUp,
       color: "text-accent-blue"
     },
     {
+      label: "Models Available",
+      value: models.length,
+      change: "Ready to use",
       icon: Bot,
-      title: "Create Agent",
-      description: "Build custom AI agents for your workflows",
-      href: "/agents",
       color: "text-accent-green"
     },
     {
-      icon: Workflow,
-      title: "Setup Automation",
-      description: "Configure triggers and automated workflows",
-      href: "/automations",
+      label: "Virtual Keys",
+      value: virtualKeys.filter(k => !k.disabled).length,
+      change: "Active",
+      icon: Sparkles,
       color: "text-accent-orange"
     },
     {
-      icon: Play,
-      title: "Open Playground",
-      description: "Test and experiment with AI models",
-      href: "/playground",
-      color: "text-accent-blue"
+      label: "Recent Activity",
+      value: activity.length,
+      change: "Last 24h",
+      icon: Clock,
+      color: "text-accent-purple"
     }
-  ];
-
-  const stats = [
-    { label: "Conversations", value: "24", change: "+12%" },
-    { label: "Agents Created", value: "8", change: "+3%" },
-    { label: "Automations", value: "15", change: "+25%" },
-    { label: "API Calls", value: "1.2k", change: "+8%" }
-  ];
+  ], [usage, models, virtualKeys, activity]);
 
   return (
-    <div className="min-h-full bg-background">
+    <div className="min-h-full bg-background overflow-y-auto">
       <div className="max-w-6xl mx-auto px-8 py-16 space-y-12">
         
-        {/* Hero Section */}
-        <div className="text-center space-y-8">
-          <div className="space-y-4">
-            <h1 className="text-5xl font-bold text-text-primary tracking-tight">
-              Welcome back
-            </h1>
-            <p className="text-xl text-text-secondary max-w-2xl mx-auto leading-relaxed">
-              Your AI workspace is ready. Start building intelligent workflows.
-            </p>
-          </div>
-          
-          {/* Key Metrics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 pt-8">
-            {stats.map((stat, index) => (
-              <div key={stat.label} className="text-center space-y-2">
-                <div className="text-3xl font-bold text-text-primary tabular-nums">
-                  {stat.value}
-                </div>
-                <div className="text-sm text-text-secondary">
-                  {stat.label}
-                </div>
-                <div className="text-xs text-accent-green font-semibold">
-                  {stat.change}
-                </div>
-              </div>
-            ))}
-          </div>
+        {/* Welcome Header */}
+        <div className="text-center space-y-2">
+          <h1 className="text-5xl font-bold text-text-primary tracking-tight">
+            Welcome back, {user?.name || user?.email?.split("@")[0] || "User"}
+          </h1>
+          <p className="text-xl text-text-secondary max-w-2xl mx-auto">
+            What would you like to accomplish today?
+          </p>
         </div>
 
-        {/* Quick Actions */}
-        <div className="space-y-8">
-          <div className="text-center space-y-2">
-            <h2 className="text-2xl font-semibold text-text-primary">
-              Quick Actions
-            </h2>
-            <p className="text-text-secondary">
-              Jump into your most-used tools
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {quickActions.map((action, index) => {
-              const Icon = action.icon;
-              return (
-                <Link key={action.href} to={action.href} className="group">
-                  <GlassCard className="p-8 hover-lift transition-all duration-300 hover:border-accent-blue/30">
-                    <div className="flex items-center gap-6">
-                      <div className={`p-4 bg-surface-graphite rounded-2xl ${action.color} group-hover:scale-110 transition-transform duration-300`}>
-                        <Icon className="h-8 w-8" />
+        {/* Spotlight Search - Mac Style */}
+        <div className="max-w-3xl mx-auto">
+          <form onSubmit={handleSpotlightSearch} className="relative">
+            <div
+              className={cn(
+                "relative group transition-all duration-300",
+                spotlightFocused && "scale-105"
+              )}
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-accent-blue/20 to-accent-purple/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              
+              <div className="relative bg-surface-graphite/80 backdrop-blur-xl border border-border-primary/50 rounded-2xl shadow-2xl overflow-hidden">
+                <div className="flex items-center gap-4 p-6">
+                  <div className="flex items-center gap-3 flex-1">
+                    <Search className="h-6 w-6 text-text-secondary" />
+                    <input
+                      type="text"
+                      value={spotlightQuery}
+                      onChange={(e) => {
+                        setSpotlightQuery(e.target.value);
+                        recommendModel(e.target.value);
+                      }}
+                      onFocus={() => setSpotlightFocused(true)}
+                      onBlur={() => setTimeout(() => setSpotlightFocused(false), 200)}
+                      placeholder="Describe your task... (e.g., &apos;Write a blog post about AI&apos;)"
+                      className="flex-1 bg-transparent border-none outline-none text-lg text-text-primary placeholder:text-text-tertiary"
+                    />
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <kbd className="px-2 py-1 text-xs font-semibold text-text-tertiary bg-surface-graphite border border-border-secondary rounded">
+                      <Command className="h-3 w-3 inline" /> K
+                    </kbd>
+                  </div>
+                </div>
+
+                {/* AI Suggestion */}
+                {aiSuggestion && spotlightQuery && (
+                  <div className="border-t border-border-primary/30 p-4 bg-gradient-to-r from-accent-blue/5 to-accent-purple/5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-accent-blue/10 rounded-lg">
+                          <Sparkles className="h-4 w-4 text-accent-blue" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-text-primary">
+                            Recommended: {aiSuggestion.model.id}
+                          </p>
+                          <p className="text-xs text-text-secondary">{aiSuggestion.reason}</p>
+                        </div>
                       </div>
-                      <div className="space-y-1 flex-1">
-                        <h3 className="text-lg font-semibold text-text-primary group-hover:text-accent-blue transition-colors duration-300">
-                          {action.title}
-                        </h3>
-                        <p className="text-text-secondary leading-relaxed">
-                          {action.description}
-                        </p>
-                      </div>
+                      <Button
+                        type="submit"
+                        size="sm"
+                        className="bg-accent-blue hover:bg-accent-blue/90"
+                      >
+                        Start <ArrowRight className="h-4 w-4 ml-1" />
+                      </Button>
                     </div>
-                  </GlassCard>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="space-y-6">
-          <div className="text-center space-y-2">
-            <h2 className="text-2xl font-semibold text-text-primary">
-              Recent Activity
-            </h2>
-            <p className="text-text-secondary">
-              Latest updates from your workspace
-            </p>
-          </div>
-          
-          <GlassCard className="p-6">
-            <div className="space-y-4">
-              <div className="flex items-center gap-4 p-4 rounded-xl hover:bg-surface-graphite/50 transition-colors duration-200">
-                <div className="p-3 bg-accent-blue/10 rounded-xl">
-                  <MessageSquare className="h-5 w-5 text-accent-blue" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-text-primary">
-                    New chat session started
-                  </p>
-                  <p className="text-sm text-text-tertiary">
-                    2 minutes ago
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-4 p-4 rounded-xl hover:bg-surface-graphite/50 transition-colors duration-200">
-                <div className="p-3 bg-accent-green/10 rounded-xl">
-                  <Bot className="h-5 w-5 text-accent-green" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-text-primary">
-                    Agent "Content Creator" deployed
-                  </p>
-                  <p className="text-sm text-text-tertiary">
-                    1 hour ago
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-4 p-4 rounded-xl hover:bg-surface-graphite/50 transition-colors duration-200">
-                <div className="p-3 bg-accent-orange/10 rounded-xl">
-                  <Zap className="h-5 w-5 text-accent-orange" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-text-primary">
-                    Automation workflow completed
-                  </p>
-                  <p className="text-sm text-text-tertiary">
-                    3 hours ago
-                  </p>
-                </div>
+                  </div>
+                )}
               </div>
             </div>
-          </GlassCard>
+          </form>
         </div>
 
-        {/* Getting Started */}
-        <div className="text-center space-y-8">
-          <div className="space-y-4">
-            <BarChart className="h-12 w-12 text-accent-blue mx-auto" />
-            <h2 className="text-2xl font-semibold text-text-primary">
-              Getting Started
-            </h2>
-            <p className="text-text-secondary max-w-2xl mx-auto">
-              Complete these essential steps to unlock the full potential of OneAI
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              { title: "Connect Data Sources", desc: "Link your tools and databases" },
-              { title: "Train Custom Agent", desc: "Create your first specialized AI agent" },
-              { title: "Setup Notifications", desc: "Configure alerts and webhooks" }
-            ].map((step, index) => (
-              <GlassCard key={step.title} className="p-6 hover-lift transition-all duration-300 hover:border-accent-blue/30">
-                <div className="text-center space-y-3">
-                  <div className="w-12 h-12 bg-accent-blue/10 rounded-2xl flex items-center justify-center mx-auto">
-                    <div className="w-6 h-6 bg-accent-blue rounded-full"></div>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          {stats.map((stat, index) => {
+            const Icon = stat.icon;
+            return (
+              <GlassCard key={stat.label} className="p-6 hover-lift">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Icon className={cn("h-5 w-5", stat.color)} />
+                    <Badge variant="secondary" className="text-xs">
+                      {stat.change}
+                    </Badge>
                   </div>
-                  <div className="space-y-2">
-                    <h3 className="font-semibold text-text-primary">
-                      {step.title}
-                    </h3>
-                    <p className="text-sm text-text-secondary">
-                      {step.desc}
-                    </p>
+                  <div>
+                    <div className="text-3xl font-bold text-text-primary tabular-nums">
+                      {modelsLoading && index === 1 ? "..." : stat.value}
+                    </div>
+                    <div className="text-sm text-text-secondary mt-1">
+                      {stat.label}
+                    </div>
                   </div>
                 </div>
               </GlassCard>
-            ))}
-          </div>
+            );
+          })}
         </div>
-        
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            { icon: MessageSquare, title: "Start Chat", desc: "Begin AI conversation", href: "/chat", color: "accent-blue" },
+            { icon: Bot, title: "Build Agent", desc: "Create custom workflow", href: "/agents", color: "accent-green" },
+            { icon: Zap, title: "Playground", desc: "Experiment with models", href: "/playground", color: "accent-orange" }
+          ].map((action) => {
+            const Icon = action.icon;
+            return (
+              <GlassCard
+                key={action.href}
+                className="p-6 hover-lift cursor-pointer group"
+                onClick={() => navigate(action.href)}
+              >
+                <div className="flex items-center gap-4">
+                  <div className={cn("p-3 rounded-xl", `bg-${action.color}/10`)}>
+                    <Icon className={cn("h-6 w-6", `text-${action.color}`)} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-text-primary group-hover:text-accent-blue transition-colors">
+                      {action.title}
+                    </h3>
+                    <p className="text-sm text-text-secondary">{action.desc}</p>
+                  </div>
+                  <ArrowRight className="h-5 w-5 text-text-tertiary opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </GlassCard>
+            );
+          })}
+        </div>
+
+        {/* Recent Activity */}
+        <div>
+          <h2 className="text-2xl font-semibold text-text-primary mb-6">Recent Activity</h2>
+          <GlassCard className="overflow-hidden">
+            {activity.length === 0 ? (
+              <div className="p-8 text-center text-text-secondary">
+                <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No recent activity for {user?.email}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => navigate("/chat")}
+                >
+                  Start Your First Chat
+                </Button>
+              </div>
+            ) : (
+              <div className="divide-y divide-border-primary/10">
+                {activity.map((event) => (
+                  <div
+                    key={event.id}
+                    className="flex items-center gap-4 p-4 hover:bg-surface-graphite/20 transition-colors"
+                  >
+                    <div className="p-2 bg-accent-blue/10 rounded-lg">
+                      <Zap className="h-4 w-4 text-accent-blue" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-text-primary">
+                        {event.action.replace(/_/g, " ")}
+                      </p>
+                      <p className="text-xs text-text-tertiary">
+                        {new Date(event.timestamp).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </GlassCard>
+        </div>
+
       </div>
     </div>
   );
