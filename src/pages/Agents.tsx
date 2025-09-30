@@ -255,7 +255,7 @@ const Agents = () => {
   const deleteSelectedAgent = async () => {
     if (!selectedAgent) return;
     
-    if (!confirm(`Are you sure you want to delete "${selectedAgent.name}"?`)) return;
+    if (!window.confirm(`Are you sure you want to delete "${selectedAgent.name}"? This action cannot be undone.`)) return;
 
     try {
       await deleteAgent(selectedAgent.id);
