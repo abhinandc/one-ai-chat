@@ -363,7 +363,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     try {
       console.log("Email sign-in:", { email });
       const mockToken = `email-login-${Date.now()}`;
-      localStorage.setItem("oneedge_auth_token", mockToken);
       
       // Store user profile data so useCurrentUser returns the user
       storeUserLocally({
@@ -371,11 +370,13 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         name: email.split("@")[0], // Use email prefix as name
       });
       
-      // Also persist to Supabase if available
-      await persistProfileToSupabase({
+      localStorage.setItem("oneedge_auth_token", mockToken);
+      
+      // Persist to Supabase in background (don't block login)
+      upsertProfile({
         email,
         name: email.split("@")[0],
-      });
+      }).catch((err) => console.warn("Failed to persist to Supabase:", err));
       
       onLogin?.(mockToken);
     } catch (error) {
