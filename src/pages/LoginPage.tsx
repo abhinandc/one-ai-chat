@@ -130,8 +130,8 @@ const storeUserLocally = (profile: {
     picture: profile.picture,
   };
 
-  localStorage.setItem("oneai_user", JSON.stringify(stored));
-  window.dispatchEvent(new StorageEvent("storage", { key: "oneai_user" }));
+  localStorage.setItem("oneedge_user", JSON.stringify(stored));
+  window.dispatchEvent(new StorageEvent("storage", { key: "oneedge_user" }));
 };
 
 const clearOauthArtifacts = () => {

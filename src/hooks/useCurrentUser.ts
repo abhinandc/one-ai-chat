@@ -9,7 +9,7 @@ export interface CurrentUser {
   picture?: string;
 }
 
-const STORAGE_KEY = 'oneai_user';
+const STORAGE_KEY = 'oneedge_user';
 
 const normalizeValue = (value?: string | null) => {
   if (!value) {

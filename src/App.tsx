@@ -63,7 +63,7 @@ const App = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("oneedge_auth_token");
-    localStorage.removeItem("oneai_user");
+    localStorage.removeItem("oneedge_user");
     realtimeService.unsubscribeAll();
     setIsAuthenticated(false);
   };

@@ -260,8 +260,8 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
         picture: currentUser?.picture,
       };
 
-      window.localStorage.setItem("oneai_user", JSON.stringify(updatedUser));
-      window.dispatchEvent(new StorageEvent("storage", { key: "oneai_user" }));
+      window.localStorage.setItem("oneedge_user", JSON.stringify(updatedUser));
+      window.dispatchEvent(new StorageEvent("storage", { key: "oneedge_user" }));
     } catch (saveError) {
       console.error("Failed to save profile", saveError);
       setError("Unable to save profile changes. Please try again.");
