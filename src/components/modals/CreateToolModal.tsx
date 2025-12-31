@@ -38,7 +38,7 @@ export function CreateToolModal({ open, onOpenChange, onSubmit }: CreateToolModa
         <DialogHeader>
           <DialogTitle className="text-text-primary">Submit New Tool</DialogTitle>
           <DialogDescription className="text-text-secondary">
-            Add a new tool to your OneAI toolkit
+            Add a new tool to your OneEdge toolkit
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>

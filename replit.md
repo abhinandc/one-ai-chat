@@ -1,7 +1,7 @@
-# OneAI - Unified AI Platform
+# OneEdge - Unified AI Platform
 
 ## Overview
-OneAI is a unified AI platform by OneOrigin that provides features for:
+OneEdge is a unified AI platform by OneOrigin that provides features for:
 - Chat interface with AI models
 - Agent workflows and automation
 - Prompt library management
@@ -38,6 +38,8 @@ src/
 - The app requires Supabase environment variables for authentication
 
 ## Recent Changes
+- December 31, 2025: Renamed from OneAI to OneEdge
+  - Updated all references across the codebase
 - December 31, 2025: Migrated from Lovable to Replit environment
   - Updated vite.config.ts to run on port 5000 with allowedHosts: true
   - Installed dependencies with npm

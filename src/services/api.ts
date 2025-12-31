@@ -3,7 +3,7 @@ import supabaseClient from '@/services/supabaseClient';
 
 import apiClientInstance, {
   type Model as ApiModel,
-  OneAIClient,
+  OneEdgeClient,
   parseSSEStream,
   type Agent,
   type ChatCompletionChunk,
@@ -19,7 +19,7 @@ import apiClientInstance, {
 
 // Re-export the low-level client primitives so UI code can import from a single module.
 export {
-  OneAIClient,
+  OneEdgeClient,
   parseSSEStream,
   type Agent,
   type ChatCompletionChunk,

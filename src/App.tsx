@@ -35,7 +35,7 @@ const App = () => {
 
   // Check for existing auth token on app load
   useEffect(() => {
-    const authToken = localStorage.getItem("oneai_auth_token");
+    const authToken = localStorage.getItem("oneedge_auth_token");
     if (authToken) {
       setIsAuthenticated(true);
     }
@@ -56,12 +56,12 @@ const App = () => {
   }, [user?.email, isAuthenticated]);
 
   const handleLogin = (token: string) => {
-    localStorage.setItem("oneai_auth_token", token);
+    localStorage.setItem("oneedge_auth_token", token);
     setIsAuthenticated(true);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("oneai_auth_token");
+    localStorage.removeItem("oneedge_auth_token");
     localStorage.removeItem("oneai_user");
     realtimeService.unsubscribeAll();
     setIsAuthenticated(false);

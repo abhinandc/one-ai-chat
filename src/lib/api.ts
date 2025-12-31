@@ -171,7 +171,7 @@ const ensureBase = (candidate: string, fallback: string) => {
   return candidate && candidate.trim().length > 0 ? candidate : fallback;
 };
 
-export class OneAIClient {
+export class OneEdgeClient {
   private readonly baseURL: string;
   private readonly mcpURL: string;
 
@@ -213,7 +213,7 @@ export class OneAIClient {
     const key = this.getVirtualKey();
 
     if (!key) {
-      throw new Error('No virtual key configured. Open the API Keys modal and paste a Virtual Key from OneAI Admin.');
+      throw new Error('No virtual key configured. Open the API Keys modal and paste a Virtual Key from OneEdge Admin.');
     }
 
     if (!headers.has('Authorization')) {
@@ -536,7 +536,7 @@ export async function* parseSSEStream(stream: ReadableStream<Uint8Array>): Async
   }
 }
 
-const oneAIClient = new OneAIClient();
+const oneAIClient = new OneEdgeClient();
 
 export { oneAIClient };
 

@@ -9,7 +9,7 @@ export const Footer: React.FC = () => {
           <div className="flex items-center gap-2 text-sm text-text-secondary">
             <span>Made with</span>
             <Heart className="h-4 w-4 text-accent-red animate-gentle-bounce" />
-            <span>by OneAI</span>
+            <span>by OneEdge</span>
           </div>
           
           <div className="flex items-center gap-4">

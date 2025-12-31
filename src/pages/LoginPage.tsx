@@ -226,7 +226,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       });
 
       const authToken = `google_oauth_${Date.now()}`;
-      localStorage.setItem("oneai_auth_token", authToken);
+      localStorage.setItem("oneedge_auth_token", authToken);
       onLogin?.(authToken);
     },
     [onLogin],
@@ -370,7 +370,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     try {
       console.log("Email sign-in:", { email, password });
       const mockToken = `email-login-${Date.now()}`;
-      localStorage.setItem("oneai_auth_token", mockToken);
+      localStorage.setItem("oneedge_auth_token", mockToken);
       onLogin?.(mockToken);
     } catch (error) {
       console.error("Email sign-in failed:", error);
@@ -393,7 +393,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
       <div className="w-full max-w-md space-y-xl">
         <div className="text-center space-y-md">
-          <h1 className="text-4xl font-semibold text-text-primary font-display">OneAI</h1>
+          <h1 className="text-4xl font-semibold text-text-primary font-display">OneEdge</h1>
           <p className="text-lg text-text-secondary">OneOrigin's Unified AI Platform</p>
         </div>
 

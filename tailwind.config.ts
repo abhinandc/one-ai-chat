@@ -59,7 +59,7 @@ export default {
 					foreground: 'hsl(var(--card-foreground))'
 				},
 				
-				// OneAI Design System Colors
+				// OneEdge Design System Colors
 				'surface-graphite': {
 					DEFAULT: 'hsl(var(--surface-graphite))',
 					hover: 'hsl(var(--surface-graphite-hover))',

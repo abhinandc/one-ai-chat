@@ -30,7 +30,7 @@ const ModelsHub = () => {
           <div className="space-y-xs">
             <h1 className="text-3xl font-semibold text-text-primary font-display">Models & Access</h1>
             <p className="text-text-secondary">
-              The catalog below reflects the models exposed by the OneAI Admin proxy. Paste the virtual key that was
+              The catalog below reflects the models exposed by the OneEdge Admin proxy. Paste the virtual key that was
               issued to you to run completions.
             </p>
           </div>
@@ -50,7 +50,7 @@ const ModelsHub = () => {
             <GlassCard className="p-lg text-sm text-text-secondary">Loading key assignments?</GlassCard>
           ) : virtualKeys.length === 0 ? (
             <GlassCard id="api-keys" className="p-lg text-sm text-text-secondary">
-              No virtual keys were found for {user?.email ?? 'your account'}. Use the OneAI Admin portal to issue a key
+              No virtual keys were found for {user?.email ?? 'your account'}. Use the OneEdge Admin portal to issue a key
               and paste it here.
             </GlassCard>
           ) : (

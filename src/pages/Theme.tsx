@@ -31,7 +31,7 @@ export default function Theme() {
       <div className="max-w-6xl mx-auto space-y-xl">
         {/* Header */}
         <div className="text-center space-y-md">
-          <h1 className="text-3xl font-bold text-text-primary">OneAI Design System</h1>
+          <h1 className="text-3xl font-bold text-text-primary">OneEdge Design System</h1>
           <p className="text-lg text-text-secondary">
             Apple-minimal surfaces with glass-ios26 effects, large spacing, and low-ink UI
           </p>
