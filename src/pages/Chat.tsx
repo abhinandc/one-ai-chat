@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConversationList } from "@/components/chat/ConversationList";
 import { Thread } from "@/components/chat/Thread";
 import { Composer } from "@/components/chat/Composer";
 import { InspectorPanel } from "@/components/chat/InspectorPanel";
 import { useChat } from "@/hooks/useChat";
-import { useModels } from "@/hooks/useModels";
+import { useModels } from "@/services/api";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useConversations } from "@/hooks/useConversations";
 import { conversationService } from "@/services/conversationService";
 import { analyticsService } from "@/services/analyticsService";
 import { useToast } from "@/hooks/use-toast";
+import { PanelLeftClose, PanelLeft, Settings2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { Conversation, ConversationFolder, Message, Citation } from "@/types";
 
 const Chat = () => {
@@ -297,12 +300,17 @@ const Chat = () => {
 
   return (
     <div className="h-full flex bg-background">
-      {/* Conversation Sidebar */}
-      {showConversations && (
-        <div className="w-80 border-r border-border-primary bg-surface-secondary">
+      {/* Conversation Sidebar - Collapsible */}
+      <div 
+        className={cn(
+          "border-r border-border-primary bg-surface-secondary transition-all duration-300 ease-in-out overflow-hidden",
+          showConversations ? "w-80" : "w-0"
+        )}
+      >
+        <div className="w-80 h-full">
           <ConversationList
             conversations={uiConversations}
-            folders={[]} // TODO: Implement folders
+            folders={[]}
             currentConversationId={currentConversation?.id}
             onSelectConversation={loadConversation}
             onDeleteConversation={handleDeleteConversation}
@@ -310,7 +318,7 @@ const Chat = () => {
             loading={conversationsLoading}
           />
         </div>
-      )}
+      </div>
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -320,10 +328,15 @@ const Chat = () => {
             <Button
               onClick={() => setShowConversations(!showConversations)}
               variant="ghost"
-              size="sm"
-              className="text-text-secondary hover:text-text-primary"
+              size="icon"
+              className="text-text-secondary"
+              data-testid="button-toggle-conversations"
             >
-              ?
+              {showConversations ? (
+                <PanelLeftClose className="h-5 w-5" />
+              ) : (
+                <PanelLeft className="h-5 w-5" />
+              )}
             </Button>
             <h1 className="text-lg font-semibold text-text-primary">
               {currentConversation?.title || "New Conversation"}
@@ -331,27 +344,45 @@ const Chat = () => {
           </div>
 
           <div className="flex items-center gap-sm">
-            <select
+            {/* Modern Apple-style Model Selector */}
+            <Select
               value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              className="px-md py-sm bg-surface-graphite border border-border-primary rounded-lg text-text-primary text-sm"
+              onValueChange={setSelectedModel}
               disabled={modelsLoading}
             >
-              <option value="">Select Model...</option>
-              {models.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.name} ({model.provider})
-                </option>
-              ))}
-            </select>
+              <SelectTrigger 
+                className="w-[200px] bg-surface-graphite/50 backdrop-blur-sm border-border-primary/50 rounded-xl text-text-primary text-sm font-medium shadow-sm"
+                data-testid="select-model"
+              >
+                <SelectValue placeholder="Select Model..." />
+              </SelectTrigger>
+              <SelectContent className="bg-surface-primary/95 backdrop-blur-xl border-border-primary/30 rounded-xl shadow-lg">
+                {models.map((model) => (
+                  <SelectItem 
+                    key={model.id} 
+                    value={model.id}
+                    className="text-text-primary rounded-lg cursor-pointer"
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-medium">{model.id}</span>
+                      <span className="text-xs text-text-tertiary">{model.owned_by}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             <Button
               onClick={() => setInspectorOpen(!inspectorOpen)}
               variant="ghost"
-              size="sm"
-              className="text-text-secondary hover:text-text-primary"
+              size="icon"
+              className={cn(
+                "text-text-secondary",
+                inspectorOpen && "bg-accent-blue/10 text-accent-blue"
+              )}
+              data-testid="button-toggle-inspector"
             >
-              Inspector
+              <Settings2 className="h-5 w-5" />
             </Button>
           </div>
         </div>
