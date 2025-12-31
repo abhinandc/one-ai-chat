@@ -41,26 +41,14 @@ export function SideNav({ collapsed = false, onToggleCollapsed }: SideNavProps) 
   const isActive = (href: string) => location.pathname === href;
 
   return (
-    <div className={cn(
-      "sidebar-full-height flex flex-col",
+    <aside className={cn(
+      "fixed top-14 left-0 bottom-12 z-40 flex flex-col",
+      "bg-surface-graphite/50 backdrop-blur-sm border-r border-border-primary/50",
       "transition-all duration-normal ease-out",
-      collapsed ? "w-16" : "w-64"
+      collapsed ? "w-14" : "w-52"
     )}>
-      {/* Toggle Button */}
-      <div className="p-4 border-b border-border-secondary/50 flex-shrink-0">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onToggleCollapsed}
-          className="w-full justify-start text-text-secondary hover:text-text-primary"
-        >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          {!collapsed && <span className="ml-2">Collapse</span>}
-        </Button>
-      </div>
-
       {/* Navigation Items */}
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {navigationItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href);
@@ -72,34 +60,32 @@ export function SideNav({ collapsed = false, onToggleCollapsed }: SideNavProps) 
               size="sm"
               onClick={() => navigate(item.href)}
               className={cn(
-                "w-full justify-start gap-3 h-10",
+                "w-full justify-start gap-3 h-9",
                 "text-text-secondary hover:text-text-primary",
                 active && "bg-interactive-selected text-accent-blue font-medium",
-                collapsed && "px-3 justify-center"
+                collapsed && "px-2 justify-center"
               )}
             >
               <Icon className="h-4 w-4 flex-shrink-0" />
               {!collapsed && (
-                <>
-                  <span className="flex-1 text-left">{item.label}</span>
-                  <kbd className="hidden lg:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
-                    {item.shortcut}
-                  </kbd>
-                </>
+                <span className="flex-1 text-left text-sm">{item.label}</span>
               )}
             </Button>
           );
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="flex-shrink-0 p-6 border-t border-border-secondary/50">
-        {!collapsed && (
-          <div className="text-xs text-text-quaternary text-center font-medium">
-            Powered by OneOrigin
-          </div>
-        )}
+      {/* Collapse Toggle at Bottom */}
+      <div className="flex-shrink-0 p-3 border-t border-border-secondary/50">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onToggleCollapsed}
+          className="w-full h-9 text-text-secondary hover:text-text-primary"
+        >
+          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        </Button>
       </div>
-    </div>
+    </aside>
   );
 }

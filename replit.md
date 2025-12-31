@@ -38,6 +38,13 @@ src/
 - The app requires Supabase environment variables for authentication
 
 ## Recent Changes
+- December 31, 2025: Fixed dashboard layout
+  - Made header (TopBar) fixed at top with h-14 height
+  - Made footer fixed at bottom with h-12 height
+  - Narrowed sidebar from w-64 to w-52 (collapsed: w-14)
+  - Sidebar now starts below header and ends above footer
+  - Moved collapse button to bottom of sidebar as icon-only
+  - Main content area adjusts padding based on sidebar state
 - December 31, 2025: Renamed from OneAI to OneEdge
   - Updated all references across the codebase
 - December 31, 2025: Migrated from Lovable to Replit environment

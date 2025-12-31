@@ -11,7 +11,7 @@ const GlassToolbar = forwardRef<HTMLDivElement, GlassToolbarProps>(
       <div
         ref={ref}
         className={cn(
-          "glass-toolbar px-lg py-md",
+          "glass-toolbar px-lg py-md fixed top-0 left-0 right-0 z-50 h-14",
           {
             "border-b": position === "top",
             "border-t": position === "bottom"
