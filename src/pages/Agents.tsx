@@ -103,7 +103,7 @@ const Agents = () => {
 
   const addNode = useCallback((type: string) => {
     const newNode: Node = {
-      id: \`\${type}-\${Date.now()}\`,
+      id: `${type}-${Date.now()}`,
       type,
       position: { x: Math.random() * 500, y: Math.random() * 500 },
       data: {
@@ -177,7 +177,7 @@ const Agents = () => {
       await toggleActive(workflowId, !currentActive);
       toast({
         title: currentActive ? "Workflow deactivated" : "Workflow activated",
-        description: \`The workflow has been \${currentActive ? 'deactivated' : 'activated'}\`,
+        description: `The workflow has been ${currentActive ? 'deactivated' : 'activated'}`,
       });
     } catch (error) {
       toast({
@@ -318,7 +318,7 @@ const Agents = () => {
                   <GlassCard 
                     key={workflow.id} 
                     className="overflow-visible"
-                    data-testid={\`card-workflow-\${workflow.id}\`}
+                    data-testid={`card-workflow-${workflow.id}`}
                   >
                     <GlassCardContent className="p-4">
                       <div className="flex items-start justify-between gap-2 mb-3">
@@ -360,7 +360,7 @@ const Agents = () => {
                           size="sm"
                           className="flex-1"
                           onClick={() => handleOpenN8NEditor(workflow.id)}
-                          data-testid={\`button-edit-workflow-\${workflow.id}\`}
+                          data-testid={`button-edit-workflow-${workflow.id}`}
                         >
                           <Edit className="h-3 w-3 mr-1" />
                           Edit in N8N
@@ -370,7 +370,7 @@ const Agents = () => {
                           size="icon"
                           onClick={() => handleToggleN8NWorkflow(workflow.id, workflow.active)}
                           disabled={togglingWorkflow === workflow.id}
-                          data-testid={\`button-toggle-workflow-\${workflow.id}\`}
+                          data-testid={`button-toggle-workflow-${workflow.id}`}
                         >
                           {togglingWorkflow === workflow.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -449,7 +449,7 @@ const Agents = () => {
                           : "border-border-primary hover:bg-surface-secondary"
                       )}
                       onClick={() => setSelectedAgent(agent)}
-                      data-testid={\`agent-item-\${agent.id}\`}
+                      data-testid={`agent-item-${agent.id}`}
                     >
                       <div className="font-medium text-text-primary text-sm">{agent.name}</div>
                       <div className="text-xs text-text-tertiary mt-1">

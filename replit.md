@@ -38,6 +38,16 @@ src/
 - The app requires Supabase environment variables for authentication
 
 ## Recent Changes
+- December 31, 2025: Added N8N workflow integration
+  - Created n8nService for API communication with N8N instances
+  - Added IntegrationsModal for managing N8N credentials (URL and API key)
+  - Created useN8NWorkflows hook for fetching and managing workflows
+  - Redesigned Agents page with dual-tab interface:
+    - N8N Workflows tab: displays synced workflows with edit/activate capabilities
+    - Custom Builder tab: retains local workflow creation functionality
+  - Added Integrations menu item to TopBar settings dropdown
+  - N8N features: test connection, view workflows, edit in N8N editor, activate/deactivate
+  - Credentials stored in localStorage with 'oneedge_n8n_credentials' key
 - December 31, 2025: Removed all dummy data and integrated Supabase services
   - PromptLibrary now uses promptService and prompt_templates Supabase table
   - ToolsGallery now uses toolService for tool_submissions and tool_installations tables

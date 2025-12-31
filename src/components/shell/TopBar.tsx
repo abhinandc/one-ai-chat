@@ -41,9 +41,16 @@ export function TopBar({ onToggleSidebar, onOpenCommandPalette, onLogout }: TopB
       setApiKeysOpen(true);
     };
 
+    const handleOpenIntegrations = (event: Event) => {
+      event.preventDefault();
+      setIntegrationsOpen(true);
+    };
+
     window.addEventListener('open-api-keys', handleOpenApiKeys);
+    window.addEventListener('open-integrations', handleOpenIntegrations);
     return () => {
       window.removeEventListener('open-api-keys', handleOpenApiKeys);
+      window.removeEventListener('open-integrations', handleOpenIntegrations);
     };
   }, []);
 
