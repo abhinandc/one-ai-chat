@@ -249,17 +249,23 @@ export function IntegrationsModal({ isOpen, onClose }: IntegrationsModalProps) {
                   )}
                 </div>
 
-                <p className="text-xs text-text-tertiary pt-2">
-                  Get your API key from N8N Settings &gt; n8n API. 
-                  <a 
-                    href="https://docs.n8n.io/api/authentication/" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-accent-blue ml-1 inline-flex items-center gap-0.5"
-                  >
-                    Learn more <ExternalLink className="h-3 w-3" />
-                  </a>
-                </p>
+                <div className="space-y-2 pt-2">
+                  <p className="text-xs text-text-tertiary">
+                    Get your API key from N8N Settings &gt; n8n API. 
+                    <a 
+                      href="https://docs.n8n.io/api/authentication/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-accent-blue ml-1 inline-flex items-center gap-0.5"
+                    >
+                      Learn more <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </p>
+                  <p className="text-xs text-text-tertiary">
+                    Note: Your N8N instance must allow CORS requests from this domain. 
+                    Add this origin to N8N's FRONTEND_SETTINGS_EXTERNAL_FRONTEND or use a proxy.
+                  </p>
+                </div>
               </div>
             </div>
           </div>

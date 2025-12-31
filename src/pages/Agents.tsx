@@ -14,6 +14,7 @@ import "@xyflow/react/dist/style.css";
 import { Plus, Play, Save, Settings, Brain, Trash2, Edit, ExternalLink, Link2, Power, PowerOff, RefreshCw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard, GlassCardHeader, GlassCardTitle, GlassCardContent } from "@/components/ui/GlassCard";
+import { GlassInput } from "@/components/ui/GlassInput";
 import { cn } from "@/lib/utils";
 import { useAgents } from "@/hooks/useAgents";
 import { useModels } from "@/hooks/useModels";
@@ -411,12 +412,13 @@ const Agents = () => {
 
             <div className="p-4 border-b border-border-primary">
               <h3 className="font-medium text-text-primary mb-3">Save Agent</h3>
-              <input
+              <GlassInput
                 type="text"
                 placeholder="Agent name..."
                 value={agentName}
                 onChange={(e) => setAgentName(e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-surface-secondary border border-border-primary rounded-md text-text-primary mb-2"
+                variant="minimal"
+                className="w-full mb-2"
                 data-testid="input-agent-name"
               />
               <Button

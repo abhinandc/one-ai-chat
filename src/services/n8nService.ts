@@ -88,9 +88,16 @@ class N8NService {
 
       return { success: false, error: `Connection failed: ${response.statusText}` };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to connect to N8N';
+      if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError') || errorMessage.includes('CORS')) {
+        return { 
+          success: false, 
+          error: 'Could not reach N8N server. This may be due to CORS restrictions. Ensure your N8N instance allows requests from this domain, or check that the URL is correct.' 
+        };
+      }
       return { 
         success: false, 
-        error: error instanceof Error ? error.message : 'Failed to connect to N8N' 
+        error: errorMessage 
       };
     }
   }
