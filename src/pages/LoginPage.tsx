@@ -95,18 +95,11 @@ const upsertProfile = async (profile: {
 
   try {
     await supabase
-      .from("app_users")
+      .from("users")
       .upsert(
         {
           email: profile.email,
-          display_name: profile.name ?? null,
-          avatar_url: profile.picture ?? null,
-          metadata_json: {
-            provider: "google",
-            givenName: profile.givenName ?? null,
-            familyName: profile.familyName ?? null,
-            updatedAt: new Date().toISOString(),
-          },
+          name: profile.name ?? null,
         },
         { onConflict: "email" },
       );
