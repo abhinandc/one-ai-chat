@@ -25,9 +25,22 @@ const Index = () => {
   const [isComparing, setIsComparing] = useState(false);
   const [completedCount, setCompletedCount] = useState(0);
 
+  const defaultModels = useMemo(() => [
+    { id: "gpt-4o", object: "model", created: Date.now(), owned_by: "openai" },
+    { id: "claude-3-5-sonnet", object: "model", created: Date.now(), owned_by: "anthropic" },
+    { id: "gemini-pro", object: "model", created: Date.now(), owned_by: "google" },
+    { id: "llama-3.1-70b", object: "model", created: Date.now(), owned_by: "meta" },
+  ], []);
+
   const comparisonModels = useMemo(() => {
-    return models.slice(0, 4);
-  }, [models]);
+    if (models.length >= 4) {
+      return models.slice(0, 4);
+    }
+    if (models.length > 0) {
+      return [...models, ...defaultModels.slice(0, 4 - models.length)];
+    }
+    return defaultModels;
+  }, [models, defaultModels]);
 
   // AI-powered model recommendation
   const recommendModel = useCallback((query: string) => {
@@ -70,11 +83,6 @@ const Index = () => {
   const handleSpotlightSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!spotlightQuery.trim()) return;
-    
-    if (comparisonModels.length === 0) {
-      navigate("/chat?prompt=" + encodeURIComponent(spotlightQuery));
-      return;
-    }
     
     setComparisonQuery(spotlightQuery);
     setIsComparing(true);
