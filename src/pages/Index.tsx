@@ -143,30 +143,25 @@ const Index = () => {
             >
               <div className="absolute inset-0 bg-gradient-to-r from-accent-blue/20 to-accent-purple/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               
-              <div className="relative bg-surface-graphite/80 backdrop-blur-xl border border-border-primary/50 rounded-2xl shadow-2xl overflow-hidden">
-                <div className="flex items-center gap-4 p-6">
-                  <div className="flex items-center gap-3 flex-1">
-                    <Search className="h-6 w-6 text-text-secondary" />
-                    <input
-                      type="text"
-                      value={spotlightQuery}
-                      onChange={(e) => {
-                        setSpotlightQuery(e.target.value);
-                        recommendModel(e.target.value);
-                      }}
-                      onFocus={() => setSpotlightFocused(true)}
-                      onBlur={() => setTimeout(() => setSpotlightFocused(false), 200)}
-                      placeholder="What's on your mind? Try out the best model."
-                      className="flex-1 bg-transparent border-none outline-none text-lg text-text-primary placeholder:text-text-tertiary"
-                      data-testid="input-spotlight-search"
-                    />
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <kbd className="px-2 py-1 text-xs font-semibold text-text-tertiary bg-surface-graphite border border-border-secondary rounded">
-                      <Command className="h-3 w-3 inline" /> K
-                    </kbd>
-                  </div>
+              <div className="relative bg-surface-graphite/80 backdrop-blur-xl border border-border-primary/30 rounded-2xl shadow-lg overflow-hidden">
+                <div className="flex items-center p-6">
+                  <Search className="h-6 w-6 text-text-secondary shrink-0" />
+                  <input
+                    type="text"
+                    value={spotlightQuery}
+                    onChange={(e) => {
+                      setSpotlightQuery(e.target.value);
+                      recommendModel(e.target.value);
+                    }}
+                    onFocus={() => setSpotlightFocused(true)}
+                    onBlur={() => setTimeout(() => setSpotlightFocused(false), 200)}
+                    placeholder="What's on your mind? Try out the best model."
+                    className="flex-1 bg-transparent border-none outline-none text-lg text-text-primary placeholder:text-text-tertiary text-center focus:ring-0"
+                    data-testid="input-spotlight-search"
+                  />
+                  <kbd className="px-2 py-1 text-xs font-semibold text-text-tertiary bg-surface-graphite border border-border-secondary/50 rounded shrink-0">
+                    <Command className="h-3 w-3 inline" /> K
+                  </kbd>
                 </div>
 
                 {/* AI Suggestion */}
