@@ -38,6 +38,12 @@ src/
 - The app requires Supabase environment variables for authentication
 
 ## Recent Changes
+- December 31, 2025: Removed hardcoded Supabase credentials
+  - Now uses VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables
+- December 31, 2025: Updated header layout
+  - Logo "OneEdge" on the left
+  - Search bar centered
+  - Action buttons on the right
 - December 31, 2025: Fixed dashboard layout
   - Made header (TopBar) fixed at top with h-14 height
   - Made footer fixed at bottom with h-12 height
