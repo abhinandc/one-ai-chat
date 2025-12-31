@@ -71,34 +71,28 @@ export function TopBar({ onToggleSidebar, onOpenCommandPalette, onLogout }: TopB
 
   return (
     <>
-    <GlassToolbar className="flex items-center justify-between">
-      <GlassToolbarSection>
-        <div className="flex items-center gap-md">
-          {/* Sidebar Toggle */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onToggleSidebar}
-            className="text-text-secondary hover:text-text-primary"
-          >
-            <Search className="h-4 w-4" />
-          </Button>
-
-          {/* Global Search */}
-          <div className="relative w-80">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-text-tertiary" />
-            <GlassInput
-              placeholder="Search anything..."
-              className="pl-10"
-              variant="search"
-            />
-          </div>
+    <GlassToolbar className="flex items-center justify-between gap-4">
+      {/* Left Section - Logo */}
+      <GlassToolbarSection className="flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="text-lg font-semibold text-text-primary">OneEdge</span>
         </div>
       </GlassToolbarSection>
 
-      <GlassToolbarSeparator />
+      {/* Center Section - Search */}
+      <GlassToolbarSection className="flex-1 justify-center">
+        <div className="relative w-full max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-text-tertiary" />
+          <GlassInput
+            placeholder="Search anything..."
+            className="pl-10 w-full"
+            variant="search"
+          />
+        </div>
+      </GlassToolbarSection>
 
-      <GlassToolbarSection>
+      {/* Right Section - Actions */}
+      <GlassToolbarSection className="flex-shrink-0">
         <div className="flex items-center gap-sm">
           {/* Command Palette */}
           <Button
