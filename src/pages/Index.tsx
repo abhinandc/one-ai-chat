@@ -69,7 +69,12 @@ const Index = () => {
 
   const handleSpotlightSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!spotlightQuery.trim() || comparisonModels.length === 0) return;
+    if (!spotlightQuery.trim()) return;
+    
+    if (comparisonModels.length === 0) {
+      navigate("/chat?prompt=" + encodeURIComponent(spotlightQuery));
+      return;
+    }
     
     setComparisonQuery(spotlightQuery);
     setIsComparing(true);
