@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Settings, User, Command, Moon, Sun, LogOut } from "lucide-react";
+import { Search, Settings, User, Command, Moon, Sun, LogOut, Link2 } from "lucide-react";
 import { GlassToolbar, GlassToolbarSection, GlassToolbarSeparator } from "@/components/ui/GlassToolbar";
 import { GlassInput } from "@/components/ui/GlassInput";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { BillingModal } from "@/components/modals/BillingModal";
 import { ProfileModal } from "@/components/modals/ProfileModal";
 import { AccountSettingsModal } from "@/components/modals/AccountSettingsModal";
 import { ModelsSettingsModal } from "@/components/modals/ModelsSettingsModal";
+import { IntegrationsModal } from "@/components/modals/IntegrationsModal";
 import { cn } from "@/lib/utils";
 
 interface TopBarProps {
@@ -32,6 +33,7 @@ export function TopBar({ onToggleSidebar, onOpenCommandPalette, onLogout }: TopB
   const [profileOpen, setProfileOpen] = useState(false);
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
   const [modelsSettingsOpen, setModelsSettingsOpen] = useState(false);
+  const [integrationsOpen, setIntegrationsOpen] = useState(false);
 
   useEffect(() => {
     const handleOpenApiKeys = (event: Event) => {
@@ -159,6 +161,14 @@ export function TopBar({ onToggleSidebar, onOpenCommandPalette, onLogout }: TopB
               >
                 <span>Models Settings</span>
               </DropdownMenuItem>
+              <DropdownMenuItem 
+                className="text-card-foreground hover:bg-surface-graphite cursor-pointer"
+                onClick={() => setIntegrationsOpen(true)}
+                data-testid="menu-item-integrations"
+              >
+                <Link2 className="mr-2 h-4 w-4" />
+                <span>Integrations</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -208,6 +218,7 @@ export function TopBar({ onToggleSidebar, onOpenCommandPalette, onLogout }: TopB
     <ProfileModal isOpen={profileOpen} onClose={() => setProfileOpen(false)} />
     <AccountSettingsModal isOpen={accountSettingsOpen} onClose={() => setAccountSettingsOpen(false)} />
     <ModelsSettingsModal open={modelsSettingsOpen} onOpenChange={setModelsSettingsOpen} />
+    <IntegrationsModal isOpen={integrationsOpen} onClose={() => setIntegrationsOpen(false)} />
     </>
   );
 }
