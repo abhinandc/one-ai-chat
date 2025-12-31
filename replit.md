@@ -38,6 +38,13 @@ src/
 - The app requires Supabase environment variables for authentication
 
 ## Recent Changes
+- December 31, 2025: Removed all dummy data and integrated Supabase services
+  - PromptLibrary now uses promptService and prompt_templates Supabase table
+  - ToolsGallery now uses toolService for tool_submissions and tool_installations tables
+  - Automations page properly uses automationService with full field support
+  - ModelsHub uses correct snake_case property names (budget_usd, models_json)
+  - Added deleteAutomation method to automationService
+  - Fixed createAutomation to properly pass through agent_id, trigger_config, etc.
 - December 31, 2025: Added model comparison feature on home page
   - Search bar placeholder: "What's on your mind? Try out the best model."
   - When user submits a query, displays 4-split grid with parallel responses from different models
