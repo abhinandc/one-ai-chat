@@ -60,15 +60,15 @@ const ModelsHub = () => {
                   <div className="flex items-center justify-between gap-md">
                     <div>
                       <p className="text-sm font-medium text-text-primary">{key.label || 'Virtual Key'}</p>
-                      <p className="text-xs text-text-tertiary mt-xs">Budget: {key.budgetUsd ?? '?'} USD ? Models assigned: {key.models.length}</p>
+                      <p className="text-xs text-text-tertiary mt-xs">Budget: {key.budget_usd ?? '?'} USD | Models assigned: {key.models_json?.length ?? 0}</p>
                     </div>
                     <Badge variant={key.disabled ? 'destructive' : 'secondary'}>
                       {key.disabled ? 'Disabled' : 'Active'}
                     </Badge>
                   </div>
-                  {key.models.length > 0 && (
+                  {key.models_json && key.models_json.length > 0 && (
                     <div className="mt-sm flex flex-wrap gap-2">
-                      {key.models.map((model) => (
+                      {key.models_json.map((model) => (
                         <Badge key={model} variant="outline" className="text-xs">
                           {model}
                         </Badge>

@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useAutomations } from "@/hooks/useAutomations";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useToast } from "@/hooks/use-toast";
 import { CreateAutomationModal } from "@/components/modals/CreateAutomationModal";
 import {
@@ -36,16 +37,15 @@ export default function Automations() {
   const [automationToDelete, setAutomationToDelete] = useState<string | null>(null);
   const { toast } = useToast();
 
+  const user = useCurrentUser();
   const { 
     automations, 
     loading, 
     error, 
     executeAutomation, 
-    pauseAutomation, 
-    resumeAutomation, 
     deleteAutomation, 
     createAutomation 
-  } = useAutomations();
+  } = useAutomations(user?.email);
 
   const handleRunAutomation = async (automationId: string) => {
     try {
@@ -62,22 +62,6 @@ export default function Automations() {
       toast({
         title: "Execution Failed",
         description: error instanceof Error ? error.message : "Failed to execute automation",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handlePauseAutomation = async (automationId: string) => {
-    try {
-      await pauseAutomation(automationId);
-      toast({
-        title: "Automation Paused",
-        description: "Automation has been paused successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Failed to Pause",
-        description: error instanceof Error ? error.message : "Failed to pause automation",
         variant: "destructive",
       });
     }
@@ -239,7 +223,6 @@ export default function Automations() {
                   key={automation.id}
                   automation={automation}
                   onRun={handleRunAutomation}
-                  onPause={handlePauseAutomation}
                   onDelete={handleDeleteAutomation}
                 />
               ))}
@@ -297,8 +280,7 @@ export default function Automations() {
   );
 }
 
-// AutomationCard component remains the same...
-function AutomationCard({ automation, onRun, onPause, onDelete }: any) {
+function AutomationCard({ automation, onRun, onDelete }: { automation: any; onRun: (id: string) => void; onDelete: (id: string) => void }) {
   const getStatusIcon = () => {
     if (automation.enabled) {
       return <CheckCircle className="h-4 w-4 text-accent-green" />;
@@ -376,6 +358,7 @@ function AutomationCard({ automation, onRun, onPause, onDelete }: any) {
             size="sm" 
             className="flex-1 bg-accent-blue hover:bg-accent-blue/90"
             onClick={() => onRun(automation.id)}
+            data-testid={`button-run-automation-${automation.id}`}
           >
             <Play className="h-3 w-3 mr-1" />
             Run
@@ -383,14 +366,8 @@ function AutomationCard({ automation, onRun, onPause, onDelete }: any) {
           <Button 
             size="sm" 
             variant="outline"
-            onClick={() => onPause(automation.id)}
-          >
-            {automation.enabled ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
-          </Button>
-          <Button 
-            size="sm" 
-            variant="outline"
             onClick={() => onDelete(automation.id)}
+            data-testid={`button-delete-automation-${automation.id}`}
           >
             <Trash2 className="h-3 w-3" />
           </Button>

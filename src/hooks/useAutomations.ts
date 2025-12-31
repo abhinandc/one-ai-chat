@@ -5,7 +5,7 @@ export interface UseAutomationsResult {
   automations: Automation[];
   loading: boolean;
   error: string | null;
-  createAutomation: (automation: Partial<Automation>) => Promise<Automation>;
+  createAutomation: (automation: Partial<Automation> & { name: string; description: string }) => Promise<Automation>;
   executeAutomation: (id: string, input: any) => Promise<AutomationExecution>;
   deleteAutomation: (id: string) => Promise<void>;
   refetch: () => Promise<void>;
@@ -40,11 +40,19 @@ export function useAutomations(userEmail?: string): UseAutomationsResult {
     fetchAutomations();
   }, [userEmail]);
 
-  const createAutomation = async (automation: Partial<Automation>): Promise<Automation> => {
+  const createAutomation = async (automation: Partial<Automation> & { name: string; description: string }): Promise<Automation> => {
     if (!userEmail) throw new Error('User email required');
     
-    const created = await automationService.createAutomation(automation, userEmail);
-    await fetchAutomations(); // Refresh list
+    const fullAutomation = {
+      name: automation.name,
+      description: automation.description,
+      agent_id: automation.agent_id || '',
+      trigger_config: automation.trigger_config || { type: 'manual' as const, config: {} },
+      enabled: automation.enabled ?? true,
+    };
+    
+    const created = await automationService.createAutomation(fullAutomation, userEmail);
+    await fetchAutomations();
     return created;
   };
 
