@@ -38,6 +38,16 @@ src/
 - The app requires Supabase environment variables for authentication
 
 ## Recent Changes
+- December 31, 2025: Added model comparison feature on home page
+  - Search bar placeholder: "What's on your mind? Try out the best model."
+  - When user submits a query, displays 4-split grid with parallel responses from different models
+  - ModelComparisonPanel component handles SSE streaming with individual abort controllers
+  - Status tracking: streaming, completed, stopped, error
+  - Completion counter shows progress without counting cancelled/stopped streams
+- December 31, 2025: Improved Chat page
+  - Made conversations sidebar collapsible with smooth CSS transition
+  - Replaced native select with modern Shadcn Select dropdown for model selection
+  - Integrated Supabase-aware useModels hook
 - December 31, 2025: Removed hardcoded Supabase credentials
   - Now uses VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables
 - December 31, 2025: Updated header layout
