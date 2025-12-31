@@ -1,6 +1,6 @@
-﻿import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Sparkles, TrendingUp, Clock, MessageSquare, Bot, Zap, Command, ArrowRight } from "lucide-react";
+import { Search, Sparkles, TrendingUp, Clock, MessageSquare, Bot, Zap, Command, ArrowRight, X } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { useModels } from "@/hooks/useModels";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useVirtualKeys, useActivityFeed, useUsageSummary } from "@/hooks/useSupabaseData";
+import { ModelComparisonPanel } from "@/components/ModelComparisonPanel";
 
 const Index = () => {
   const user = useCurrentUser();
@@ -20,6 +21,13 @@ const Index = () => {
   const [spotlightQuery, setSpotlightQuery] = useState("");
   const [spotlightFocused, setSpotlightFocused] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<any>(null);
+  const [comparisonQuery, setComparisonQuery] = useState("");
+  const [isComparing, setIsComparing] = useState(false);
+  const [completedCount, setCompletedCount] = useState(0);
+
+  const comparisonModels = useMemo(() => {
+    return models.slice(0, 4);
+  }, [models]);
 
   // AI-powered model recommendation
   const recommendModel = useCallback((query: string) => {
@@ -61,9 +69,22 @@ const Index = () => {
 
   const handleSpotlightSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (aiSuggestion?.action) {
-      navigate(aiSuggestion.action);
-    }
+    if (!spotlightQuery.trim() || comparisonModels.length === 0) return;
+    
+    setComparisonQuery(spotlightQuery);
+    setIsComparing(true);
+    setCompletedCount(0);
+  };
+
+  const handleComparisonComplete = useCallback(() => {
+    setCompletedCount(prev => prev + 1);
+  }, []);
+
+  const handleCloseComparison = () => {
+    setIsComparing(false);
+    setComparisonQuery("");
+    setSpotlightQuery("");
+    setCompletedCount(0);
   };
 
   const stats = useMemo(() => [
@@ -135,8 +156,9 @@ const Index = () => {
                       }}
                       onFocus={() => setSpotlightFocused(true)}
                       onBlur={() => setTimeout(() => setSpotlightFocused(false), 200)}
-                      placeholder="Describe your task... (e.g., &apos;Write a blog post about AI&apos;)"
+                      placeholder="What's on your mind? Try out the best model."
                       className="flex-1 bg-transparent border-none outline-none text-lg text-text-primary placeholder:text-text-tertiary"
+                      data-testid="input-spotlight-search"
                     />
                   </div>
                   
@@ -176,6 +198,45 @@ const Index = () => {
             </div>
           </form>
         </div>
+
+        {/* Model Comparison Grid */}
+        {isComparing && comparisonModels.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-xl font-semibold text-text-primary truncate">
+                  Comparing {comparisonModels.length} models
+                </h2>
+                <p className="text-sm text-text-secondary truncate">"{comparisonQuery}"</p>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <Badge variant="secondary">
+                  {completedCount}/{comparisonModels.length} complete
+                </Badge>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={handleCloseComparison}
+                  data-testid="button-close-comparison"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {comparisonModels.map((model) => (
+                <div key={model.id} className="h-80">
+                  <ModelComparisonPanel
+                    model={model}
+                    query={comparisonQuery}
+                    onComplete={handleComparisonComplete}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
