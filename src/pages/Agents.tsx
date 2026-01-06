@@ -5,6 +5,7 @@ import {
   MiniMap,
   Controls,
   Background,
+  BackgroundVariant,
   useNodesState,
   useEdgesState,
   Connection,
@@ -55,6 +56,7 @@ interface Agent {
   name: string;
   owner: string;
   version: string;
+  runtime: string;
   modelRouting: {
     primary: string;
     fallbacks?: string[];
@@ -152,6 +154,11 @@ const Agents = () => {
         name: agentName.trim(),
         owner: user.email,
         version: '1.0.0',
+        runtime: {
+          maxTokens: 4096,
+          maxSeconds: 60,
+          maxCostUSD: 1.0
+        },
         modelRouting: {
           primary: selectedModel,
           fallbacks: []
@@ -178,7 +185,7 @@ const Agents = () => {
       setAgentName("");
       setNodes([]);
       setEdges([]);
-      setSelectedAgent(newAgent);
+      setSelectedAgent(newAgent as unknown as Agent);
       
     } catch (error) {
       console.error('Failed to create agent:', error);
@@ -198,8 +205,8 @@ const Agents = () => {
       setAgentName(agent.name);
       setSelectedModel(agent.modelRouting.primary);
 
-      // Convert agent to workflow
-      const { nodes: agentNodes, edges: agentEdges } = agentWorkflowService.convertAgentToFlow(agent);
+      // Convert agent to workflow (cast for compatibility)
+      const { nodes: agentNodes, edges: agentEdges } = agentWorkflowService.convertAgentToFlow(agent as any);
       setNodes(agentNodes);
       setEdges(agentEdges);
 
@@ -307,7 +314,7 @@ const Agents = () => {
               <option value="">Select Model...</option>
               {models.map((model) => (
                 <option key={model.id} value={model.id}>
-                  {model.name} ({model.provider})
+                  {model.id} ({model.owned_by})
                 </option>
               ))}
             </select>
@@ -377,7 +384,7 @@ const Agents = () => {
               <div className="text-sm text-text-secondary">No agents yet</div>
             ) : (
               <div className="space-y-xs">
-                {agents.map((agent) => (
+                {(agents as unknown as Agent[]).map((agent) => (
                   <div
                     key={agent.id}
                     className={cn(
@@ -393,7 +400,7 @@ const Agents = () => {
                       Model: {agent.modelRouting.primary}
                     </div>
                     <div className="text-xs text-text-tertiary">
-                      {agent.published ? "Published" : "Draft"} • {agent.tools?.length || 0} tools
+                      {agent.published ? "Published" : "Draft"} - {agent.tools?.length || 0} tools
                     </div>
                   </div>
                 ))}
@@ -416,7 +423,7 @@ const Agents = () => {
           >
             <Controls className="bg-surface-secondary border-border-primary" />
             <MiniMap className="bg-surface-secondary border-border-primary" />
-            <Background variant="dots" gap={20} size={1} className="opacity-20" />
+            <Background variant={BackgroundVariant.Dots} gap={20} size={1} className="opacity-20" />
           </ReactFlow>
 
           {nodes.length === 0 && (
