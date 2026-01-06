@@ -13,7 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useAgents } from "@/hooks/useAgents";
-import { promptService, PromptTemplate } from "@/services/promptService";
+import { promptService, PromptTemplate as ServicePromptTemplate } from "@/services/promptService";
 import { usePrompts } from "@/hooks/usePrompts";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { CreatePromptModal } from "@/components/modals/CreatePromptModal";
@@ -56,8 +56,14 @@ export default function PromptLibrary() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [promptToDelete, setPromptToDelete] = useState<string | null>(null);
   const { toast } = useToast();
+  const user = useCurrentUser();
   
   const { agents, loading: agentsLoading } = useAgents({ env: 'prod' });
+
+  const deletePrompt = (promptId: string) => {
+    setPromptToDelete(promptId);
+    setDeleteDialogOpen(true);
+  };
 
   // Generate prompts from agents
   useEffect(() => {

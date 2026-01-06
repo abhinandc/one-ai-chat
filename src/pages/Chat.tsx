@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ConversationList } from "@/components/chat/ConversationList";
 import { Thread } from "@/components/chat/Thread";
@@ -8,10 +8,8 @@ import { useChat } from "@/hooks/useChat";
 import { useModels } from "@/hooks/useModels";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useConversations } from "@/hooks/useConversations";
-import { conversationService } from "@/services/conversationService";
-import { analyticsService } from "@/services/analyticsService";
 import { useToast } from "@/hooks/use-toast";
-import type { Conversation, ConversationFolder, Message, Citation } from "@/types";
+import type { Conversation, Message } from "@/types";
 
 const Chat = () => {
   const user = useCurrentUser();
@@ -30,35 +28,17 @@ const Chat = () => {
   const {
     messages,
     isLoading,
+    isStreaming,
+    streamingMessage,
     sendMessage,
+    stopStreaming,
     clearMessages,
-    regenerateLastMessage,
-    stopGeneration,
-    isStreaming
+    error: chatError
   } = useChat({
     model: selectedModel,
     systemPrompt,
     temperature,
     maxTokens,
-    onMessage: (message) => {
-      // Track API usage
-      if (user?.email && message.role === 'assistant') {
-        analyticsService.recordAPICall(
-          user.email,
-          selectedModel,
-          message.metadata?.tokens || 0,
-          message.metadata?.cost || 0
-        );
-        
-        analyticsService.trackEvent(
-          user.email,
-          'message_sent',
-          'chat',
-          currentConversation?.id || 'new',
-          { model: selectedModel, tokens: message.metadata?.tokens }
-        );
-      }
-    }
   });
 
   // Initialize with first available model
@@ -70,7 +50,7 @@ const Chat = () => {
 
   // Auto-save conversation when messages change
   useEffect(() => {
-    if (user?.email && messages.length > 0) {
+    if (user?.email && messages.length > 0 && currentConversation) {
       saveCurrentConversation();
     }
   }, [messages, user?.email]);
@@ -83,12 +63,12 @@ const Chat = () => {
         id: currentConversation.id,
         user_email: user.email,
         title: currentConversation.title,
-        messages: messages.map(msg => ({
-          id: msg.id,
+        messages: messages.map((msg, index) => ({
+          id: `msg-${index}`,
           role: msg.role,
           content: msg.content,
-          timestamp: msg.timestamp.toISOString(),
-          metadata: msg.metadata
+          timestamp: new Date().toISOString(),
+          metadata: {}
         })),
         folder_id: currentConversation.folderId,
         pinned: currentConversation.pinned,
@@ -97,9 +77,12 @@ const Chat = () => {
         tags: currentConversation.tags,
         settings: {
           model: selectedModel,
-          systemPrompt,
+          provider: 'litellm' as const,
           temperature,
-          maxTokens
+          topP: 0.9,
+          maxTokens,
+          stopSequences: [],
+          systemPrompt,
         }
       });
     } catch (error) {
@@ -116,26 +99,21 @@ const Chat = () => {
       shared: false,
       unread: false,
       tags: [],
-      lastActivity: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
       settings: {
         model: selectedModel,
-        systemPrompt,
+        provider: 'litellm',
         temperature,
-        maxTokens
+        topP: 0.9,
+        maxTokens,
+        stopSequences: [],
+        systemPrompt,
       }
     };
     
     setCurrentConversation(newConversation);
     clearMessages();
-    
-    if (user?.email) {
-      analyticsService.trackEvent(
-        user.email,
-        'conversation_created',
-        'chat',
-        newConversation.id
-      );
-    }
   };
 
   const loadConversation = async (conversationId: string) => {
@@ -145,8 +123,8 @@ const Chat = () => {
     const conversation: Conversation = {
       id: supabaseConv.id,
       title: supabaseConv.title,
-      messages: supabaseConv.messages.map(msg => ({
-        id: msg.id,
+      messages: supabaseConv.messages.map((msg, index) => ({
+        id: msg.id || `msg-${index}`,
         role: msg.role as Message['role'],
         content: msg.content,
         timestamp: new Date(msg.timestamp),
@@ -157,7 +135,8 @@ const Chat = () => {
       shared: supabaseConv.shared,
       unread: supabaseConv.unread,
       tags: supabaseConv.tags,
-      lastActivity: new Date(supabaseConv.updated_at),
+      createdAt: new Date(supabaseConv.created_at || Date.now()),
+      updatedAt: new Date(supabaseConv.updated_at),
       settings: supabaseConv.settings
     };
 
@@ -169,15 +148,6 @@ const Chat = () => {
       setSystemPrompt(conversation.settings.systemPrompt || "");
       setTemperature(conversation.settings.temperature || 0.7);
       setMaxTokens(conversation.settings.maxTokens || 4000);
-    }
-
-    if (user?.email) {
-      analyticsService.trackEvent(
-        user.email,
-        'conversation_loaded',
-        'chat',
-        conversationId
-      );
     }
   };
 
@@ -193,15 +163,6 @@ const Chat = () => {
         title: "Conversation deleted",
         description: "The conversation has been removed"
       });
-
-      if (user?.email) {
-        analyticsService.trackEvent(
-          user.email,
-          'conversation_deleted',
-          'chat',
-          conversationId
-        );
-      }
     } catch (error) {
       console.error('Failed to delete conversation:', error);
       toast({
@@ -212,7 +173,7 @@ const Chat = () => {
     }
   };
 
-  const handleSendMessage = async (content: string, attachments?: File[]) => {
+  const handleSendMessage = async (content: string) => {
     if (!selectedModel) {
       toast({
         title: "No model selected",
@@ -227,7 +188,7 @@ const Chat = () => {
     }
 
     try {
-      await sendMessage(content, attachments);
+      await sendMessage(content);
       
       // Update conversation title if it's the first message
       if (currentConversation && currentConversation.title === "New Conversation" && content.length > 0) {
@@ -249,8 +210,8 @@ const Chat = () => {
     return supabaseConversations.map(conv => ({
       id: conv.id,
       title: conv.title,
-      messages: conv.messages.map(msg => ({
-        id: msg.id,
+      messages: conv.messages.map((msg, index) => ({
+        id: msg.id || `msg-${index}`,
         role: msg.role as Message['role'],
         content: msg.content,
         timestamp: new Date(msg.timestamp),
@@ -261,10 +222,21 @@ const Chat = () => {
       shared: conv.shared,
       unread: conv.unread,
       tags: conv.tags,
-      lastActivity: new Date(conv.updated_at),
+      createdAt: new Date(conv.created_at || Date.now()),
+      updatedAt: new Date(conv.updated_at),
       settings: conv.settings
     }));
   }, [supabaseConversations]);
+
+  // Convert ChatMessage[] to Message[] for Thread component
+  const threadMessages: Message[] = useMemo(() => {
+    return messages.map((msg, index) => ({
+      id: `msg-${index}`,
+      role: msg.role as Message['role'],
+      content: msg.content,
+      timestamp: new Date(),
+    }));
+  }, [messages]);
 
   // Initialize with new conversation if none exists
   useEffect(() => {
@@ -302,12 +274,10 @@ const Chat = () => {
         <div className="w-80 border-r border-border-primary bg-surface-secondary">
           <ConversationList
             conversations={uiConversations}
-            folders={[]} // TODO: Implement folders
-            currentConversationId={currentConversation?.id}
+            folders={[]}
+            activeId={currentConversation?.id}
             onSelectConversation={loadConversation}
-            onDeleteConversation={handleDeleteConversation}
-            onCreateNew={createNewConversation}
-            loading={conversationsLoading}
+            onNewConversation={createNewConversation}
           />
         </div>
       )}
@@ -323,7 +293,7 @@ const Chat = () => {
               size="sm"
               className="text-text-secondary hover:text-text-primary"
             >
-              ?
+              ☰
             </Button>
             <h1 className="text-lg font-semibold text-text-primary">
               {currentConversation?.title || "New Conversation"}
@@ -340,7 +310,7 @@ const Chat = () => {
               <option value="">Select Model...</option>
               {models.map((model) => (
                 <option key={model.id} value={model.id}>
-                  {model.name} ({model.provider})
+                  {model.id} ({model.owned_by})
                 </option>
               ))}
             </select>
@@ -359,21 +329,26 @@ const Chat = () => {
         {/* Messages Thread */}
         <div className="flex-1 min-h-0">
           <Thread
-            messages={messages}
-            isLoading={isLoading}
+            messages={threadMessages}
             isStreaming={isStreaming}
-            onRegenerateMessage={regenerateLastMessage}
-            onStopGeneration={stopGeneration}
+            streamingMessage={streamingMessage}
           />
         </div>
 
         {/* Message Composer */}
         <div className="border-t border-border-primary bg-surface-primary">
           <Composer
+            conversation={currentConversation || undefined}
             onSendMessage={handleSendMessage}
-            disabled={isLoading || !selectedModel}
-            model={selectedModel}
-            placeholder={!selectedModel ? "Select a model to start chatting..." : undefined}
+            isStreaming={isStreaming}
+            onStopStreaming={stopStreaming}
+            onUpdateSettings={(settings) => {
+              if (settings.temperature !== undefined) setTemperature(settings.temperature);
+              if (settings.maxTokens !== undefined) setMaxTokens(settings.maxTokens);
+              if (settings.systemPrompt !== undefined) setSystemPrompt(settings.systemPrompt);
+              if (settings.model !== undefined) setSelectedModel(settings.model);
+            }}
+            availableModels={models}
           />
         </div>
       </div>
@@ -382,16 +357,13 @@ const Chat = () => {
       {inspectorOpen && (
         <div className="w-80 border-l border-border-primary bg-surface-secondary">
           <InspectorPanel
-            conversation={currentConversation}
-            systemPrompt={systemPrompt}
-            onSystemPromptChange={setSystemPrompt}
-            temperature={temperature}
-            onTemperatureChange={setTemperature}
-            maxTokens={maxTokens}
-            onMaxTokensChange={setMaxTokens}
-            selectedModel={selectedModel}
-            onModelChange={setSelectedModel}
-            models={models}
+            conversation={currentConversation || undefined}
+            onUpdateSettings={(settings) => {
+              if (settings.temperature !== undefined) setTemperature(settings.temperature);
+              if (settings.maxTokens !== undefined) setMaxTokens(settings.maxTokens);
+              if (settings.systemPrompt !== undefined) setSystemPrompt(settings.systemPrompt);
+              if (settings.model !== undefined) setSelectedModel(settings.model);
+            }}
           />
         </div>
       )}

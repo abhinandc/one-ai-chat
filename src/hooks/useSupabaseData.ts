@@ -44,7 +44,7 @@ export interface VirtualKey {
   label: string;
   email: string;
   models: string[];
-  budgetUsd: number | null;
+  budget_usd: number | null;
   expiresAt?: string | null;
   disabled: boolean;
 }
@@ -90,7 +90,7 @@ export const useGuardrails = () => {
 
         setState({ data: guardrails, loading: false, error: null });
       })
-      .catch((err) => {
+      .then(undefined, (err: Error) => {
         setState({ data: [], loading: false, error: err.message });
       });
   }, []);
@@ -130,7 +130,7 @@ export const usePassThroughEndpoints = () => {
 
         setState({ data: endpoints, loading: false, error: null });
       })
-      .catch((err) => {
+      .then(undefined, (err: Error) => {
         setState({ data: [], loading: false, error: err.message });
       });
   }, []);
@@ -169,14 +169,14 @@ export const useVirtualKeys = (email?: string | null) => {
           label: item.label,
           email: item.email,
           models: Array.isArray(item.models_json) ? item.models_json : [],
-          budgetUsd: typeof item.budget_usd === 'number' ? item.budget_usd : null,
+          budget_usd: typeof item.budget_usd === 'number' ? item.budget_usd : null,
           expiresAt: item.expires_at,
           disabled: Boolean(item.disabled),
         }));
 
         setState({ data: keys, loading: false, error: null });
       })
-      .catch((err) => {
+      .then(undefined, (err: Error) => {
         setState({ data: [], loading: false, error: err.message });
       });
   }, [email]);
@@ -212,7 +212,7 @@ export const useUsageSummary = (email?: string | null) => {
         const totalCost = (data || []).reduce((sum, item) => sum + (item.cost_usd ?? 0), 0);
         setState({ data: { totalRequests: count ?? (data?.length ?? 0), totalCost }, loading: false, error: null });
       })
-      .catch((err) => {
+      .then(undefined, (err: Error) => {
         setState({ data: { totalRequests: 0, totalCost: 0 }, loading: false, error: err.message });
       });
   }, [email]);
@@ -257,7 +257,7 @@ export const useActivityFeed = (email?: string | null, limit = 10) => {
 
         setState({ data: events, loading: false, error: null });
       })
-      .catch((err) => {
+      .then(undefined, (err: Error) => {
         setState({ data: [], loading: false, error: err.message });
       });
   }, [email, limit]);

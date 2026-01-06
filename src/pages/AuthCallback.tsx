@@ -155,7 +155,7 @@ const emitSuccess = (payload: GoogleAuthPayload) => {
       console.error("Failed to send success message via postMessage:", error);
     }
   } else {
-    writeBridgePayload(payload);
+    writeBridgePayload(payload as unknown as Record<string, unknown>);
     clearBridgePayloadSoon();
   }
 };
