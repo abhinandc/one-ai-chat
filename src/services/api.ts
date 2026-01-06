@@ -44,17 +44,7 @@ export interface ModelMetadata {
 export type ModelWithMetadata = ApiModel & {
   metadata?: ModelMetadata;
 };
-export interface ModelMetadata {
-  provider?: string;
-  description?: string;
-  endpoint?: string;
-  maxTokens?: number;
-  raw?: Record<string, unknown> | null;
-}
 
-export type ModelWithMetadata = ApiModel & {
-  metadata?: ModelMetadata;
-};
 export const apiClient = apiClientInstance;
 
 export function useModels() {

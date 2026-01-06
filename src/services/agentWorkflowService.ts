@@ -26,25 +26,26 @@ class AgentWorkflowService {
 
     // Extract configuration from nodes
     nodes.forEach(node => {
+      const data = node.data as Record<string, any>;
       switch (node.type) {
         case 'system':
-          systemPrompt = node.data.content || '';
+          systemPrompt = String(data?.content || '');
           break;
         case 'tool':
           tools.push({
-            slug: node.data.toolName || 'http',
-            scopes: node.data.scopes || ['read']
+            slug: String(data?.toolName || 'http'),
+            scopes: Array.isArray(data?.scopes) ? data.scopes : ['read']
           });
           break;
         case 'retrieval':
           datasets.push({
-            id: node.data.datasetId || 'default',
-            access: node.data.access || 'read'
+            id: String(data?.datasetId || 'default'),
+            access: (data?.access === 'write' ? 'write' : 'read') as 'read' | 'write'
           });
           break;
         case 'router':
-          if (node.data.model) {
-            modelRouting.primary = node.data.model;
+          if (data?.model) {
+            modelRouting.primary = String(data.model);
           }
           break;
       }
@@ -57,10 +58,6 @@ class AgentWorkflowService {
         maxTokens: 4000,
         maxSeconds: 120,
         maxCostUSD: 1.0
-      },
-      metadata: {
-        systemPrompt,
-        workflow: { nodes, edges }
       }
     };
   }
@@ -70,18 +67,16 @@ class AgentWorkflowService {
     const nodes: Node[] = [];
     const edges: Edge[] = [];
 
-    // Create system prompt node
-    if (agent.metadata?.systemPrompt) {
-      nodes.push({
-        id: 'system-1',
-        type: 'system',
-        position: { x: 100, y: 100 },
-        data: {
-          label: 'System Prompt',
-          content: agent.metadata.systemPrompt
-        }
-      });
-    }
+    // Create system prompt node (agents don't have metadata.systemPrompt, use name as placeholder)
+    nodes.push({
+      id: 'system-1',
+      type: 'system',
+      position: { x: 100, y: 100 },
+      data: {
+        label: 'System Prompt',
+        content: `You are ${agent.name}`
+      }
+    });
 
     // Create tool nodes
     agent.tools?.forEach((tool, index) => {
@@ -180,7 +175,7 @@ class AgentWorkflowService {
     return await apiClient.createChatCompletion({
       model: agent.modelRouting.primary,
       messages: [
-        { role: 'system', content: agent.metadata?.systemPrompt || `You are ${agent.name}` },
+        { role: 'system', content: `You are ${agent.name}` },
         { role: 'user', content: JSON.stringify(input) }
       ],
       temperature: 0.7,

@@ -15,6 +15,7 @@ import { useAgents } from "@/hooks/useAgents";
 import { toolService } from "@/services/toolService";
 import { useTools } from "@/hooks/useTools";
 import { useToast } from "@/hooks/use-toast";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { CreateToolModal } from "@/components/modals/CreateToolModal";
 import {
   AlertDialog,
@@ -94,9 +95,18 @@ export default function ToolsGallery() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedPricing, setSelectedPricing] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("featured");
+  const [submitModalOpen, setSubmitModalOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [toolToDelete, setToolToDelete] = useState<string | null>(null);
   const { toast } = useToast();
+  const user = useCurrentUser();
   
   const { agents, loading: agentsLoading } = useAgents({ env: 'prod' });
+
+  const deleteTool = (toolId: string) => {
+    setToolToDelete(toolId);
+    setDeleteDialogOpen(true);
+  };
 
   // Generate tools from MCP agents
   useEffect(() => {
@@ -303,7 +313,7 @@ export default function ToolsGallery() {
 
   const handleSubmitTool = async (data: { name: string; description: string; category: string }) => {
     try {
-      const newTool = {
+      const newTool: Tool = {
         id: `custom-${Date.now()}`,
         name: data.name,
         description: data.description,
@@ -311,9 +321,12 @@ export default function ToolsGallery() {
         version: "1.0.0",
         author: user?.email || "Unknown",
         tags: [data.category.toLowerCase()],
-        downloads: 0,
+        downloads: "0",
         rating: 0,
-        featured: false
+        featured: false,
+        icon: <Zap className="h-6 w-6" />,
+        pricing: "free",
+        lastUpdated: new Date()
       };
 
       setTools(prev => [newTool, ...prev]);

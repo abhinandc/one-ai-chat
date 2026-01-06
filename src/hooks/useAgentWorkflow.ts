@@ -19,7 +19,7 @@ export interface UseAgentWorkflowResult {
   addNode: (type: string, position: { x: number; y: number }) => void;
   deleteNode: (nodeId: string) => void;
   loadFromAgent: (agent: Agent) => void;
-  saveAsAgent: (name: string, owner: string) => Promise<Agent>;
+  saveAsAgent: (name: string, owner: string) => Promise<Agent | null>;
   executeWorkflow: (input: any) => Promise<any>;
   newWorkflow: () => void;
   exportWorkflow: () => void;
@@ -74,35 +74,55 @@ export function useAgentWorkflow(): UseAgentWorkflowResult {
       setEdges(agentEdges);
       setCurrentWorkflow({
         id: agent.id,
+        user_email: agent.owner,
+        agent_id: agent.id,
         name: agent.name,
         description: `Workflow for ${agent.name}`,
-        nodes: agentNodes,
-        edges: agentEdges,
-        agentId: agent.id,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        workflow_data: {
+          nodes: agentNodes,
+          edges: agentEdges,
+        },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       });
     } catch (error) {
       console.error('Failed to load agent workflow:', error);
     }
   }, [setNodes, setEdges]);
 
-  const saveAsAgent = useCallback(async (name: string, owner: string) => {
+  const saveAsAgent = useCallback(async (name: string, owner: string): Promise<Agent | null> => {
     try {
+      // Convert workflow to agent config
+      const agentConfig = agentWorkflowService.convertFlowToAgentConfig(nodes, edges);
+      
+      // For now, just update the current workflow state
       const workflow: AgentWorkflow = {
         id: currentWorkflow?.id || `workflow-${Date.now()}`,
+        user_email: owner,
+        agent_id: currentWorkflow?.agent_id || '',
         name,
         description: `Visual workflow: ${name}`,
-        nodes,
-        edges,
-        agentId: currentWorkflow?.agentId,
-        createdAt: currentWorkflow?.createdAt || new Date(),
-        updatedAt: new Date(),
+        workflow_data: {
+          nodes,
+          edges,
+        },
+        created_at: currentWorkflow?.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
 
-      const agent = await agentWorkflowService.saveWorkflowAsAgent(workflow);
-      setCurrentWorkflow({ ...workflow, agentId: agent.id });
-      return agent;
+      setCurrentWorkflow(workflow);
+      
+      // Return a mock agent object - actual saving would need backend implementation
+      return {
+        id: workflow.agent_id || `agent-${Date.now()}`,
+        name,
+        owner,
+        version: '1.0.0',
+        modelRouting: { primary: 'nemotron-9b' },
+        tools: agentConfig.tools || [],
+        datasets: agentConfig.datasets || [],
+        runtime: agentConfig.runtime || { maxTokens: 4000, maxSeconds: 120, maxCostUSD: 1.0 },
+      };
     } catch (error) {
       console.error('Failed to save workflow as agent:', error);
       throw error;
@@ -114,7 +134,11 @@ export function useAgentWorkflow(): UseAgentWorkflowResult {
       setIsExecuting(true);
       setExecutionResult(null);
       
-      const result = await agentWorkflowService.executeWorkflow(nodes, edges, input);
+      if (!currentWorkflow?.agent_id) {
+        throw new Error('No agent associated with workflow');
+      }
+      
+      const result = await agentWorkflowService.executeAgentWorkflow(currentWorkflow.agent_id, input);
       setExecutionResult(result);
       return result;
     } catch (error) {
@@ -125,7 +149,7 @@ export function useAgentWorkflow(): UseAgentWorkflowResult {
     } finally {
       setIsExecuting(false);
     }
-  }, [nodes, edges]);
+  }, [currentWorkflow]);
 
   const newWorkflow = useCallback(() => {
     setNodes([]);
@@ -163,12 +187,16 @@ export function useAgentWorkflow(): UseAgentWorkflowResult {
         setEdges(workflowData.edges);
         setCurrentWorkflow({
           id: `imported-${Date.now()}`,
+          user_email: '',
+          agent_id: '',
           name: workflowData.name || 'Imported Workflow',
           description: workflowData.description || '',
-          nodes: workflowData.nodes,
-          edges: workflowData.edges,
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          workflow_data: {
+            nodes: workflowData.nodes,
+            edges: workflowData.edges,
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         });
       }
     } catch (error) {

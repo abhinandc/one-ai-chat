@@ -301,7 +301,7 @@ export default function Playground() {
         model: currentModel,
         messages: [
           {
-            role: "user",
+            role: "user" as const,
             content: prompt,
           },
         ],
