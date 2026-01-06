@@ -310,6 +310,7 @@ export function CreateAutomationModal({ open, onClose, onSave }: CreateAutomatio
           </div>
 
           {/* Actions */}
+          {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-border-secondary">
             <Button
               variant="outline"
@@ -326,6 +327,7 @@ export function CreateAutomationModal({ open, onClose, onSave }: CreateAutomatio
               Create Automation
             </Button>
           </div>
+        </div>
         </div>
       </div>
     </div>
