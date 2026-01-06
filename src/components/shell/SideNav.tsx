@@ -44,6 +44,7 @@ export function SideNav({ collapsed = false, onToggleCollapsed }: SideNavProps) 
     <div className={cn(
       "sidebar-full-height flex flex-col",
       "transition-all duration-normal ease-out",
+      "z-40",
       collapsed ? "w-16" : "w-64"
     )}>
       {/* Toggle Button */}
