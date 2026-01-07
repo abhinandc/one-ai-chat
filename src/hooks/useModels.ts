@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { apiClient, Model } from '../services/api';
+import apiClient, { Model } from '../lib/api';
 
 export interface UseModelsResult {
   models: Model[];
@@ -56,5 +56,3 @@ export function transformModelForUI(apiModel: Model) {
     featured: false,
   };
 }
-
-

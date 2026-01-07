@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { promptService, PromptTemplate } from '../services/promptService';
+import supabaseClient from '../services/supabaseClient';
 
 export function usePrompts(userEmail?: string) {
   const [prompts, setPrompts] = useState<PromptTemplate[]>([]);
@@ -19,7 +20,7 @@ export function usePrompts(userEmail?: string) {
       
       const [promptsData, likedData] = await Promise.all([
         promptService.getPrompts(userEmail),
-        promptService.getUserLikedPrompts(userEmail)
+        getUserLikedPrompts(userEmail)
       ]);
       
       setPrompts(promptsData);
@@ -32,6 +33,31 @@ export function usePrompts(userEmail?: string) {
     }
   };
 
+  // Helper function to get user's liked prompts
+  const getUserLikedPrompts = async (email: string): Promise<string[]> => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('prompt_likes')
+        .select('prompt_id')
+        .eq('user_email', email);
+      
+      if (error) throw error;
+      return (data || []).map(item => item.prompt_id);
+    } catch (err) {
+      console.error('Failed to fetch liked prompts:', err);
+      return [];
+    }
+  };
+
+  // Helper function to increment uses
+  const incrementUses = async (promptId: string): Promise<void> => {
+    try {
+      await supabaseClient.rpc('increment_prompt_uses', { prompt_id: promptId });
+    } catch (err) {
+      console.error('Failed to increment uses:', err);
+    }
+  };
+
   useEffect(() => {
     fetchPrompts();
   }, [userEmail]);
@@ -40,7 +66,7 @@ export function usePrompts(userEmail?: string) {
     if (!userEmail) throw new Error('User email required');
     
     const created = await promptService.createPrompt(prompt);
-    await fetchPrompts(); // Refresh list
+    await fetchPrompts();
     return created;
   };
 
@@ -48,19 +74,19 @@ export function usePrompts(userEmail?: string) {
     if (!userEmail) throw new Error('User email required');
     
     await promptService.likePrompt(promptId, userEmail);
-    await fetchPrompts(); // Refresh to update counts
+    await fetchPrompts();
   };
 
   const deletePrompt = async (promptId: string): Promise<void> => {
     if (!userEmail) throw new Error('User email required');
     
     await promptService.deletePrompt(promptId, userEmail);
-    await fetchPrompts(); // Refresh list
+    await fetchPrompts();
   };
 
   const usePrompt = async (promptId: string): Promise<void> => {
-    await promptService.incrementUses(promptId);
-    await fetchPrompts(); // Refresh to update counts
+    await incrementUses(promptId);
+    await fetchPrompts();
   };
 
   return {

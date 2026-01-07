@@ -1,27 +1,45 @@
 import { useState, useEffect } from 'react';
-import { toolService, Tool } from '../services/toolService';
+import { toolService, ToolInstallation, ToolSubmission } from '../services/toolService';
+import supabaseClient from '../services/supabaseClient';
+
+// Define Tool type locally since it's not exported from toolService
+export interface Tool {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  config: Record<string, any>;
+  enabled: boolean;
+  createdAt: Date;
+}
 
 export interface UseToolsResult {
-  tools: Tool[];
+  tools: ToolInstallation[];
   loading: boolean;
   error: string | null;
-  installTool: (toolSlug: string, config: any) => Promise<any>;
-  uninstallTool: (toolSlug: string, agentId: string) => Promise<void>;
+  installTool: (toolSlug: string, config: any) => Promise<ToolInstallation>;
+  uninstallTool: (installationId: string) => Promise<void>;
   getToolUsage: (toolSlug: string) => Promise<any>;
-  submitNewTool: (tool: any) => Promise<Tool>;
+  submitNewTool: (tool: Omit<ToolSubmission, 'id' | 'submitted_at' | 'status'>) => Promise<ToolSubmission>;
   refetch: () => Promise<void>;
 }
 
-export function useTools(): UseToolsResult {
-  const [tools, setTools] = useState<Tool[]>([]);
+export function useTools(userEmail?: string): UseToolsResult {
+  const [tools, setTools] = useState<ToolInstallation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchTools = async () => {
+    if (!userEmail) {
+      setTools([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
-      const data = await toolService.getAvailableTools();
+      const data = await toolService.getInstalledTools(userEmail);
       setTools(data);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch tools';
@@ -32,9 +50,11 @@ export function useTools(): UseToolsResult {
     }
   };
 
-  const installTool = async (toolSlug: string, config: any) => {
+  const installTool = async (toolSlug: string, config: any): Promise<ToolInstallation> => {
+    if (!userEmail) throw new Error('User email required');
+    
     try {
-      const result = await toolService.installTool(toolSlug, config);
+      const result = await toolService.installTool(toolSlug, userEmail, config);
       await fetchTools();
       return result;
     } catch (error) {
@@ -43,9 +63,11 @@ export function useTools(): UseToolsResult {
     }
   };
 
-  const uninstallTool = async (toolSlug: string, agentId: string) => {
+  const uninstallTool = async (installationId: string): Promise<void> => {
+    if (!userEmail) throw new Error('User email required');
+    
     try {
-      await toolService.uninstallTool(toolSlug, agentId);
+      await toolService.uninstallTool(installationId, userEmail);
       await fetchTools();
     } catch (error) {
       console.error('Failed to uninstall tool:', error);
@@ -53,18 +75,29 @@ export function useTools(): UseToolsResult {
     }
   };
 
-  const getToolUsage = async (toolSlug: string) => {
+  const getToolUsage = async (toolSlug: string): Promise<any> => {
+    if (!userEmail) throw new Error('User email required');
+    
     try {
-      return await toolService.getToolUsage(toolSlug);
+      // Get usage stats from tool installations
+      const { data, error } = await supabaseClient
+        .from('tool_installations')
+        .select('*')
+        .eq('user_email', userEmail)
+        .eq('tool_name', toolSlug)
+        .single();
+      
+      if (error) throw error;
+      return data;
     } catch (error) {
       console.error('Failed to get tool usage:', error);
       throw error;
     }
   };
 
-  const submitNewTool = async (tool: any) => {
+  const submitNewTool = async (tool: Omit<ToolSubmission, 'id' | 'submitted_at' | 'status'>): Promise<ToolSubmission> => {
     try {
-      const newTool = await toolService.submitNewTool(tool);
+      const newTool = await toolService.submitTool(tool);
       await fetchTools();
       return newTool;
     } catch (error) {
@@ -75,7 +108,7 @@ export function useTools(): UseToolsResult {
 
   useEffect(() => {
     fetchTools();
-  }, []);
+  }, [userEmail]);
 
   return {
     tools,

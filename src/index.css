@@ -215,6 +215,8 @@
     backdrop-filter: blur(var(--blur-lg));
     border-bottom: 1px solid hsl(var(--border-primary));
     box-shadow: 0 1px 0 0 hsl(var(--border-primary) / 0.5);
+    position: relative;
+    z-index: 50;
   }
   
   .dark .glass-toolbar {
