@@ -1,0 +1,292 @@
+openapi: 3.1.0
+info:
+  title: OneEdge Auth API
+  version: 1.0.0
+  description: Authentication and user management endpoints
+
+servers:
+  - url: /api/v1
+
+paths:
+  /auth/session:
+    get:
+      operationId: getSession
+      summary: Get current session info
+      tags: [Authentication]
+      responses:
+        '200':
+          description: Current session
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  virtual_keys:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/VirtualKey'
+                  role:
+                    type: string
+                    enum: [admin, employee]
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/profile:
+    get:
+      operationId: getProfile
+      summary: Get user profile
+      tags: [Profile]
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppUser'
+
+    patch:
+      operationId: updateProfile
+      summary: Update user profile
+      tags: [Profile]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                display_name:
+                  type: string
+                  minLength: 2
+                  maxLength: 50
+                avatar_url:
+                  type: string
+                  format: uri
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppUser'
+
+  /auth/preferences:
+    get:
+      operationId: getPreferences
+      summary: Get user preferences
+      tags: [Preferences]
+      responses:
+        '200':
+          description: User preferences
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPreferences'
+
+    put:
+      operationId: updatePreferences
+      summary: Update user preferences
+      tags: [Preferences]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserPreferencesUpdate'
+      responses:
+        '200':
+          description: Preferences updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPreferences'
+
+  /auth/virtual-keys:
+    get:
+      operationId: listVirtualKeys
+      summary: List user's virtual keys
+      tags: [Virtual Keys]
+      responses:
+        '200':
+          description: List of virtual keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VirtualKey'
+
+  /auth/virtual-keys/{id}/usage:
+    get:
+      operationId: getVirtualKeyUsage
+      summary: Get usage stats for a virtual key
+      tags: [Virtual Keys]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month]
+            default: month
+      responses:
+        '200':
+          description: Usage statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_tokens:
+                    type: integer
+                  total_cost:
+                    type: number
+                  request_count:
+                    type: integer
+                  models_usage:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        tokens:
+                          type: integer
+                        cost:
+                          type: number
+                        requests:
+                          type: integer
+                  daily_breakdown:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date:
+                          type: string
+                          format: date
+                        tokens:
+                          type: integer
+                        cost:
+                          type: number
+
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        created_at:
+          type: string
+          format: date-time
+
+    AppUser:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        display_name:
+          type: string
+        avatar_url:
+          type: string
+          format: uri
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    UserPreferences:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        theme:
+          type: string
+          enum: [light, dark, system]
+        default_model:
+          type: string
+        sidebar_collapsed:
+          type: boolean
+        notification_enabled:
+          type: boolean
+        keyboard_shortcuts:
+          type: boolean
+
+    UserPreferencesUpdate:
+      type: object
+      properties:
+        theme:
+          type: string
+          enum: [light, dark, system]
+        default_model:
+          type: string
+        sidebar_collapsed:
+          type: boolean
+        notification_enabled:
+          type: boolean
+        keyboard_shortcuts:
+          type: boolean
+
+    VirtualKey:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        key_name:
+          type: string
+        models:
+          type: array
+          items:
+            type: string
+        budget_limit:
+          type: number
+        current_usage:
+          type: number
+        is_active:
+          type: boolean
+        expires_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+  responses:
+    Unauthorized:
+      description: Not authenticated
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              code:
+                type: string
+                example: UNAUTHORIZED
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []

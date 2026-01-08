@@ -1,0 +1,492 @@
+openapi: 3.1.0
+info:
+  title: OneEdge Chat API
+  version: 1.0.0
+  description: Chat and conversation management endpoints
+
+servers:
+  - url: /api/v1
+
+paths:
+  /conversations:
+    get:
+      operationId: listConversations
+      summary: List user's conversations
+      tags: [Conversations]
+      parameters:
+        - name: folder_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: is_archived
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Conversation'
+                  total:
+                    type: integer
+                  has_more:
+                    type: boolean
+
+    post:
+      operationId: createConversation
+      summary: Create a new conversation
+      tags: [Conversations]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  maxLength: 200
+                model:
+                  type: string
+                  description: Model ID from virtual keys
+                system_prompt:
+                  type: string
+                  maxLength: 10000
+                folder_id:
+                  type: string
+                  format: uuid
+              required:
+                - model
+      responses:
+        '201':
+          description: Conversation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+
+  /conversations/{id}:
+    get:
+      operationId: getConversation
+      summary: Get conversation details
+      tags: [Conversations]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Conversation details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      operationId: updateConversation
+      summary: Update conversation
+      tags: [Conversations]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  maxLength: 200
+                folder_id:
+                  type: string
+                  format: uuid
+                is_pinned:
+                  type: boolean
+                is_archived:
+                  type: boolean
+      responses:
+        '200':
+          description: Conversation updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+
+    delete:
+      operationId: deleteConversation
+      summary: Delete conversation
+      tags: [Conversations]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Conversation deleted
+
+  /conversations/{id}/messages:
+    get:
+      operationId: listMessages
+      summary: List messages in conversation
+      tags: [Messages]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+        - name: before
+          in: query
+          description: Message ID to fetch messages before
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ChatMessage'
+                  has_more:
+                    type: boolean
+
+    post:
+      operationId: sendMessage
+      summary: Send a message and get AI response
+      tags: [Messages]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                  maxLength: 100000
+                model:
+                  type: string
+                  description: Override conversation model
+                temperature:
+                  type: number
+                  minimum: 0
+                  maximum: 2
+                  default: 0.7
+                max_tokens:
+                  type: integer
+                  minimum: 1
+                  maximum: 32000
+              required:
+                - content
+      responses:
+        '200':
+          description: Message sent, AI response returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_message:
+                    $ref: '#/components/schemas/ChatMessage'
+                  assistant_message:
+                    $ref: '#/components/schemas/ChatMessage'
+
+  /conversations/{id}/messages/stream:
+    post:
+      operationId: streamMessage
+      summary: Send message with streaming response
+      tags: [Messages]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                  maxLength: 100000
+                model:
+                  type: string
+                temperature:
+                  type: number
+                max_tokens:
+                  type: integer
+              required:
+                - content
+      responses:
+        '200':
+          description: Streaming response
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  /chat/compare:
+    post:
+      operationId: compareModels
+      summary: Query multiple models and compare responses
+      tags: [Comparison]
+      description: Used by Dashboard Spotlight for 4-model comparison
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                prompt:
+                  type: string
+                  maxLength: 10000
+                models:
+                  type: array
+                  items:
+                    type: string
+                  maxItems: 4
+                  minItems: 2
+                temperature:
+                  type: number
+                  default: 0.7
+                max_tokens:
+                  type: integer
+                  default: 1000
+              required:
+                - prompt
+                - models
+      responses:
+        '200':
+          description: Comparison results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        model:
+                          type: string
+                        response:
+                          type: string
+                        tokens_used:
+                          type: integer
+                        latency_ms:
+                          type: integer
+                        error:
+                          type: string
+
+  /folders:
+    get:
+      operationId: listFolders
+      summary: List conversation folders
+      tags: [Folders]
+      responses:
+        '200':
+          description: List of folders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConversationFolder'
+
+    post:
+      operationId: createFolder
+      summary: Create a folder
+      tags: [Folders]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 50
+                color:
+                  type: string
+                  pattern: '^#[0-9A-Fa-f]{6}$'
+                icon:
+                  type: string
+                parent_id:
+                  type: string
+                  format: uuid
+              required:
+                - name
+      responses:
+        '201':
+          description: Folder created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationFolder'
+
+components:
+  schemas:
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        model:
+          type: string
+        system_prompt:
+          type: string
+        folder_id:
+          type: string
+          format: uuid
+        is_pinned:
+          type: boolean
+        is_archived:
+          type: boolean
+        message_count:
+          type: integer
+        last_message_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ChatMessage:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        conversation_id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [user, assistant, system]
+        content:
+          type: string
+        model:
+          type: string
+        tokens_used:
+          type: integer
+        cost:
+          type: number
+        created_at:
+          type: string
+          format: date-time
+
+    ConversationFolder:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        color:
+          type: string
+        icon:
+          type: string
+        parent_id:
+          type: string
+          format: uuid
+        sort_order:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              code:
+                type: string
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []

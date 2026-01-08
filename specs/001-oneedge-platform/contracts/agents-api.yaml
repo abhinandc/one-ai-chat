@@ -1,0 +1,604 @@
+openapi: 3.1.0
+info:
+  title: OneEdge Agents API
+  version: 1.0.0
+  description: Custom agent and n8n integration endpoints
+
+servers:
+  - url: /api/v1
+
+paths:
+  /agents:
+    get:
+      operationId: listAgents
+      summary: List user's agents
+      tags: [Agents]
+      parameters:
+        - name: include_shared
+          in: query
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: List of agents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Agent'
+
+    post:
+      operationId: createAgent
+      summary: Create a custom agent
+      tags: [Agents]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentCreate'
+      responses:
+        '201':
+          description: Agent created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+
+  /agents/{id}:
+    get:
+      operationId: getAgent
+      summary: Get agent details
+      tags: [Agents]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Agent details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      operationId: updateAgent
+      summary: Update an agent
+      tags: [Agents]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentUpdate'
+      responses:
+        '200':
+          description: Agent updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+
+    delete:
+      operationId: deleteAgent
+      summary: Delete an agent
+      tags: [Agents]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Agent deleted
+
+  /agents/{id}/execute:
+    post:
+      operationId: executeAgent
+      summary: Execute an agent
+      tags: [Agents]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                input:
+                  type: string
+                  description: Input for the agent
+                variables:
+                  type: object
+                  description: Variables to inject
+              required:
+                - input
+      responses:
+        '200':
+          description: Execution result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentExecutionResult'
+
+  /agents/{id}/execute/stream:
+    post:
+      operationId: executeAgentStream
+      summary: Execute agent with streaming response
+      tags: [Agents]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                input:
+                  type: string
+                variables:
+                  type: object
+              required:
+                - input
+      responses:
+        '200':
+          description: Streaming execution
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  /agents/{id}/share:
+    post:
+      operationId: shareAgent
+      summary: Share agent with users
+      tags: [Agents]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+              required:
+                - user_ids
+      responses:
+        '200':
+          description: Sharing updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+
+  /agents/{id}/duplicate:
+    post:
+      operationId: duplicateAgent
+      summary: Duplicate an agent
+      tags: [Agents]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '201':
+          description: Agent duplicated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+
+  /n8n/config:
+    get:
+      operationId: getN8NConfig
+      summary: Get n8n configuration
+      tags: [N8N]
+      responses:
+        '200':
+          description: N8N configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/N8NConfiguration'
+        '404':
+          description: No configuration found
+
+    put:
+      operationId: setN8NConfig
+      summary: Set or update n8n configuration
+      tags: [N8N]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/N8NConfigurationCreate'
+      responses:
+        '200':
+          description: Configuration saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/N8NConfiguration'
+
+    delete:
+      operationId: deleteN8NConfig
+      summary: Remove n8n configuration
+      tags: [N8N]
+      responses:
+        '204':
+          description: Configuration removed
+
+  /n8n/test:
+    post:
+      operationId: testN8NConnection
+      summary: Test n8n connection
+      tags: [N8N]
+      responses:
+        '200':
+          description: Connection test result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  is_connected:
+                    type: boolean
+                  version:
+                    type: string
+                  error:
+                    type: string
+
+  /n8n/workflows:
+    get:
+      operationId: listN8NWorkflows
+      summary: List synced n8n workflows
+      tags: [N8N]
+      responses:
+        '200':
+          description: List of workflows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/N8NWorkflow'
+
+  /n8n/sync:
+    post:
+      operationId: syncN8NWorkflows
+      summary: Sync workflows from n8n
+      tags: [N8N]
+      responses:
+        '200':
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  synced_count:
+                    type: integer
+                  new_count:
+                    type: integer
+                  updated_count:
+                    type: integer
+                  synced_at:
+                    type: string
+                    format: date-time
+
+  /n8n/workflows/{id}/trigger:
+    post:
+      operationId: triggerN8NWorkflow
+      summary: Trigger an n8n workflow
+      tags: [N8N]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  type: object
+                  description: Data to send to webhook
+      responses:
+        '200':
+          description: Workflow triggered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  execution_id:
+                    type: string
+                  status:
+                    type: string
+
+components:
+  schemas:
+    Agent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        model:
+          type: string
+        workflow_data:
+          $ref: '#/components/schemas/AgentWorkflow'
+        is_shared:
+          type: boolean
+        shared_with:
+          type: array
+          items:
+            type: string
+            format: uuid
+        is_owner:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AgentCreate:
+      type: object
+      required:
+        - name
+        - model
+        - workflow_data
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        model:
+          type: string
+        workflow_data:
+          $ref: '#/components/schemas/AgentWorkflow'
+
+    AgentUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+        model:
+          type: string
+        workflow_data:
+          $ref: '#/components/schemas/AgentWorkflow'
+        is_shared:
+          type: boolean
+
+    AgentWorkflow:
+      type: object
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentNode'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentEdge'
+        variables:
+          type: object
+
+    AgentNode:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+            - system
+            - tool
+            - router
+            - memory
+            - retrieval
+            - decision
+            - code
+            - human
+            - webhook
+            - delay
+            - output
+        position:
+          type: object
+          properties:
+            x:
+              type: number
+            y:
+              type: number
+        data:
+          type: object
+
+    AgentEdge:
+      type: object
+      properties:
+        id:
+          type: string
+        source:
+          type: string
+        target:
+          type: string
+        sourceHandle:
+          type: string
+        targetHandle:
+          type: string
+        label:
+          type: string
+
+    AgentExecutionResult:
+      type: object
+      properties:
+        output:
+          type: string
+        steps:
+          type: array
+          items:
+            type: object
+            properties:
+              node_id:
+                type: string
+              node_type:
+                type: string
+              input:
+                type: string
+              output:
+                type: string
+              duration_ms:
+                type: integer
+        total_duration_ms:
+          type: integer
+        tokens_used:
+          type: integer
+        cost:
+          type: number
+
+    N8NConfiguration:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        instance_url:
+          type: string
+          format: uri
+        webhook_url:
+          type: string
+          format: uri
+        is_connected:
+          type: boolean
+        last_sync_at:
+          type: string
+          format: date-time
+        sync_error:
+          type: string
+        workflows_synced:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    N8NConfigurationCreate:
+      type: object
+      required:
+        - instance_url
+        - api_key
+      properties:
+        instance_url:
+          type: string
+          format: uri
+          description: URL to n8n instance (https required)
+        api_key:
+          type: string
+          description: n8n API key (will be encrypted)
+        webhook_url:
+          type: string
+          format: uri
+          description: Optional webhook URL override
+
+    N8NWorkflow:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        is_active:
+          type: boolean
+        has_webhook:
+          type: boolean
+        webhook_url:
+          type: string
+        last_executed_at:
+          type: string
+          format: date-time
+        execution_count:
+          type: integer
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              code:
+                type: string
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []

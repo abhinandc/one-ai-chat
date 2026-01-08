@@ -1,0 +1,652 @@
+openapi: 3.1.0
+info:
+  title: OneEdge Models API
+  version: 1.0.0
+  description: AI model catalog and management endpoints
+
+servers:
+  - url: /api/v1
+
+paths:
+  /models:
+    get:
+      operationId: listModels
+      summary: List available AI models
+      tags: [Models]
+      description: Returns models the user has access to via virtual keys
+      parameters:
+        - name: provider
+          in: query
+          schema:
+            type: string
+            enum: [openai, anthropic, google, meta]
+        - name: capability
+          in: query
+          schema:
+            type: string
+            enum: [chat, code, vision, embedding]
+      responses:
+        '200':
+          description: List of available models
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Model'
+
+  /models/{id}:
+    get:
+      operationId: getModel
+      summary: Get model details
+      tags: [Models]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Model details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelDetails'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /models/{id}/usage:
+    get:
+      operationId: getModelUsage
+      summary: Get usage statistics for a model
+      tags: [Models]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month]
+            default: month
+      responses:
+        '200':
+          description: Usage statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelUsage'
+
+  /models/compare:
+    get:
+      operationId: compareModels
+      summary: Compare multiple models
+      tags: [Models]
+      parameters:
+        - name: models
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+            maxItems: 4
+      responses:
+        '200':
+          description: Model comparison
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ModelComparison'
+
+  /prompts:
+    get:
+      operationId: listPrompts
+      summary: List prompt templates
+      tags: [Prompts]
+      parameters:
+        - name: visibility
+          in: query
+          schema:
+            type: string
+            enum: [private, team, public, all]
+            default: all
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: difficulty
+          in: query
+          schema:
+            type: string
+            enum: [beginner, intermediate, advanced]
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of prompts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PromptTemplate'
+                  total:
+                    type: integer
+
+    post:
+      operationId: createPrompt
+      summary: Create a prompt template
+      tags: [Prompts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromptTemplateCreate'
+      responses:
+        '201':
+          description: Prompt created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptTemplate'
+
+  /prompts/{id}:
+    get:
+      operationId: getPrompt
+      summary: Get prompt details
+      tags: [Prompts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Prompt details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptTemplate'
+
+    patch:
+      operationId: updatePrompt
+      summary: Update a prompt
+      tags: [Prompts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromptTemplateUpdate'
+      responses:
+        '200':
+          description: Prompt updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptTemplate'
+
+    delete:
+      operationId: deletePrompt
+      summary: Delete a prompt
+      tags: [Prompts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Prompt deleted
+
+  /prompts/{id}/like:
+    post:
+      operationId: likePrompt
+      summary: Like a prompt
+      tags: [Prompts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Like recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  like_count:
+                    type: integer
+
+    delete:
+      operationId: unlikePrompt
+      summary: Unlike a prompt
+      tags: [Prompts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Like removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  like_count:
+                    type: integer
+
+  /prompts/{id}/use:
+    post:
+      operationId: usePrompt
+      summary: Record prompt usage
+      tags: [Prompts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Usage recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  usage_count:
+                    type: integer
+
+  /prompts/feeds:
+    get:
+      operationId: listPromptFeeds
+      summary: List external prompt feeds
+      tags: [Prompt Feeds]
+      responses:
+        '200':
+          description: List of feeds
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PromptFeed'
+
+  /prompts/external:
+    get:
+      operationId: listExternalPrompts
+      summary: List prompts from external feeds
+      tags: [Prompt Feeds]
+      parameters:
+        - name: feed_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: External prompts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ExternalPrompt'
+                  total:
+                    type: integer
+
+  /prompts/external/{id}/import:
+    post:
+      operationId: importExternalPrompt
+      summary: Import external prompt to personal library
+      tags: [Prompt Feeds]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '201':
+          description: Prompt imported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptTemplate'
+
+components:
+  schemas:
+    Model:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        provider:
+          type: string
+          enum: [openai, anthropic, google, meta]
+        capabilities:
+          type: array
+          items:
+            type: string
+            enum: [chat, code, vision, embedding]
+        is_available:
+          type: boolean
+
+    ModelDetails:
+      allOf:
+        - $ref: '#/components/schemas/Model'
+        - type: object
+          properties:
+            description:
+              type: string
+            context_window:
+              type: integer
+            max_output_tokens:
+              type: integer
+            input_cost_per_1k:
+              type: number
+            output_cost_per_1k:
+              type: number
+            supports_streaming:
+              type: boolean
+            supports_functions:
+              type: boolean
+
+    ModelUsage:
+      type: object
+      properties:
+        model_id:
+          type: string
+        period:
+          type: string
+        total_tokens:
+          type: integer
+        total_cost:
+          type: number
+        request_count:
+          type: integer
+        avg_latency_ms:
+          type: number
+        success_rate:
+          type: number
+        daily_breakdown:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              tokens:
+                type: integer
+              cost:
+                type: number
+              requests:
+                type: integer
+
+    ModelComparison:
+      type: object
+      properties:
+        model_id:
+          type: string
+        name:
+          type: string
+        strengths:
+          type: array
+          items:
+            type: string
+        best_for:
+          type: array
+          items:
+            type: string
+        avg_latency_ms:
+          type: number
+        cost_per_1k:
+          type: number
+
+    PromptTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        content:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        difficulty:
+          type: string
+          enum: [beginner, intermediate, advanced]
+        visibility:
+          type: string
+          enum: [private, team, public]
+        variables:
+          type: array
+          items:
+            $ref: '#/components/schemas/PromptVariable'
+        usage_count:
+          type: integer
+        like_count:
+          type: integer
+        is_liked:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    PromptTemplateCreate:
+      type: object
+      required:
+        - title
+        - content
+      properties:
+        title:
+          type: string
+          maxLength: 100
+        content:
+          type: string
+          maxLength: 50000
+        description:
+          type: string
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 10
+        difficulty:
+          type: string
+          enum: [beginner, intermediate, advanced]
+          default: beginner
+        visibility:
+          type: string
+          enum: [private, team, public]
+          default: private
+
+    PromptTemplateUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 100
+        content:
+          type: string
+          maxLength: 50000
+        description:
+          type: string
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 10
+        difficulty:
+          type: string
+          enum: [beginner, intermediate, advanced]
+        visibility:
+          type: string
+          enum: [private, team, public]
+
+    PromptVariable:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        default_value:
+          type: string
+        type:
+          type: string
+          enum: [text, number, select]
+        options:
+          type: array
+          items:
+            type: string
+
+    PromptFeed:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        source_type:
+          type: string
+          enum: [api, webhook, rss]
+        is_active:
+          type: boolean
+        last_sync_at:
+          type: string
+          format: date-time
+
+    ExternalPrompt:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        feed_id:
+          type: string
+          format: uuid
+        feed_name:
+          type: string
+        title:
+          type: string
+        content:
+          type: string
+        author:
+          type: string
+        source_url:
+          type: string
+          format: uri
+        tags:
+          type: array
+          items:
+            type: string
+        fetched_at:
+          type: string
+          format: date-time
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              code:
+                type: string
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []
