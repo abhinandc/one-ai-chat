@@ -10,6 +10,7 @@ import { Footer } from "@/components/ui/Footer";
 import { CommandPalette } from "@/components/CommandPalette";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { cn } from "@/lib/utils";
 import { realtimeService } from "@/services/realtimeService";
 import LoginPage from "./pages/LoginPage";
 import AuthCallback from "./pages/AuthCallback";
@@ -35,7 +36,7 @@ const App = () => {
 
   // Check for existing auth token on app load
   useEffect(() => {
-    const authToken = localStorage.getItem("oneai_auth_token");
+    const authToken = localStorage.getItem("oneedge_auth_token");
     if (authToken) {
       setIsAuthenticated(true);
     }
@@ -56,13 +57,13 @@ const App = () => {
   }, [user?.email, isAuthenticated]);
 
   const handleLogin = (token: string) => {
-    localStorage.setItem("oneai_auth_token", token);
+    localStorage.setItem("oneedge_auth_token", token);
     setIsAuthenticated(true);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("oneai_auth_token");
-    localStorage.removeItem("oneai_user");
+    localStorage.removeItem("oneedge_auth_token");
+    localStorage.removeItem("oneedge_user");
     realtimeService.unsubscribeAll();
     setIsAuthenticated(false);
   };
@@ -93,35 +94,36 @@ const App = () => {
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <div className="h-screen w-full bg-background flex flex-col">
+            <div className="min-h-screen w-full bg-background">
               <TopBar 
                 onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
                 onOpenCommandPalette={() => setCommandPaletteOpen(true)}
                 onLogout={handleLogout}
               />
               
-              <div className="flex flex-1 w-full min-h-0">
-                <SideNav 
-                  collapsed={sidebarCollapsed}
-                  onToggleCollapsed={() => setSidebarCollapsed(!sidebarCollapsed)}
-                />
-                
-                <main className="flex-1 overflow-hidden">
-                  <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/chat" element={<Chat />} />
-                    <Route path="/agents" element={<Agents />} />
-                    <Route path="/automations" element={<Automations />} />
-                    <Route path="/models" element={<ModelsHub />} />
-                    <Route path="/prompts" element={<PromptLibrary />} />
-                    <Route path="/playground" element={<Playground />} />
-                    <Route path="/tools" element={<ToolsGallery />} />
-                    <Route path="/help" element={<Help />} />
-                    <Route path="/theme" element={<Theme />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </main>
-              </div>
+              <SideNav 
+                collapsed={sidebarCollapsed}
+                onToggleCollapsed={() => setSidebarCollapsed(!sidebarCollapsed)}
+              />
+              
+              <main className={cn(
+                "pt-14 pb-12 min-h-screen transition-all duration-normal ease-out overflow-auto",
+                sidebarCollapsed ? "pl-14" : "pl-52"
+              )}>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/chat" element={<Chat />} />
+                  <Route path="/agents" element={<Agents />} />
+                  <Route path="/automations" element={<Automations />} />
+                  <Route path="/models" element={<ModelsHub />} />
+                  <Route path="/prompts" element={<PromptLibrary />} />
+                  <Route path="/playground" element={<Playground />} />
+                  <Route path="/tools" element={<ToolsGallery />} />
+                  <Route path="/help" element={<Help />} />
+                  <Route path="/theme" element={<Theme />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </main>
               
               <Footer />
               

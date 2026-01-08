@@ -84,7 +84,7 @@ export function ApiKeysModal({ isOpen, onClose }: ApiKeysModalProps) {
           <div>
             <h2 className="text-xl font-semibold text-text-primary">API Keys</h2>
             <p className="text-sm text-text-secondary mt-1">
-              Manage your virtual keys from OneAI Admin
+              Manage your virtual keys from OneEdge Admin
             </p>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose}>
@@ -98,7 +98,7 @@ export function ApiKeysModal({ isOpen, onClose }: ApiKeysModalProps) {
             <h3 className="text-sm font-medium text-text-primary">Add Virtual Key</h3>
             <div className="space-y-3">
               <GlassInput
-                placeholder="Paste your virtual key from OneAI Admin..."
+                placeholder="Paste your virtual key from OneEdge Admin..."
                 value={newKey}
                 onChange={(e) => setNewKey(e.target.value)}
                 type={showKey ? 'text' : 'password'}
@@ -152,7 +152,7 @@ export function ApiKeysModal({ isOpen, onClose }: ApiKeysModalProps) {
                 <Key className="h-8 w-8 text-text-quaternary mx-auto mb-2" />
                 <p className="text-sm text-text-secondary">No virtual keys found</p>
                 <p className="text-xs text-text-tertiary mt-1">
-                  Request a virtual key from OneAI Admin and paste it above
+                  Request a virtual key from OneEdge Admin and paste it above
                 </p>
               </div>
             )}
@@ -242,7 +242,7 @@ export function ApiKeysModal({ isOpen, onClose }: ApiKeysModalProps) {
 
         <div className="border-t border-border-primary p-6">
           <div className="text-xs text-text-tertiary">
-            <p>• Virtual keys are issued by OneAI Admin and provide access to specific models</p>
+            <p>• Virtual keys are issued by OneEdge Admin and provide access to specific models</p>
             <p>• Keys are stored securely and used to authenticate API requests</p>
             <p>• Contact your administrator to request additional keys or model access</p>
           </div>

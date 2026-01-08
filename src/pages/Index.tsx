@@ -1,6 +1,6 @@
-﻿import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Sparkles, TrendingUp, Clock, MessageSquare, Bot, Zap, Command, ArrowRight } from "lucide-react";
+import { Search, Sparkles, TrendingUp, Clock, MessageSquare, Bot, Zap, Command, ArrowRight, X } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { useModels } from "@/hooks/useModels";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useVirtualKeys, useActivityFeed, useUsageSummary } from "@/hooks/useSupabaseData";
+import { ModelComparisonPanel } from "@/components/ModelComparisonPanel";
 
 const Index = () => {
   const user = useCurrentUser();
@@ -20,6 +21,26 @@ const Index = () => {
   const [spotlightQuery, setSpotlightQuery] = useState("");
   const [spotlightFocused, setSpotlightFocused] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<any>(null);
+  const [comparisonQuery, setComparisonQuery] = useState("");
+  const [isComparing, setIsComparing] = useState(false);
+  const [completedCount, setCompletedCount] = useState(0);
+
+  const defaultModels = useMemo(() => [
+    { id: "gpt-4o", object: "model", created: Date.now(), owned_by: "openai" },
+    { id: "claude-3-5-sonnet", object: "model", created: Date.now(), owned_by: "anthropic" },
+    { id: "gemini-pro", object: "model", created: Date.now(), owned_by: "google" },
+    { id: "llama-3.1-70b", object: "model", created: Date.now(), owned_by: "meta" },
+  ], []);
+
+  const comparisonModels = useMemo(() => {
+    if (models.length >= 4) {
+      return models.slice(0, 4);
+    }
+    if (models.length > 0) {
+      return [...models, ...defaultModels.slice(0, 4 - models.length)];
+    }
+    return defaultModels;
+  }, [models, defaultModels]);
 
   // AI-powered model recommendation
   const recommendModel = useCallback((query: string) => {
@@ -61,9 +82,22 @@ const Index = () => {
 
   const handleSpotlightSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (aiSuggestion?.action) {
-      navigate(aiSuggestion.action);
-    }
+    if (!spotlightQuery.trim()) return;
+    
+    setComparisonQuery(spotlightQuery);
+    setIsComparing(true);
+    setCompletedCount(0);
+  };
+
+  const handleComparisonComplete = useCallback(() => {
+    setCompletedCount(prev => prev + 1);
+  }, []);
+
+  const handleCloseComparison = () => {
+    setIsComparing(false);
+    setComparisonQuery("");
+    setSpotlightQuery("");
+    setCompletedCount(0);
   };
 
   const stats = useMemo(() => [
@@ -122,29 +156,25 @@ const Index = () => {
             >
               <div className="absolute inset-0 bg-gradient-to-r from-accent-blue/20 to-accent-purple/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               
-              <div className="relative bg-surface-graphite/80 backdrop-blur-xl border border-border-primary/50 rounded-2xl shadow-2xl overflow-hidden">
-                <div className="flex items-center gap-4 p-6">
-                  <div className="flex items-center gap-3 flex-1">
-                    <Search className="h-6 w-6 text-text-secondary" />
-                    <input
-                      type="text"
-                      value={spotlightQuery}
-                      onChange={(e) => {
-                        setSpotlightQuery(e.target.value);
-                        recommendModel(e.target.value);
-                      }}
-                      onFocus={() => setSpotlightFocused(true)}
-                      onBlur={() => setTimeout(() => setSpotlightFocused(false), 200)}
-                      placeholder="Describe your task... (e.g., &apos;Write a blog post about AI&apos;)"
-                      className="flex-1 bg-transparent border-none outline-none text-lg text-text-primary placeholder:text-text-tertiary"
-                    />
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <kbd className="px-2 py-1 text-xs font-semibold text-text-tertiary bg-surface-graphite border border-border-secondary rounded">
-                      <Command className="h-3 w-3 inline" /> K
-                    </kbd>
-                  </div>
+              <div className="relative bg-surface-graphite/80 backdrop-blur-xl border border-border-primary/30 rounded-2xl shadow-lg overflow-hidden">
+                <div className="flex items-center p-6">
+                  <Search className="h-6 w-6 text-text-secondary shrink-0" />
+                  <input
+                    type="text"
+                    value={spotlightQuery}
+                    onChange={(e) => {
+                      setSpotlightQuery(e.target.value);
+                      recommendModel(e.target.value);
+                    }}
+                    onFocus={() => setSpotlightFocused(true)}
+                    onBlur={() => setTimeout(() => setSpotlightFocused(false), 200)}
+                    placeholder="What's on your mind? Try out the best model."
+                    className="flex-1 bg-transparent border-none outline-none text-lg text-text-primary placeholder:text-text-tertiary text-center focus:ring-0"
+                    data-testid="input-spotlight-search"
+                  />
+                  <kbd className="px-2 py-1 text-xs font-semibold text-text-tertiary bg-surface-graphite border border-border-secondary/50 rounded shrink-0">
+                    <Command className="h-3 w-3 inline" /> K
+                  </kbd>
                 </div>
 
                 {/* AI Suggestion */}
@@ -176,6 +206,45 @@ const Index = () => {
             </div>
           </form>
         </div>
+
+        {/* Model Comparison Grid */}
+        {isComparing && comparisonModels.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-xl font-semibold text-text-primary truncate">
+                  Comparing {comparisonModels.length} models
+                </h2>
+                <p className="text-sm text-text-secondary truncate">"{comparisonQuery}"</p>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <Badge variant="secondary">
+                  {completedCount}/{comparisonModels.length} complete
+                </Badge>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={handleCloseComparison}
+                  data-testid="button-close-comparison"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {comparisonModels.map((model) => (
+                <div key={model.id} className="h-80">
+                  <ModelComparisonPanel
+                    model={model}
+                    query={comparisonQuery}
+                    onComplete={handleComparisonComplete}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">

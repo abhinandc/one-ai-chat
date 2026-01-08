@@ -9,7 +9,7 @@ export interface CurrentUser {
   picture?: string;
 }
 
-const STORAGE_KEY = 'oneai_user';
+const STORAGE_KEY = 'oneedge_user';
 
 const normalizeValue = (value?: string | null) => {
   if (!value) {
@@ -109,31 +109,17 @@ export function useCurrentUser(): CurrentUser | null {
 
     const loadProfile = async () => {
       try {
-        const { data: appUser, error: appUserError } = await supabase
-          .from('app_users')
-          .select('display_name, avatar_url')
+        const { data: dbUser, error: dbUserError } = await supabase
+          .from('users')
+          .select('name')
           .eq('email', email)
           .maybeSingle();
 
-        let resolvedName = normalizeValue(appUser?.display_name) ?? user?.name;
-        let resolvedPicture = normalizeValue(appUser?.avatar_url) ?? user?.picture;
+        let resolvedName = normalizeValue(dbUser?.name) ?? user?.name;
+        let resolvedPicture = user?.picture;
 
-        if (!appUser && appUserError && appUserError.code !== 'PGRST116') {
-          console.warn('Unable to load app_users profile', appUserError.message);
-        }
-
-        if (!appUser || (!resolvedName && !resolvedPicture)) {
-          const { data: legacyUser, error: legacyError } = await supabase
-            .from('users')
-            .select('name')
-            .eq('email', email)
-            .maybeSingle();
-
-          if (legacyError && legacyError.code !== 'PGRST116') {
-            console.warn('Unable to load users profile', legacyError.message);
-          }
-
-          resolvedName = normalizeValue(resolvedName) ?? normalizeValue(legacyUser?.name) ?? user?.name;
+        if (dbUserError && dbUserError.code !== 'PGRST116') {
+          console.warn('Unable to load users profile', dbUserError.message);
         }
 
         if (cancelled) {

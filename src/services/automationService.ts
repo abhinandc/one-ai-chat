@@ -48,7 +48,7 @@ class AutomationService {
     return data || [];
   }
 
-  async createAutomation(automation: Omit<Automation, 'id' | 'created_at' | 'updated_at' | 'total_runs' | 'success_rate'>, userEmail: string): Promise<Automation> {
+  async createAutomation(automation: Omit<Automation, 'id' | 'created_at' | 'updated_at' | 'total_runs' | 'success_rate' | 'user_email'>, userEmail: string): Promise<Automation> {
     const { data, error } = await supabaseClient
       .from('automations')
       .insert({
@@ -146,6 +146,16 @@ class AutomationService {
 
     if (error) return null;
     return data;
+  }
+
+  async deleteAutomation(automationId: string, userEmail: string): Promise<void> {
+    const { error } = await supabaseClient
+      .from('automations')
+      .delete()
+      .eq('id', automationId)
+      .eq('user_email', userEmail);
+
+    if (error) throw error;
   }
 
   private async updateAutomationStats(automationId: string, success: boolean): Promise<void> {

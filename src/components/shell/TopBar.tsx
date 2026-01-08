@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Settings, User, Command, Moon, Sun, LogOut } from "lucide-react";
+import { Search, Settings, User, Command, Moon, Sun, LogOut, Link2 } from "lucide-react";
 import { GlassToolbar, GlassToolbarSection, GlassToolbarSeparator } from "@/components/ui/GlassToolbar";
 import { GlassInput } from "@/components/ui/GlassInput";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { BillingModal } from "@/components/modals/BillingModal";
 import { ProfileModal } from "@/components/modals/ProfileModal";
 import { AccountSettingsModal } from "@/components/modals/AccountSettingsModal";
 import { ModelsSettingsModal } from "@/components/modals/ModelsSettingsModal";
+import { IntegrationsModal } from "@/components/modals/IntegrationsModal";
 import { cn } from "@/lib/utils";
 
 interface TopBarProps {
@@ -32,6 +33,7 @@ export function TopBar({ onToggleSidebar, onOpenCommandPalette, onLogout }: TopB
   const [profileOpen, setProfileOpen] = useState(false);
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
   const [modelsSettingsOpen, setModelsSettingsOpen] = useState(false);
+  const [integrationsOpen, setIntegrationsOpen] = useState(false);
 
   useEffect(() => {
     const handleOpenApiKeys = (event: Event) => {
@@ -39,9 +41,16 @@ export function TopBar({ onToggleSidebar, onOpenCommandPalette, onLogout }: TopB
       setApiKeysOpen(true);
     };
 
+    const handleOpenIntegrations = (event: Event) => {
+      event.preventDefault();
+      setIntegrationsOpen(true);
+    };
+
     window.addEventListener('open-api-keys', handleOpenApiKeys);
+    window.addEventListener('open-integrations', handleOpenIntegrations);
     return () => {
       window.removeEventListener('open-api-keys', handleOpenApiKeys);
+      window.removeEventListener('open-integrations', handleOpenIntegrations);
     };
   }, []);
 
@@ -71,34 +80,28 @@ export function TopBar({ onToggleSidebar, onOpenCommandPalette, onLogout }: TopB
 
   return (
     <>
-    <GlassToolbar className="flex items-center justify-between">
-      <GlassToolbarSection>
-        <div className="flex items-center gap-md">
-          {/* Sidebar Toggle */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onToggleSidebar}
-            className="text-text-secondary hover:text-text-primary"
-          >
-            <Search className="h-4 w-4" />
-          </Button>
-
-          {/* Global Search */}
-          <div className="relative w-80">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-text-tertiary" />
-            <GlassInput
-              placeholder="Search anything..."
-              className="pl-10"
-              variant="search"
-            />
-          </div>
+    <GlassToolbar className="flex items-center justify-between gap-4">
+      {/* Left Section - Logo */}
+      <GlassToolbarSection className="flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="text-lg font-semibold text-text-primary">OneEdge</span>
         </div>
       </GlassToolbarSection>
 
-      <GlassToolbarSeparator />
+      {/* Center Section - Search */}
+      <GlassToolbarSection className="flex-1 justify-center">
+        <div className="relative w-full max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-text-tertiary" />
+          <GlassInput
+            placeholder="Search anything..."
+            className="pl-10 w-full"
+            variant="search"
+          />
+        </div>
+      </GlassToolbarSection>
 
-      <GlassToolbarSection>
+      {/* Right Section - Actions */}
+      <GlassToolbarSection className="flex-shrink-0">
         <div className="flex items-center gap-sm">
           {/* Command Palette */}
           <Button
@@ -165,6 +168,14 @@ export function TopBar({ onToggleSidebar, onOpenCommandPalette, onLogout }: TopB
               >
                 <span>Models Settings</span>
               </DropdownMenuItem>
+              <DropdownMenuItem 
+                className="text-card-foreground hover:bg-surface-graphite cursor-pointer"
+                onClick={() => setIntegrationsOpen(true)}
+                data-testid="menu-item-integrations"
+              >
+                <Link2 className="mr-2 h-4 w-4" />
+                <span>Integrations</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -214,6 +225,7 @@ export function TopBar({ onToggleSidebar, onOpenCommandPalette, onLogout }: TopB
     <ProfileModal isOpen={profileOpen} onClose={() => setProfileOpen(false)} />
     <AccountSettingsModal isOpen={accountSettingsOpen} onClose={() => setAccountSettingsOpen(false)} />
     <ModelsSettingsModal open={modelsSettingsOpen} onOpenChange={setModelsSettingsOpen} />
+    <IntegrationsModal isOpen={integrationsOpen} onClose={() => setIntegrationsOpen(false)} />
     </>
   );
 }

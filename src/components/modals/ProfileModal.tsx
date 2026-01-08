@@ -100,45 +100,31 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
 
     const hydrate = async () => {
       try {
-        const [{ data: appUser, error: appError }, { data: legacyUser, error: legacyError }] = await Promise.all([
-          supabase
-            .from("app_users")
-            .select("email, display_name, avatar_url, metadata_json")
-            .eq("email", email)
-            .maybeSingle(),
-          supabase
-            .from("users")
-            .select("name, email")
-            .eq("email", email)
-            .maybeSingle(),
-        ]);
+        const { data: dbUser, error: dbError } = await supabase
+          .from("users")
+          .select("name, email")
+          .eq("email", email)
+          .maybeSingle();
 
         if (!active) return;
 
-        if (appError && appError.code !== "PGRST116") {
-          console.warn("Failed to load app_users profile", appError.message);
-        }
-        if (legacyError && legacyError.code !== "PGRST116") {
-          console.warn("Failed to load users profile", legacyError.message);
+        if (dbError && dbError.code !== "PGRST116") {
+          console.warn("Failed to load users profile", dbError.message);
         }
 
-        const nameSource = appUser?.display_name ?? legacyUser?.name ?? displayName;
+        const nameSource = dbUser?.name ?? displayName;
         const split = splitName(nameSource);
-        const metadata = (appUser?.metadata_json ?? {}) as Record<string, unknown>;
 
         const hydrated: ProfileFormState = {
           firstName: split.first || givenName || "",
           lastName: split.last || familyName || "",
           email,
-          phone: typeof metadata.phone === "string" ? metadata.phone : "",
-          location: typeof metadata.location === "string" ? metadata.location : "",
-          bio: typeof metadata.bio === "string" ? metadata.bio : "",
-          emailNotifications:
-            typeof metadata.emailNotifications === "boolean" ? metadata.emailNotifications : true,
-          marketingEmails:
-            typeof metadata.marketingEmails === "boolean" ? metadata.marketingEmails : false,
-          twoFactorAuth:
-            typeof metadata.twoFactorAuth === "boolean" ? metadata.twoFactorAuth : false,
+          phone: "",
+          location: "",
+          bio: "",
+          emailNotifications: true,
+          marketingEmails: false,
+          twoFactorAuth: false,
         };
 
         setForm(hydrated);
@@ -220,23 +206,22 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
 
     try {
       const { data: upserted, error: upsertError } = await supabase
-        .from("app_users")
+        .from("users")
         .upsert(
           {
             email,
-            display_name: displayNameValue,
-            metadata_json: metadata,
+            name: displayNameValue,
           },
           { onConflict: "email" },
         )
-        .select("display_name")
+        .select("name")
         .maybeSingle();
 
       if (upsertError) {
         throw upsertError;
       }
 
-      const updatedNames = splitName(upserted?.display_name ?? displayNameValue);
+      const updatedNames = splitName(upserted?.name ?? displayNameValue);
       const updatedForm: ProfileFormState = {
         ...normalized,
         firstName: updatedNames.first || normalized.firstName,
@@ -254,14 +239,14 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
 
       const updatedUser = {
         email,
-        name: upserted?.display_name ?? displayNameValue,
+        name: upserted?.name ?? displayNameValue,
         givenName: updatedForm.firstName || undefined,
         familyName: updatedForm.lastName || undefined,
         picture: currentUser?.picture,
       };
 
-      window.localStorage.setItem("oneai_user", JSON.stringify(updatedUser));
-      window.dispatchEvent(new StorageEvent("storage", { key: "oneai_user" }));
+      window.localStorage.setItem("oneedge_user", JSON.stringify(updatedUser));
+      window.dispatchEvent(new StorageEvent("storage", { key: "oneedge_user" }));
     } catch (saveError) {
       console.error("Failed to save profile", saveError);
       setError("Unable to save profile changes. Please try again.");

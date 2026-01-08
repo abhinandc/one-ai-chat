@@ -1,15 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConversationList } from "@/components/chat/ConversationList";
 import { Thread } from "@/components/chat/Thread";
 import { Composer } from "@/components/chat/Composer";
 import { InspectorPanel } from "@/components/chat/InspectorPanel";
 import { useChat } from "@/hooks/useChat";
-import { useModels } from "@/hooks/useModels";
+import { useModels } from "@/services/api";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useConversations } from "@/hooks/useConversations";
+import { conversationService } from "@/services/conversationService";
+import { analyticsService } from "@/services/analyticsService";
 import { useToast } from "@/hooks/use-toast";
-import type { Conversation, Message } from "@/types";
+import { PanelLeftClose, PanelLeft, Settings2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { Conversation, ConversationFolder, Message, Citation } from "@/types";
 
 const Chat = () => {
   const user = useCurrentUser();
@@ -28,17 +33,35 @@ const Chat = () => {
   const {
     messages,
     isLoading,
-    isStreaming,
-    streamingMessage,
     sendMessage,
-    stopStreaming,
     clearMessages,
-    error: chatError
+    regenerateLastMessage,
+    stopGeneration,
+    isStreaming
   } = useChat({
     model: selectedModel,
     systemPrompt,
     temperature,
     maxTokens,
+    onMessage: (message) => {
+      // Track API usage
+      if (user?.email && message.role === 'assistant') {
+        analyticsService.recordAPICall(
+          user.email,
+          selectedModel,
+          message.metadata?.tokens || 0,
+          message.metadata?.cost || 0
+        );
+        
+        analyticsService.trackEvent(
+          user.email,
+          'message_sent',
+          'chat',
+          currentConversation?.id || 'new',
+          { model: selectedModel, tokens: message.metadata?.tokens }
+        );
+      }
+    }
   });
 
   // Initialize with first available model
@@ -50,7 +73,7 @@ const Chat = () => {
 
   // Auto-save conversation when messages change
   useEffect(() => {
-    if (user?.email && messages.length > 0 && currentConversation) {
+    if (user?.email && messages.length > 0) {
       saveCurrentConversation();
     }
   }, [messages, user?.email]);
@@ -63,12 +86,12 @@ const Chat = () => {
         id: currentConversation.id,
         user_email: user.email,
         title: currentConversation.title,
-        messages: messages.map((msg, index) => ({
-          id: `msg-${index}`,
+        messages: messages.map(msg => ({
+          id: msg.id,
           role: msg.role,
           content: msg.content,
-          timestamp: new Date().toISOString(),
-          metadata: {}
+          timestamp: msg.timestamp.toISOString(),
+          metadata: msg.metadata
         })),
         folder_id: currentConversation.folderId,
         pinned: currentConversation.pinned,
@@ -77,12 +100,9 @@ const Chat = () => {
         tags: currentConversation.tags,
         settings: {
           model: selectedModel,
-          provider: 'litellm' as const,
-          temperature,
-          topP: 0.9,
-          maxTokens,
-          stopSequences: [],
           systemPrompt,
+          temperature,
+          maxTokens
         }
       });
     } catch (error) {
@@ -99,21 +119,26 @@ const Chat = () => {
       shared: false,
       unread: false,
       tags: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      lastActivity: new Date(),
       settings: {
         model: selectedModel,
-        provider: 'litellm',
-        temperature,
-        topP: 0.9,
-        maxTokens,
-        stopSequences: [],
         systemPrompt,
+        temperature,
+        maxTokens
       }
     };
     
     setCurrentConversation(newConversation);
     clearMessages();
+    
+    if (user?.email) {
+      analyticsService.trackEvent(
+        user.email,
+        'conversation_created',
+        'chat',
+        newConversation.id
+      );
+    }
   };
 
   const loadConversation = async (conversationId: string) => {
@@ -123,8 +148,8 @@ const Chat = () => {
     const conversation: Conversation = {
       id: supabaseConv.id,
       title: supabaseConv.title,
-      messages: supabaseConv.messages.map((msg, index) => ({
-        id: msg.id || `msg-${index}`,
+      messages: supabaseConv.messages.map(msg => ({
+        id: msg.id,
         role: msg.role as Message['role'],
         content: msg.content,
         timestamp: new Date(msg.timestamp),
@@ -135,8 +160,7 @@ const Chat = () => {
       shared: supabaseConv.shared,
       unread: supabaseConv.unread,
       tags: supabaseConv.tags,
-      createdAt: new Date(supabaseConv.created_at || Date.now()),
-      updatedAt: new Date(supabaseConv.updated_at),
+      lastActivity: new Date(supabaseConv.updated_at),
       settings: supabaseConv.settings
     };
 
@@ -148,6 +172,15 @@ const Chat = () => {
       setSystemPrompt(conversation.settings.systemPrompt || "");
       setTemperature(conversation.settings.temperature || 0.7);
       setMaxTokens(conversation.settings.maxTokens || 4000);
+    }
+
+    if (user?.email) {
+      analyticsService.trackEvent(
+        user.email,
+        'conversation_loaded',
+        'chat',
+        conversationId
+      );
     }
   };
 
@@ -163,6 +196,15 @@ const Chat = () => {
         title: "Conversation deleted",
         description: "The conversation has been removed"
       });
+
+      if (user?.email) {
+        analyticsService.trackEvent(
+          user.email,
+          'conversation_deleted',
+          'chat',
+          conversationId
+        );
+      }
     } catch (error) {
       console.error('Failed to delete conversation:', error);
       toast({
@@ -173,7 +215,7 @@ const Chat = () => {
     }
   };
 
-  const handleSendMessage = async (content: string) => {
+  const handleSendMessage = async (content: string, attachments?: File[]) => {
     if (!selectedModel) {
       toast({
         title: "No model selected",
@@ -188,7 +230,7 @@ const Chat = () => {
     }
 
     try {
-      await sendMessage(content);
+      await sendMessage(content, attachments);
       
       // Update conversation title if it's the first message
       if (currentConversation && currentConversation.title === "New Conversation" && content.length > 0) {
@@ -210,8 +252,8 @@ const Chat = () => {
     return supabaseConversations.map(conv => ({
       id: conv.id,
       title: conv.title,
-      messages: conv.messages.map((msg, index) => ({
-        id: msg.id || `msg-${index}`,
+      messages: conv.messages.map(msg => ({
+        id: msg.id,
         role: msg.role as Message['role'],
         content: msg.content,
         timestamp: new Date(msg.timestamp),
@@ -222,21 +264,10 @@ const Chat = () => {
       shared: conv.shared,
       unread: conv.unread,
       tags: conv.tags,
-      createdAt: new Date(conv.created_at || Date.now()),
-      updatedAt: new Date(conv.updated_at),
+      lastActivity: new Date(conv.updated_at),
       settings: conv.settings
     }));
   }, [supabaseConversations]);
-
-  // Convert ChatMessage[] to Message[] for Thread component
-  const threadMessages: Message[] = useMemo(() => {
-    return messages.map((msg, index) => ({
-      id: `msg-${index}`,
-      role: msg.role as Message['role'],
-      content: msg.content,
-      timestamp: new Date(),
-    }));
-  }, [messages]);
 
   // Initialize with new conversation if none exists
   useEffect(() => {
@@ -269,18 +300,25 @@ const Chat = () => {
 
   return (
     <div className="h-full flex bg-background">
-      {/* Conversation Sidebar */}
-      {showConversations && (
-        <div className="w-80 border-r border-border-primary bg-surface-secondary">
+      {/* Conversation Sidebar - Collapsible */}
+      <div 
+        className={cn(
+          "border-r border-border-primary bg-surface-secondary transition-all duration-300 ease-in-out overflow-hidden",
+          showConversations ? "w-80" : "w-0"
+        )}
+      >
+        <div className="w-80 h-full">
           <ConversationList
             conversations={uiConversations}
             folders={[]}
-            activeId={currentConversation?.id}
+            currentConversationId={currentConversation?.id}
             onSelectConversation={loadConversation}
-            onNewConversation={createNewConversation}
+            onDeleteConversation={handleDeleteConversation}
+            onCreateNew={createNewConversation}
+            loading={conversationsLoading}
           />
         </div>
-      )}
+      </div>
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -290,10 +328,15 @@ const Chat = () => {
             <Button
               onClick={() => setShowConversations(!showConversations)}
               variant="ghost"
-              size="sm"
-              className="text-text-secondary hover:text-text-primary"
+              size="icon"
+              className="text-text-secondary"
+              data-testid="button-toggle-conversations"
             >
-              ☰
+              {showConversations ? (
+                <PanelLeftClose className="h-5 w-5" />
+              ) : (
+                <PanelLeft className="h-5 w-5" />
+              )}
             </Button>
             <h1 className="text-lg font-semibold text-text-primary">
               {currentConversation?.title || "New Conversation"}
@@ -301,27 +344,45 @@ const Chat = () => {
           </div>
 
           <div className="flex items-center gap-sm">
-            <select
+            {/* Modern Apple-style Model Selector */}
+            <Select
               value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              className="px-md py-sm bg-surface-graphite border border-border-primary rounded-lg text-text-primary text-sm"
+              onValueChange={setSelectedModel}
               disabled={modelsLoading}
             >
-              <option value="">Select Model...</option>
-              {models.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.id} ({model.owned_by})
-                </option>
-              ))}
-            </select>
+              <SelectTrigger 
+                className="w-[200px] bg-surface-graphite/50 backdrop-blur-sm border-border-primary/50 rounded-xl text-text-primary text-sm font-medium shadow-sm"
+                data-testid="select-model"
+              >
+                <SelectValue placeholder="Select Model..." />
+              </SelectTrigger>
+              <SelectContent className="bg-surface-primary/95 backdrop-blur-xl border-border-primary/30 rounded-xl shadow-lg">
+                {models.map((model) => (
+                  <SelectItem 
+                    key={model.id} 
+                    value={model.id}
+                    className="text-text-primary rounded-lg cursor-pointer"
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-medium">{model.id}</span>
+                      <span className="text-xs text-text-tertiary">{model.owned_by}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             <Button
               onClick={() => setInspectorOpen(!inspectorOpen)}
               variant="ghost"
-              size="sm"
-              className="text-text-secondary hover:text-text-primary"
+              size="icon"
+              className={cn(
+                "text-text-secondary",
+                inspectorOpen && "bg-accent-blue/10 text-accent-blue"
+              )}
+              data-testid="button-toggle-inspector"
             >
-              Inspector
+              <Settings2 className="h-5 w-5" />
             </Button>
           </div>
         </div>
@@ -329,26 +390,21 @@ const Chat = () => {
         {/* Messages Thread */}
         <div className="flex-1 min-h-0">
           <Thread
-            messages={threadMessages}
+            messages={messages}
+            isLoading={isLoading}
             isStreaming={isStreaming}
-            streamingMessage={streamingMessage}
+            onRegenerateMessage={regenerateLastMessage}
+            onStopGeneration={stopGeneration}
           />
         </div>
 
         {/* Message Composer */}
         <div className="border-t border-border-primary bg-surface-primary">
           <Composer
-            conversation={currentConversation || undefined}
             onSendMessage={handleSendMessage}
-            isStreaming={isStreaming}
-            onStopStreaming={stopStreaming}
-            onUpdateSettings={(settings) => {
-              if (settings.temperature !== undefined) setTemperature(settings.temperature);
-              if (settings.maxTokens !== undefined) setMaxTokens(settings.maxTokens);
-              if (settings.systemPrompt !== undefined) setSystemPrompt(settings.systemPrompt);
-              if (settings.model !== undefined) setSelectedModel(settings.model);
-            }}
-            availableModels={models}
+            disabled={isLoading || !selectedModel}
+            model={selectedModel}
+            placeholder={!selectedModel ? "Select a model to start chatting..." : undefined}
           />
         </div>
       </div>
@@ -357,13 +413,16 @@ const Chat = () => {
       {inspectorOpen && (
         <div className="w-80 border-l border-border-primary bg-surface-secondary">
           <InspectorPanel
-            conversation={currentConversation || undefined}
-            onUpdateSettings={(settings) => {
-              if (settings.temperature !== undefined) setTemperature(settings.temperature);
-              if (settings.maxTokens !== undefined) setMaxTokens(settings.maxTokens);
-              if (settings.systemPrompt !== undefined) setSystemPrompt(settings.systemPrompt);
-              if (settings.model !== undefined) setSelectedModel(settings.model);
-            }}
+            conversation={currentConversation}
+            systemPrompt={systemPrompt}
+            onSystemPromptChange={setSystemPrompt}
+            temperature={temperature}
+            onTemperatureChange={setTemperature}
+            maxTokens={maxTokens}
+            onMaxTokensChange={setMaxTokens}
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+            models={models}
           />
         </div>
       )}

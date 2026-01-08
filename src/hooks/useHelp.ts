@@ -45,8 +45,8 @@ export interface UseHelpResult {
 const helpArticles: HelpArticle[] = [
   {
     id: '1',
-    title: 'Getting Started with OneAI Platform',
-    description: 'Complete guide to setting up your OneAI environment with LiteLLM, vLLM, and Ollama integration',
+    title: 'Getting Started with OneEdge Platform',
+    description: 'Complete guide to setting up your OneEdge environment with LiteLLM, vLLM, and Ollama integration',
     content: 'Complete setup guide content...',
     category: 'Getting Started',
     readTime: '8 min',
@@ -70,8 +70,8 @@ const helpArticles: HelpArticle[] = [
 const tutorials: Tutorial[] = [
   {
     id: '1',
-    title: 'OneAI Platform Complete Setup',
-    description: 'End-to-end setup of OneAI with Docker, LiteLLM, vLLM, and Ollama integration',
+    title: 'OneEdge Platform Complete Setup',
+    description: 'End-to-end setup of OneEdge with Docker, LiteLLM, vLLM, and Ollama integration',
     duration: '24:15',
     difficulty: 'beginner',
     views: 18750,
@@ -82,8 +82,8 @@ const tutorials: Tutorial[] = [
 const faqs: FAQ[] = [
   {
     id: '1',
-    question: 'How do I deploy OneAI with Docker?',
-    answer: 'OneAI uses Docker Compose for easy deployment. Run docker compose -f docker-compose-oneai.yml up -d in the docker directory.',
+    question: 'How do I deploy OneEdge with Docker?',
+    answer: 'OneEdge uses Docker Compose for easy deployment. Run docker compose -f docker-compose-oneai.yml up -d in the docker directory.',
     category: 'Getting Started',
     helpful: 289
   }

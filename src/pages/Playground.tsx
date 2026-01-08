@@ -283,7 +283,7 @@ export default function Playground() {
         title: modelsLoading ? "Models are still loading" : "No models available",
         description: modelsLoading
           ? "Models are still loading from the admin proxy. Please try again in a moment."
-          : "No models are assigned to this account yet. Paste a virtual key from OneAI Admin and refresh.",
+          : "No models are assigned to this account yet. Paste a virtual key from OneEdge Admin and refresh.",
         variant: "destructive",
       });
       return;

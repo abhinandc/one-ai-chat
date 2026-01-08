@@ -196,7 +196,7 @@ export function ModelsSettingsModal({ open, onOpenChange }: ModelsSettingsModalP
             Models Settings
           </DialogTitle>
           <p className="text-text-secondary text-sm">
-            Configure custom model endpoints and API connections for OneAI
+            Configure custom model endpoints and API connections for OneEdge
           </p>
         </DialogHeader>
 

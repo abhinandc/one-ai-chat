@@ -1,16 +1,13 @@
 import { useState, useEffect } from 'react';
 import { automationService, Automation, AutomationExecution } from '../services/automationService';
-import supabaseClient from '../services/supabaseClient';
 
 export interface UseAutomationsResult {
   automations: Automation[];
   loading: boolean;
   error: string | null;
-  createAutomation: (automation: Partial<Automation>) => Promise<Automation>;
+  createAutomation: (automation: Partial<Automation> & { name: string; description: string }) => Promise<Automation>;
   executeAutomation: (id: string, input: any) => Promise<AutomationExecution>;
   deleteAutomation: (id: string) => Promise<void>;
-  pauseAutomation: (id: string) => Promise<void>;
-  resumeAutomation: (id: string) => Promise<void>;
   refetch: () => Promise<void>;
 }
 
@@ -43,14 +40,12 @@ export function useAutomations(userEmail?: string): UseAutomationsResult {
     fetchAutomations();
   }, [userEmail]);
 
-  const createAutomation = async (automation: Partial<Automation>): Promise<Automation> => {
+  const createAutomation = async (automation: Partial<Automation> & { name: string; description: string }): Promise<Automation> => {
     if (!userEmail) throw new Error('User email required');
     
-    // Build the full automation object with required fields
     const fullAutomation = {
-      user_email: userEmail,
-      name: automation.name || 'Untitled Automation',
-      description: automation.description || '',
+      name: automation.name,
+      description: automation.description,
       agent_id: automation.agent_id || '',
       trigger_config: automation.trigger_config || { type: 'manual' as const, config: {} },
       enabled: automation.enabled ?? true,
@@ -65,47 +60,15 @@ export function useAutomations(userEmail?: string): UseAutomationsResult {
     if (!userEmail) throw new Error('User email required');
     
     const execution = await automationService.executeAutomation(id, input, userEmail);
-    await fetchAutomations();
+    await fetchAutomations(); // Refresh to update stats
     return execution;
   };
 
   const deleteAutomation = async (id: string): Promise<void> => {
     if (!userEmail) throw new Error('User email required');
     
-    const { error } = await supabaseClient
-      .from('automations')
-      .delete()
-      .eq('id', id)
-      .eq('user_email', userEmail);
-    
-    if (error) throw error;
-    await fetchAutomations();
-  };
-
-  const pauseAutomation = async (id: string): Promise<void> => {
-    if (!userEmail) throw new Error('User email required');
-    
-    const { error } = await supabaseClient
-      .from('automations')
-      .update({ enabled: false })
-      .eq('id', id)
-      .eq('user_email', userEmail);
-    
-    if (error) throw error;
-    await fetchAutomations();
-  };
-
-  const resumeAutomation = async (id: string): Promise<void> => {
-    if (!userEmail) throw new Error('User email required');
-    
-    const { error } = await supabaseClient
-      .from('automations')
-      .update({ enabled: true })
-      .eq('id', id)
-      .eq('user_email', userEmail);
-    
-    if (error) throw error;
-    await fetchAutomations();
+    await automationService.deleteAutomation(id, userEmail);
+    await fetchAutomations(); // Refresh list
   };
 
   return {
@@ -115,8 +78,6 @@ export function useAutomations(userEmail?: string): UseAutomationsResult {
     createAutomation,
     executeAutomation,
     deleteAutomation,
-    pauseAutomation,
-    resumeAutomation,
     refetch: fetchAutomations,
   };
 }

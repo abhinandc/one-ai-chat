@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { useModels } from "@/services/api";
+import { useModels } from "@/hooks/useModels";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useVirtualKeys } from "@/hooks/useVirtualKeys";
 
@@ -14,7 +14,7 @@ const ModelsHub = () => {
   const groupedByProvider = useMemo(() => {
     const groups = new Map<string, typeof models>();
     models.forEach((model) => {
-      const provider = model.owned_by ?? "unknown";
+      const provider = model.metadata?.provider ?? model.owned_by ?? "unknown";
       if (!groups.has(provider)) {
         groups.set(provider, []);
       }
@@ -30,7 +30,7 @@ const ModelsHub = () => {
           <div className="space-y-xs">
             <h1 className="text-3xl font-semibold text-text-primary font-display">Models & Access</h1>
             <p className="text-text-secondary">
-              The catalog below reflects the models exposed by the OneAI Admin proxy. Paste the virtual key that was
+              The catalog below reflects the models exposed by the OneEdge Admin proxy. Paste the virtual key that was
               issued to you to run completions.
             </p>
           </div>
@@ -47,10 +47,10 @@ const ModelsHub = () => {
         <section className="space-y-md">
           <h2 className="text-xl font-semibold text-text-primary">Your Virtual Keys</h2>
           {keysLoading ? (
-            <GlassCard className="p-lg text-sm text-text-secondary">Loading key assignments...</GlassCard>
+            <GlassCard className="p-lg text-sm text-text-secondary">Loading key assignments?</GlassCard>
           ) : virtualKeys.length === 0 ? (
             <GlassCard id="api-keys" className="p-lg text-sm text-text-secondary">
-              No virtual keys were found for {user?.email ?? 'your account'}. Use the OneAI Admin portal to issue a key
+              No virtual keys were found for {user?.email ?? 'your account'}. Use the OneEdge Admin portal to issue a key
               and paste it here.
             </GlassCard>
           ) : (
@@ -60,7 +60,7 @@ const ModelsHub = () => {
                   <div className="flex items-center justify-between gap-md">
                     <div>
                       <p className="text-sm font-medium text-text-primary">{key.label || 'Virtual Key'}</p>
-                      <p className="text-xs text-text-tertiary mt-xs">Budget: {key.budget_usd ?? '∞'} USD • Models assigned: {key.models_json?.length || 0}</p>
+                      <p className="text-xs text-text-tertiary mt-xs">Budget: {key.budget_usd ?? '?'} USD | Models assigned: {key.models_json?.length ?? 0}</p>
                     </div>
                     <Badge variant={key.disabled ? 'destructive' : 'secondary'}>
                       {key.disabled ? 'Disabled' : 'Active'}
@@ -84,7 +84,7 @@ const ModelsHub = () => {
         <section className="space-y-md">
           <h2 className="text-xl font-semibold text-text-primary">Model Catalog</h2>
           {loading ? (
-            <GlassCard className="p-lg text-sm text-text-secondary">Loading models...</GlassCard>
+            <GlassCard className="p-lg text-sm text-text-secondary">Loading models?</GlassCard>
           ) : error ? (
             <GlassCard className="p-lg text-sm text-accent-orange bg-accent-orange/10 border-accent-orange/40">
               {error}
@@ -110,10 +110,19 @@ const ModelsHub = () => {
                             <p className="text-xs text-text-tertiary uppercase tracking-wide">{model.object}</p>
                           </div>
                           <Badge variant="secondary" className="text-xs">
-                            Context flexible
+                            {model.metadata?.maxTokens ? `${model.metadata.maxTokens} tokens` : 'Context flexible'}
                           </Badge>
                         </div>
+                        {model.metadata?.description && (
+                          <p className="text-sm text-text-secondary leading-relaxed">
+                            {model.metadata.description}
+                          </p>
+                        )}
                         <div className="text-xs text-text-tertiary space-y-xs">
+                          <p>
+                            <span className="font-medium text-text-secondary">Endpoint:</span>{' '}
+                            {model.metadata?.endpoint ?? 'Managed by proxy'}
+                          </p>
                           <p>
                             <span className="font-medium text-text-secondary">Owned by:</span>{' '}
                             {model.owned_by}

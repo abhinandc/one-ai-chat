@@ -39,8 +39,8 @@ interface FAQ {
 const helpArticles: HelpArticle[] = [
   {
     id: "1",
-    title: "Getting Started with OneAI Platform",
-    description: "Complete guide to setting up your OneAI environment with LiteLLM, vLLM, and Ollama integration",
+    title: "Getting Started with OneEdge Platform",
+    description: "Complete guide to setting up your OneEdge environment with LiteLLM, vLLM, and Ollama integration",
     category: "Getting Started",
     readTime: "8 min",
     popularity: 98,
@@ -110,7 +110,7 @@ const helpArticles: HelpArticle[] = [
   {
     id: "8",
     title: "Docker Deployment Guide",
-    description: "Deploy OneAI infrastructure using Docker Compose with Nginx and OAuth2 proxy",
+    description: "Deploy OneEdge infrastructure using Docker Compose with Nginx and OAuth2 proxy",
     category: "Deployment",
     readTime: "20 min",
     popularity: 85,
@@ -122,8 +122,8 @@ const helpArticles: HelpArticle[] = [
 const tutorials: Tutorial[] = [
   {
     id: "1",
-    title: "OneAI Platform Complete Setup",
-    description: "End-to-end setup of OneAI with Docker, LiteLLM, vLLM, and Ollama integration",
+    title: "OneEdge Platform Complete Setup",
+    description: "End-to-end setup of OneEdge with Docker, LiteLLM, vLLM, and Ollama integration",
     duration: "24:15",
     difficulty: "beginner",
     views: 18750,
@@ -159,7 +159,7 @@ const tutorials: Tutorial[] = [
   {
     id: "5",
     title: "Chat Interface Customization",
-    description: "Customize the OneAI chat interface with system prompts and model switching",
+    description: "Customize the OneEdge chat interface with system prompts and model switching",
     duration: "14:55",
     difficulty: "beginner",
     views: 11234,
@@ -186,7 +186,7 @@ const tutorials: Tutorial[] = [
   {
     id: "8",
     title: "Troubleshooting Common Issues",
-    description: "Diagnose and fix common OneAI deployment and configuration problems",
+    description: "Diagnose and fix common OneEdge deployment and configuration problems",
     duration: "26:17",
     difficulty: "intermediate",
     views: 7890,
@@ -197,15 +197,15 @@ const tutorials: Tutorial[] = [
 const faqs: FAQ[] = [
   {
     id: "1",
-    question: "How do I deploy OneAI with Docker?",
-    answer: "OneAI uses Docker Compose for easy deployment. Run 'docker compose -f docker-compose-oneai.yml up -d' in the docker directory. This will start all services including vLLM, LiteLLM, OnePass MCP, and the OneAI UI with Nginx reverse proxy.",
+    question: "How do I deploy OneEdge with Docker?",
+    answer: "OneEdge uses Docker Compose for easy deployment. Run 'docker compose -f docker-compose-oneai.yml up -d' in the docker directory. This will start all services including vLLM, LiteLLM, OnePass MCP, and the OneEdge UI with Nginx reverse proxy.",
     category: "Getting Started",
     helpful: 289
   },
   {
     id: "2",
     question: "Which AI models are supported?",
-    answer: "OneAI supports models through vLLM (Nemotron, Qwen, Llama, etc.), Ollama (local models), and LiteLLM proxy (OpenAI, Anthropic, Google, etc.). You can deploy models locally or connect to external APIs through our unified interface.",
+    answer: "OneEdge supports models through vLLM (Nemotron, Qwen, Llama, etc.), Ollama (local models), and LiteLLM proxy (OpenAI, Anthropic, Google, etc.). You can deploy models locally or connect to external APIs through our unified interface.",
     category: "Models",
     helpful: 345
   },
@@ -254,14 +254,14 @@ const faqs: FAQ[] = [
   {
     id: "9",
     question: "Can I integrate with external services?",
-    answer: "Yes! OneAI supports integration through LiteLLM for external AI APIs, custom tools in agents, and REST API endpoints. You can connect to OpenAI, Anthropic, Google, and other services while maintaining a unified interface.",
+    answer: "Yes! OneEdge supports integration through LiteLLM for external AI APIs, custom tools in agents, and REST API endpoints. You can connect to OpenAI, Anthropic, Google, and other services while maintaining a unified interface.",
     category: "Integration",
     helpful: 189
   },
   {
     id: "10",
     question: "How do I configure Nginx and OAuth2?",
-    answer: "OneAI includes Nginx reverse proxy and OAuth2-proxy for authentication. Configuration files are in the nginx and oauth2-proxy directories. The setup supports Google SSO, Cloudflare tunnels, and custom domain routing.",
+    answer: "OneEdge includes Nginx reverse proxy and OAuth2-proxy for authentication. Configuration files are in the nginx and oauth2-proxy directories. The setup supports Google SSO, Cloudflare tunnels, and custom domain routing.",
     category: "Configuration",
     helpful: 134
   }
@@ -269,7 +269,7 @@ const faqs: FAQ[] = [
 
 const quickActions = [
   {
-    title: "OneAI Documentation",
+    title: "OneEdge Documentation",
     description: "Complete setup and usage guides",
     icon: <Book className="h-6 w-6" />,
     action: "docs"
@@ -282,7 +282,7 @@ const quickActions = [
   },
   {
     title: "Docker Setup Guide",
-    description: "Deploy OneAI with Docker Compose",
+    description: "Deploy OneEdge with Docker Compose",
     icon: <Video className="h-6 w-6" />,
     action: "docker"
   },
@@ -361,7 +361,7 @@ export default function Help() {
             <div className="bg-gradient-to-r from-accent-blue/10 to-accent-purple/10 rounded-2xl p-8 mb-6">
               <h1 className="text-4xl font-bold text-text-primary mb-4">Help Center</h1>
               <p className="text-lg text-text-secondary mb-0">
-                Find answers, tutorials, and resources to help you succeed with OneAI
+                Find answers, tutorials, and resources to help you succeed with OneEdge
               </p>
             </div>
             
@@ -389,7 +389,7 @@ export default function Help() {
                 onClick={() => {
                   if (action.action === "docs") {
                     // Show getting started guide
-                    alert("OneAI Documentation\n\nComplete setup and usage guides for:\nâ€¢ Docker deployment with docker-compose-oneai.yml\nâ€¢ vLLM model configuration\nâ€¢ OnePass MCP service setup\nâ€¢ Agent creation and management\nâ€¢ Chat interface customization\n\nThis would normally open comprehensive documentation.");
+                    alert("OneEdge Documentation\n\nComplete setup and usage guides for:\nâ€¢ Docker deployment with docker-compose-oneai.yml\nâ€¢ vLLM model configuration\nâ€¢ OnePass MCP service setup\nâ€¢ Agent creation and management\nâ€¢ Chat interface customization\n\nThis would normally open comprehensive documentation.");
                   } else if (action.action === "api") {
                     // Try to open MCP API, fallback to info
                     try {
@@ -399,10 +399,10 @@ export default function Help() {
                     }
                   } else if (action.action === "docker") {
                     // Show Docker setup guide
-                    setDialogContent({ title: "Docker Setup Guide", content: "Deploy OneAI with Docker Compose:\n\n1. Navigate to F:/LLM_STATE/docker\n2. Run: docker compose -f docker-compose-oneai.yml up -d\n3. Access UI at: http://localhost:3010\n4. Check services: vLLM (8000), LiteLLM (4000), MCP (6060)" }); setDialogOpen(true);
+                    setDialogContent({ title: "Docker Setup Guide", content: "Deploy OneEdge with Docker Compose:\n\n1. Navigate to F:/LLM_STATE/docker\n2. Run: docker compose -f docker-compose-oneai.yml up -d\n3. Access UI at: http://localhost:3010\n4. Check services: vLLM (8000), LiteLLM (4000), MCP (6060)" }); setDialogOpen(true);
                   } else if (action.action === "github") {
                     // Show GitHub info
-                    alert("GitHub Repository\n\nOneAI Platform Source Code\n\nFeatures:\nâ€¢ Docker-based deployment\nâ€¢ Multi-model support (vLLM, Ollama, LiteLLM)\nâ€¢ Agent management with MCP\nâ€¢ Modern React UI with Shadcn\n\nThis would normally open the GitHub repository.");
+                    alert("GitHub Repository\n\nOneEdge Platform Source Code\n\nFeatures:\nâ€¢ Docker-based deployment\nâ€¢ Multi-model support (vLLM, Ollama, LiteLLM)\nâ€¢ Agent management with MCP\nâ€¢ Modern React UI with Shadcn\n\nThis would normally open the GitHub repository.");
                   }
                 }}
               >

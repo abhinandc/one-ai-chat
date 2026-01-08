@@ -1,4 +1,4 @@
-﻿-- Complete Supabase Schema for OneAI UI Application
+﻿-- Complete Supabase Schema for OneEdge UI Application
 
 -- 1. Conversations table
 CREATE TABLE IF NOT EXISTS conversations (

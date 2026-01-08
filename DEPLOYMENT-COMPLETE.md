@@ -1,6 +1,6 @@
 ﻿# ✅ DEPLOYMENT COMPLETED SUCCESSFULLY!
 
-## 🎉 Your OneAI UI is LIVE at https://edge.oneorigin.us
+## 🎉 Your OneEdge UI is LIVE at https://edge.oneorigin.us
 
 ### Deployment Status:
 ✅ Docker image built with pnpm

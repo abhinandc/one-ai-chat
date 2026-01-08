@@ -4,7 +4,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* OneAI Apple-minimal Design System with glass-ios26 effects */
+/* OneEdge Apple-minimal Design System with glass-ios26 effects */
 
 @layer base {
   :root {
@@ -22,6 +22,13 @@
     --glass-bg-opacity: 0.8;
     --glass-border: 220 13% 91%;
     --glass-shadow: 220 3% 15%;
+    
+    /* Glass input specific */
+    --glass-input-bg: 0 0% 100%;
+    --glass-input-bg-opacity: 0.7;
+    --glass-input-border: 220 13% 88%;
+    --glass-input-text: 0 0% 13%;
+    --glass-input-placeholder: 0 0% 58%;
     
     /* Low-ink UI colors */
     --text-primary: 0 0% 13%;
@@ -125,6 +132,13 @@
     --glass-border: 217 20% 22%;
     --glass-shadow: 217 50% 0%;
     
+    /* Glass input specific - dark mode with better contrast */
+    --glass-input-bg: 217 25% 18%;
+    --glass-input-bg-opacity: 0.9;
+    --glass-input-border: 217 20% 28%;
+    --glass-input-text: 210 40% 98%;
+    --glass-input-placeholder: 210 20% 55%;
+    
     /* Balanced text hierarchy */
     --text-primary: 210 40% 98%;
     --text-secondary: 210 25% 80%;
@@ -213,6 +227,22 @@
   .glass-divider {
     background: linear-gradient(to right, transparent, hsl(var(--divider)), transparent);
     height: 1px;
+  }
+  
+  .glass-input {
+    background: hsla(var(--glass-input-bg), var(--glass-input-bg-opacity));
+    border: 1px solid hsl(var(--glass-input-border));
+    color: hsl(var(--glass-input-text));
+    backdrop-filter: blur(var(--blur-sm));
+  }
+  
+  .glass-input::placeholder {
+    color: hsl(var(--glass-input-placeholder));
+  }
+  
+  .glass-input:focus {
+    border-color: hsl(var(--accent-blue));
+    box-shadow: 0 0 0 2px hsla(var(--accent-blue), 0.2);
   }
   
   .surface-graphite {

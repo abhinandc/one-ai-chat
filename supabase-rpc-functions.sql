@@ -1,4 +1,4 @@
-﻿-- RPC Functions for OneAI UI Application
+﻿-- RPC Functions for OneEdge UI Application
 
 -- Function to increment prompt likes
 CREATE OR REPLACE FUNCTION increment_prompt_likes(prompt_id uuid)

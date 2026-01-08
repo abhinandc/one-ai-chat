@@ -95,18 +95,11 @@ const upsertProfile = async (profile: {
 
   try {
     await supabase
-      .from("app_users")
+      .from("users")
       .upsert(
         {
           email: profile.email,
-          display_name: profile.name ?? null,
-          avatar_url: profile.picture ?? null,
-          metadata_json: {
-            provider: "google",
-            givenName: profile.givenName ?? null,
-            familyName: profile.familyName ?? null,
-            updatedAt: new Date().toISOString(),
-          },
+          name: profile.name ?? null,
         },
         { onConflict: "email" },
       );
@@ -130,8 +123,8 @@ const storeUserLocally = (profile: {
     picture: profile.picture,
   };
 
-  localStorage.setItem("oneai_user", JSON.stringify(stored));
-  window.dispatchEvent(new StorageEvent("storage", { key: "oneai_user" }));
+  localStorage.setItem("oneedge_user", JSON.stringify(stored));
+  window.dispatchEvent(new StorageEvent("storage", { key: "oneedge_user" }));
 };
 
 const clearOauthArtifacts = () => {
@@ -226,7 +219,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       });
 
       const authToken = `google_oauth_${Date.now()}`;
-      localStorage.setItem("oneai_auth_token", authToken);
+      localStorage.setItem("oneedge_auth_token", authToken);
       onLogin?.(authToken);
     },
     [onLogin],
@@ -368,9 +361,23 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setIsLoading(true);
 
     try {
-      console.log("Email sign-in:", { email, password });
+      console.log("Email sign-in:", { email });
       const mockToken = `email-login-${Date.now()}`;
-      localStorage.setItem("oneai_auth_token", mockToken);
+      
+      // Store user profile data so useCurrentUser returns the user
+      storeUserLocally({
+        email,
+        name: email.split("@")[0], // Use email prefix as name
+      });
+      
+      localStorage.setItem("oneedge_auth_token", mockToken);
+      
+      // Persist to Supabase in background (don't block login)
+      upsertProfile({
+        email,
+        name: email.split("@")[0],
+      }).catch((err) => console.warn("Failed to persist to Supabase:", err));
+      
       onLogin?.(mockToken);
     } catch (error) {
       console.error("Email sign-in failed:", error);
@@ -393,7 +400,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
       <div className="w-full max-w-md space-y-xl">
         <div className="text-center space-y-md">
-          <h1 className="text-4xl font-semibold text-text-primary font-display">OneAI</h1>
+          <h1 className="text-4xl font-semibold text-text-primary font-display">OneEdge</h1>
           <p className="text-lg text-text-secondary">OneOrigin's Unified AI Platform</p>
         </div>
 

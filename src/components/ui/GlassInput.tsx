@@ -13,15 +13,14 @@ const GlassInput = forwardRef<HTMLInputElement, GlassInputProps>(
         type={type}
         className={cn(
           "flex h-12 w-full rounded-xl px-lg py-md text-sm",
-          "bg-white/60 backdrop-blur-sm border border-border-primary",
-          "text-text-primary placeholder:text-text-tertiary",
-          "focus:outline-none focus:ring-2 focus:ring-accent-blue focus:border-transparent",
+          "glass-input",
+          "focus:outline-none",
           "disabled:cursor-not-allowed disabled:opacity-50",
-           "motion-safe hover:bg-white/70",
-           {
-             "h-10 rounded-lg": variant === "minimal",
-             "bg-surface-graphite/60 border-border-secondary hover:bg-surface-graphite/80": variant === "search"
-           },
+          "transition-colors duration-200",
+          {
+            "h-10 rounded-lg": variant === "minimal",
+            "bg-surface-graphite/60 border-border-secondary": variant === "search"
+          },
           className
         )}
         ref={ref}
