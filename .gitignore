@@ -31,3 +31,12 @@ dist-ssr
 .worktrees/
 .security-key
 logs/security/
+
+# Flutter/Mobile build artifacts
+mobile/build/
+mobile/.dart_tool/
+mobile/*.apk
+*.apk
+
+# Playwright reports (large test artifacts)
+reports/playwright/data/
