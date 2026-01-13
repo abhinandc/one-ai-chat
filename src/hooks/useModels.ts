@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import apiClient, { Model } from '../lib/api';
+import { logger } from '@/lib/logger';
 
 export interface UseModelsResult {
   models: Model[];
@@ -22,7 +23,7 @@ export function useModels(): UseModelsResult {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch models';
       setError(errorMessage);
-      console.error('Failed to fetch models:', err);
+      logger.error('Failed to fetch models', err);
     } finally {
       setLoading(false);
     }

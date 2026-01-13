@@ -1,7 +1,7 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { GlassInput } from "@/components/ui/GlassInput";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -40,20 +40,20 @@ export function CreatePromptModal({ open, onOpenChange, onSubmit }: CreatePrompt
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[625px] bg-card border-border-primary max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[625px] bg-card border-border max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-text-primary">Create New Prompt Template</DialogTitle>
-          <DialogDescription className="text-text-secondary">
+          <DialogTitle className="text-foreground">Create New Prompt Template</DialogTitle>
+          <DialogDescription className="text-muted-foreground">
             Create a reusable prompt template for your AI workflows
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="title" className="text-text-primary">
+              <Label htmlFor="title" className="text-foreground">
                 Prompt Title
               </Label>
-              <GlassInput
+              <Input
                 id="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -61,12 +61,12 @@ export function CreatePromptModal({ open, onOpenChange, onSubmit }: CreatePrompt
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="description" className="text-text-primary">
+              <Label htmlFor="description" className="text-foreground">
                 Description
               </Label>
-              <GlassInput
+              <Input
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -76,14 +76,14 @@ export function CreatePromptModal({ open, onOpenChange, onSubmit }: CreatePrompt
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="category" className="text-text-primary">
+                <Label htmlFor="category" className="text-foreground">
                   Category
                 </Label>
                 <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger className="bg-surface-graphite border-border-primary text-text-primary">
+                  <SelectTrigger className="bg-input border-border text-foreground">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-card border-border-primary">
+                  <SelectContent className="bg-card border-border">
                     <SelectItem value="General">General</SelectItem>
                     <SelectItem value="Development">Development</SelectItem>
                     <SelectItem value="Content">Content</SelectItem>
@@ -94,14 +94,14 @@ export function CreatePromptModal({ open, onOpenChange, onSubmit }: CreatePrompt
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="difficulty" className="text-text-primary">
+                <Label htmlFor="difficulty" className="text-foreground">
                   Difficulty
                 </Label>
                 <Select value={difficulty} onValueChange={setDifficulty}>
-                  <SelectTrigger className="bg-surface-graphite border-border-primary text-text-primary">
+                  <SelectTrigger className="bg-input border-border text-foreground">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-card border-border-primary">
+                  <SelectContent className="bg-card border-border">
                     <SelectItem value="beginner">Beginner</SelectItem>
                     <SelectItem value="intermediate">Intermediate</SelectItem>
                     <SelectItem value="advanced">Advanced</SelectItem>
@@ -111,7 +111,7 @@ export function CreatePromptModal({ open, onOpenChange, onSubmit }: CreatePrompt
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="content" className="text-text-primary">
+              <Label htmlFor="content" className="text-foreground">
                 Prompt Content
               </Label>
               <Textarea
@@ -119,10 +119,10 @@ export function CreatePromptModal({ open, onOpenChange, onSubmit }: CreatePrompt
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="Enter your prompt template here... Use {variable_name} for variables."
-                className="min-h-[200px] bg-surface-graphite border-border-primary text-text-primary font-mono text-sm"
+                className="min-h-[200px] bg-input border-border text-foreground font-mono text-sm"
                 required
               />
-              <p className="text-xs text-text-tertiary">
+              <p className="text-xs text-muted-foreground">
                 Tip: Use {"{variable_name}"} syntax for dynamic variables
               </p>
             </div>
@@ -131,7 +131,7 @@ export function CreatePromptModal({ open, onOpenChange, onSubmit }: CreatePrompt
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-accent-blue hover:bg-accent-blue/90">
+            <Button type="submit" className="bg-primary hover:bg-primary/90">
               Create Prompt
             </Button>
           </DialogFooter>

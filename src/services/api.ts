@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import supabaseClient from '@/services/supabaseClient';
+import { logger } from '@/lib/logger';
 
 import apiClientInstance, {
   type Model as ApiModel,
@@ -63,7 +64,7 @@ export function useModels() {
       ]);
 
       if (metaResponse.error) {
-        console.warn('Unable to load model metadata from Supabase:', metaResponse.error.message);
+        logger.warn('Unable to load model metadata from Supabase', { error: metaResponse.error.message });
       }
 
       const metadataMap = new Map<string, any>();
@@ -96,7 +97,7 @@ export function useModels() {
       const message = err instanceof Error ? err.message : 'Failed to fetch models';
       setError(message);
       setModels([]);
-      console.error('Failed to fetch models:', err);
+      logger.error('Failed to fetch models', err);
     } finally {
       setLoading(false);
     }
@@ -122,7 +123,7 @@ export function useAgents(filters?: { env?: string; labels?: string; subject?: s
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch agents';
       setError(message);
-      console.error('Failed to fetch agents:', err);
+      logger.error('Failed to fetch agents', err);
     } finally {
       setLoading(false);
     }

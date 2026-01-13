@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { analyticsService, UsageMetrics, ActivityEvent } from '../services/analyticsService';
+import { logger } from '@/lib/logger';
 
 export function useAnalytics(userEmail?: string) {
   const [metrics, setMetrics] = useState<UsageMetrics | null>(null);
@@ -51,7 +52,7 @@ export function useAnalytics(userEmail?: string) {
       const activityData = await analyticsService.getActivityFeed(userEmail, 10);
       setActivity(activityData);
     } catch (error) {
-      console.error('Failed to track event:', error);
+      logger.error('Failed to track event', error);
     }
   };
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiClient, Agent } from '../services/api';
+import { logger } from '@/lib/logger';
 
 export interface UseAgentsOptions {
   env?: string;
@@ -32,7 +33,7 @@ export function useAgents(options: UseAgentsOptions = {}): UseAgentsResult {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch agents';
       setError(errorMessage);
-      console.error('Failed to fetch agents:', err);
+      logger.error('Failed to fetch agents', err);
     } finally {
       setLoading(false);
     }

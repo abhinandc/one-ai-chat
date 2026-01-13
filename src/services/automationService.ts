@@ -32,6 +32,9 @@ export interface Automation {
   last_run_at?: string;
   total_runs: number;
   success_rate: number;
+  credential_id?: string;
+  model?: string;
+  template_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -64,6 +67,47 @@ class AutomationService {
     return data;
   }
 
+  /**
+   * Create an automation from a template
+   * Instantiates template data and creates a new automation
+   */
+  async createFromTemplate(
+    templateId: string,
+    config: {
+      name?: string;
+      description?: string;
+      credentialId?: string;
+      model?: string;
+    },
+    userEmail: string
+  ): Promise<Automation> {
+    // Fetch template
+    const { data: template, error: templateError } = await supabaseClient
+      .from('automation_templates')
+      .select('*')
+      .eq('id', templateId)
+      .single();
+
+    if (templateError) throw new Error(`Template not found: ${templateError.message}`);
+
+    // Extract template data
+    const templateData = template.template_data as any;
+
+    // Create automation from template
+    const automation = {
+      name: config.name || template.name,
+      description: config.description || template.description || `Created from template: ${template.name}`,
+      agent_id: '', // Will be set by user or derived from model
+      trigger_config: templateData.trigger || { type: 'manual' as const, config: {} },
+      enabled: true,
+      credential_id: config.credentialId,
+      model: config.model || template.default_model,
+      template_id: templateId,
+    };
+
+    return this.createAutomation(automation, userEmail);
+  }
+
   async executeAutomation(automationId: string, input: any, userEmail: string): Promise<AutomationExecution> {
     const execution = {
       automation_id: automationId,
@@ -86,17 +130,41 @@ class AutomationService {
       const automation = await this.getAutomation(automationId, userEmail);
       if (!automation) throw new Error('Automation not found');
 
-      const agent = await apiClient.getAgent(automation.agent_id);
-      if (!agent) throw new Error('Agent not found');
+      // Determine which model to use (automation.model or agent's model)
+      let modelToUse = automation.model;
+      let systemPrompt = 'You are an AI assistant executing an automation task.';
+
+      // If automation has an agent, use agent's configuration
+      if (automation.agent_id) {
+        const agent = await apiClient.getAgent(automation.agent_id);
+        if (agent) {
+          modelToUse = modelToUse || agent.modelRouting.primary;
+          systemPrompt = agent.systemPrompt || systemPrompt;
+        }
+      }
+
+      if (!modelToUse) {
+        throw new Error('No model specified for this automation');
+      }
+
+      // Prepare context with credentials if available
+      let executionContext: any = { input };
+
+      if (automation.credential_id) {
+        // Note: In production, credentials would be decrypted and used server-side
+        // This is a simplified version - actual integration API calls would happen in Edge Functions
+        executionContext.hasCredentials = true;
+        executionContext.credentialId = automation.credential_id;
+      }
 
       const result = await apiClient.createChatCompletion({
-        model: agent.modelRouting.primary,
+        model: modelToUse,
         messages: [
-          { role: 'system', content: `You are ${agent.name}. Execute this automation task.` },
-          { role: 'user', content: JSON.stringify(input) }
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: JSON.stringify(executionContext) }
         ],
         temperature: 0.7,
-        max_tokens: agent.runtime.maxTokens || 4000,
+        max_tokens: 4000,
       });
 
       const completedAt = new Date().toISOString();

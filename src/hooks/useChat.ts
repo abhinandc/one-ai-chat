@@ -5,6 +5,7 @@ import {
   type ChatCompletionRequest,
   type ChatMessage,
 } from '../services/api';
+import { chatLogger as logger } from '@/lib/logger';
 
 export interface UseChatOptions {
   model?: string;
@@ -123,25 +124,65 @@ export function useChat(options: UseChatOptions = {}) {
           return;
         }
 
-        console.warn('Streaming failed, falling back to non-streaming request:', streamError);
-
-        const response = await apiClient.createChatCompletion({
-          ...request,
-          stream: false,
+        // Log error properly for debugging
+        logger.error('Streaming failed, attempting fallback to non-streaming', streamError, {
+          model: finalOptions.model,
+          messageCount: messages.length,
         });
 
-        const assistantMessage: ChatMessage = {
-          role: 'assistant',
-          content: response.choices?.[0]?.message?.content || 'No response generated',
-        };
-
+        // Notify user that streaming is unavailable
         setState(prev => ({
           ...prev,
-          messages: [...prev.messages, assistantMessage],
-          isLoading: false,
-          isStreaming: false,
-          streamingMessage: '',
+          error: 'Streaming unavailable. Using standard response mode instead. Your message is still being processed.',
         }));
+
+        try {
+          const response = await apiClient.createChatCompletion({
+            ...request,
+            stream: false,
+          });
+
+          const assistantMessage: ChatMessage = {
+            role: 'assistant',
+            content: response.choices?.[0]?.message?.content || 'No response generated',
+          };
+
+          setState(prev => ({
+            ...prev,
+            messages: [...prev.messages, assistantMessage],
+            isLoading: false,
+            isStreaming: false,
+            streamingMessage: '',
+            // Clear the error after successful fallback
+            error: null,
+          }));
+        } catch (fallbackError) {
+          // Fallback also failed - this is CRITICAL
+          logger.error('Both streaming and non-streaming failed', fallbackError, {
+            streamError: streamError instanceof Error ? streamError.message : String(streamError),
+            model: finalOptions.model,
+          });
+
+          const errorMessage = fallbackError instanceof Error
+            ? fallbackError.message
+            : 'Failed to get response from AI model. Please try again.';
+
+          setState(prev => ({
+            ...prev,
+            isLoading: false,
+            isStreaming: false,
+            error: errorMessage,
+            streamingMessage: '',
+          }));
+
+          if (finalOptions.onError) {
+            finalOptions.onError(
+              fallbackError instanceof Error
+                ? fallbackError
+                : new Error(errorMessage)
+            );
+          }
+        }
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An error occurred';

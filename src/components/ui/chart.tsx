@@ -6,6 +6,51 @@ import { cn } from "@/lib/utils"
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const
 
+/**
+ * Sanitize a CSS color value to prevent XSS attacks.
+ * Only allows valid CSS color formats: hex, rgb(a), hsl(a), oklch, named colors, and CSS variables.
+ */
+function sanitizeCssColor(color: string): string | null {
+  if (!color || typeof color !== 'string') {
+    return null
+  }
+
+  const trimmed = color.trim()
+
+  // CSS variable reference: var(--name) or var(--name, fallback)
+  if (/^var\(--[\w-]+(?:,\s*[^)]+)?\)$/i.test(trimmed)) {
+    return trimmed
+  }
+
+  // Hex color: #RGB, #RRGGBB, #RGBA, #RRGGBBAA
+  if (/^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(trimmed)) {
+    return trimmed
+  }
+
+  // RGB/RGBA: rgb(r, g, b) or rgba(r, g, b, a) - also modern space syntax
+  if (/^rgba?\(\s*[\d.%\s,/]+\s*\)$/i.test(trimmed)) {
+    return trimmed
+  }
+
+  // HSL/HSLA: hsl(h, s%, l%) or hsla(h, s%, l%, a)
+  if (/^hsla?\(\s*[\d.%\s,/deg]+\s*\)$/i.test(trimmed)) {
+    return trimmed
+  }
+
+  // OKLCH: oklch(L C H) or oklch(L C H / alpha)
+  if (/^oklch\(\s*[\d.%\s/]+\s*\)$/i.test(trimmed)) {
+    return trimmed
+  }
+
+  // Named colors (basic validation - alphanumeric only)
+  if (/^[a-z]+$/i.test(trimmed) && trimmed.length <= 20) {
+    return trimmed
+  }
+
+  // Reject anything else as potentially unsafe
+  return null
+}
+
 export type ChartConfig = {
   [k in string]: {
     label?: React.ReactNode
@@ -74,28 +119,37 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null
   }
 
-  return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
-${colorConfig
-  .map(([key, itemConfig]) => {
-    const color =
-      itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
-      itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
-  })
-  .join("\n")}
-}
-`
-          )
-          .join("\n"),
-      }}
-    />
-  )
+  // Sanitize the chart ID to prevent CSS injection (allow only safe characters)
+  const sanitizedId = id.replace(/[^a-zA-Z0-9-_]/g, '')
+
+  // Build CSS with sanitized color values to prevent XSS
+  const cssContent = Object.entries(THEMES)
+    .map(([theme, prefix]) => {
+      const colorDeclarations = colorConfig
+        .map(([key, itemConfig]) => {
+          const rawColor =
+            itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
+            itemConfig.color
+          const sanitizedColor = rawColor ? sanitizeCssColor(rawColor) : null
+          // Sanitize the key to prevent CSS injection
+          const sanitizedKey = key.replace(/[^a-zA-Z0-9-_]/g, '')
+          return sanitizedColor
+            ? `  --color-${sanitizedKey}: ${sanitizedColor};`
+            : null
+        })
+        .filter(Boolean)
+        .join("\n")
+
+      return `
+${prefix} [data-chart=${sanitizedId}] {
+${colorDeclarations}
+}`
+    })
+    .join("\n")
+
+  // Note: dangerouslySetInnerHTML is required for dynamic CSS injection.
+  // All inputs are sanitized via sanitizeCssColor() and regex allowlists.
+  return <style>{cssContent}</style>
 }
 
 const ChartTooltip = RechartsPrimitive.Tooltip

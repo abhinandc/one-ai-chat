@@ -1,5 +1,6 @@
 import supabaseClient from './supabaseClient';
 import { analyticsService } from './analyticsService';
+import { logger } from '@/lib/logger';
 
 class RealtimeService {
   private channels: Map<string, any> = new Map();
@@ -137,7 +138,7 @@ class RealtimeService {
         metadata: metadata || {}
       });
     } catch (error) {
-      console.error('Failed to track activity:', error);
+      logger.error('Failed to track activity', error);
     }
   }
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import supabaseClient from '@/services/supabaseClient';
+import { logger } from '@/lib/logger';
 
 export interface VirtualKey {
   id: string;
@@ -47,7 +48,7 @@ export function useVirtualKeys(userEmail?: string) {
       if (fetchError) throw fetchError;
       setVirtualKeys(data || []);
     } catch (err) {
-      console.error('Failed to fetch virtual keys:', err);
+      logger.error('Failed to fetch virtual keys', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch virtual keys');
       setVirtualKeys([]);
     } finally {

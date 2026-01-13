@@ -11,7 +11,7 @@ import {
   Node,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Plus, Play, Save, Settings, Brain, Trash2, Edit, ExternalLink, Link2, Power, PowerOff, RefreshCw, Loader2 } from "lucide-react";
+import { Plus, Play, Save, Settings, Brain, Trash2, Edit, ExternalLink, Link2, Power, PowerOff, RefreshCw, Share2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard, GlassCardHeader, GlassCardTitle, GlassCardContent } from "@/components/ui/GlassCard";
 import { GlassInput } from "@/components/ui/GlassInput";
@@ -24,6 +24,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useN8NWorkflows } from "@/hooks/useN8NWorkflows";
 import { n8nService } from "@/services/n8nService";
 import { Badge } from "@/components/ui/badge";
+import { useSupabaseAgents } from "@/hooks/useSupabaseAgents";
+import { ShareAgentModal } from "@/components/modals/ShareAgentModal";
+import { TestAgentModal } from "@/components/modals/TestAgentModal";
+import { supabase } from "@/integrations/supabase/client";
 
 import { SystemNode } from "@/components/agents/nodes/SystemNode";
 import { ToolNode } from "@/components/agents/nodes/ToolNode";
@@ -84,12 +88,32 @@ const Agents = () => {
   const [isExecuting, setIsExecuting] = useState(false);
   const [activeTab, setActiveTab] = useState<'n8n' | 'custom'>('n8n');
   const [togglingWorkflow, setTogglingWorkflow] = useState<string | null>(null);
-  
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [selectedAgentForShare, setSelectedAgentForShare] = useState<{id: string; name: string; sharedWith: string[]} | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [showSharedOnly, setShowSharedOnly] = useState(false);
+  const [testModalOpen, setTestModalOpen] = useState(false);
+  const [selectedAgentForTest, setSelectedAgentForTest] = useState<{id: string; name: string} | null>(null);
+
   const { agents, loading: agentsLoading, createAgent, deleteAgent, refetch } = useAgents({ env: 'all' });
   const { models, loading: modelsLoading } = useModels();
   const user = useCurrentUser();
   const { toast } = useToast();
   const { workflows: n8nWorkflows, loading: n8nLoading, error: n8nError, hasCredentials, refetch: refetchN8N, toggleActive } = useN8NWorkflows();
+
+  // Fetch Supabase agents with sharing support
+  const { agents: supabaseAgents, createAgent: createSupabaseAgent, shareAgent, unshareAgent, executeAgent, refetch: refetchSupabaseAgents } = useSupabaseAgents(currentUserId || undefined);
+
+  // Get current user ID from Supabase Auth
+  useEffect(() => {
+    const fetchUserId = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        setCurrentUserId(session.user.id);
+      }
+    };
+    fetchUserId();
+  }, []);
 
   useEffect(() => {
     if (models.length > 0 && !selectedModel) {
@@ -127,7 +151,16 @@ const Agents = () => {
       return;
     }
 
-    if (!user?.email) {
+    if (!selectedModel) {
+      toast({
+        title: "Model required",
+        description: "Please select a model for your agent",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!currentUserId) {
       toast({
         title: "Not authenticated",
         description: "Please sign in to save agents",
@@ -137,24 +170,26 @@ const Agents = () => {
     }
 
     try {
-      await agentWorkflowService.saveWorkflow({
-        user_email: user.email,
+      // Save to Supabase agents table
+      await createSupabaseAgent({
         name: agentName,
-        nodes: nodes as any,
-        edges: edges as any,
-        model_id: selectedModel,
-        is_active: false,
+        model: selectedModel,
+        workflow_data: {
+          nodes,
+          edges,
+        } as any,
+        description: '',
       });
 
       toast({
         title: "Agent saved",
         description: "Your agent workflow has been saved successfully"
       });
-      
+
       setAgentName("");
       setNodes([]);
       setEdges([]);
-      refetch();
+      refetchSupabaseAgents();
     } catch (error) {
       console.error('Failed to save agent:', error);
       toast({
@@ -202,6 +237,50 @@ const Agents = () => {
       year: 'numeric'
     });
   };
+
+  const handleOpenShareModal = (agentId: string, agentName: string, sharedWith: string[]) => {
+    setSelectedAgentForShare({ id: agentId, name: agentName, sharedWith });
+    setShareModalOpen(true);
+  };
+
+  const handleShareAgent = async (userIds: string[]) => {
+    if (!selectedAgentForShare || !currentUserId) return;
+
+    try {
+      await shareAgent(selectedAgentForShare.id, userIds);
+      toast({
+        title: "Agent shared",
+        description: `"${selectedAgentForShare.name}" has been shared successfully`,
+      });
+      refetchSupabaseAgents();
+    } catch (error) {
+      toast({
+        title: "Failed to share agent",
+        description: error instanceof Error ? error.message : "Could not share agent",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleOpenTestModal = (agentId: string, agentName: string) => {
+    setSelectedAgentForTest({ id: agentId, name: agentName });
+    setTestModalOpen(true);
+  };
+
+  const handleExecuteAgent = async (input: string) => {
+    if (!selectedAgentForTest || !currentUserId) {
+      throw new Error('No agent selected');
+    }
+
+    return await executeAgent(selectedAgentForTest.id, {
+      message: input,
+    });
+  };
+
+  // Filter agents based on showSharedOnly
+  const filteredSupabaseAgents = showSharedOnly
+    ? supabaseAgents.filter(agent => !agent.is_owner)
+    : supabaseAgents;
 
   return (
     <div className="h-full flex flex-col bg-surface-primary">
@@ -260,7 +339,11 @@ const Agents = () => {
             </div>
           ) : n8nLoading ? (
             <div className="flex items-center justify-center h-full">
-              <Loader2 className="h-8 w-8 animate-spin text-text-tertiary" />
+              {/* Skeleton loader - NO spinners per Constitution */}
+              <div className="flex flex-col items-center gap-4">
+                <div className="skeleton w-8 h-8 rounded-lg" />
+                <div className="skeleton w-40 h-4 rounded" />
+              </div>
             </div>
           ) : n8nError ? (
             <div className="flex flex-col items-center justify-center h-full">
@@ -371,14 +454,15 @@ const Agents = () => {
                           size="icon"
                           onClick={() => handleToggleN8NWorkflow(workflow.id, workflow.active)}
                           disabled={togglingWorkflow === workflow.id}
+                          loading={togglingWorkflow === workflow.id}
                           data-testid={`button-toggle-workflow-${workflow.id}`}
                         >
-                          {togglingWorkflow === workflow.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : workflow.active ? (
-                            <PowerOff className="h-4 w-4 text-red-500" />
-                          ) : (
-                            <Power className="h-4 w-4 text-green-500" />
+                          {togglingWorkflow !== workflow.id && (
+                            workflow.active ? (
+                              <PowerOff className="h-4 w-4 text-red-500" />
+                            ) : (
+                              <Power className="h-4 w-4 text-green-500" />
+                            )
                           )}
                         </Button>
                       </div>
@@ -411,54 +495,129 @@ const Agents = () => {
             </div>
 
             <div className="p-4 border-b border-border-primary">
-              <h3 className="font-medium text-text-primary mb-3">Save Agent</h3>
-              <GlassInput
-                type="text"
-                placeholder="Agent name..."
-                value={agentName}
-                onChange={(e) => setAgentName(e.target.value)}
-                variant="minimal"
-                className="w-full mb-2"
-                data-testid="input-agent-name"
-              />
-              <Button
-                size="sm"
-                className="w-full"
-                onClick={saveAgent}
-                disabled={!agentName.trim() || nodes.length === 0}
-                data-testid="button-save-agent"
-              >
-                <Save className="h-3 w-3 mr-1" />
-                Save Agent
-              </Button>
+              <h3 className="font-medium text-text-primary mb-3">Agent Configuration</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-text-secondary mb-1 block">Agent Name</label>
+                  <GlassInput
+                    type="text"
+                    placeholder="Agent name..."
+                    value={agentName}
+                    onChange={(e) => setAgentName(e.target.value)}
+                    variant="minimal"
+                    className="w-full"
+                    data-testid="input-agent-name"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-text-secondary mb-1 block">Model</label>
+                  <select
+                    value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-border-primary bg-surface-secondary text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue"
+                    disabled={modelsLoading}
+                  >
+                    {models.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {model.id}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <Button
+                  size="sm"
+                  className="w-full"
+                  onClick={saveAgent}
+                  disabled={!agentName.trim() || nodes.length === 0 || !selectedModel}
+                  data-testid="button-save-agent"
+                >
+                  <Save className="h-3 w-3 mr-1" />
+                  Save Agent
+                </Button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-auto p-4">
-              <h3 className="font-medium text-text-primary mb-3">Saved Agents</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-medium text-text-primary">Saved Agents</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowSharedOnly(!showSharedOnly)}
+                  className="text-xs"
+                >
+                  <Users className="h-3 w-3 mr-1" />
+                  {showSharedOnly ? "All" : "Shared"}
+                </Button>
+              </div>
               {agentsLoading ? (
                 <div className="text-sm text-text-tertiary">Loading...</div>
-              ) : agents.length === 0 ? (
-                <div className="text-sm text-text-tertiary">No agents yet</div>
+              ) : filteredSupabaseAgents.length === 0 ? (
+                <div className="text-sm text-text-tertiary">
+                  {showSharedOnly ? "No shared agents" : "No agents yet"}
+                </div>
               ) : (
                 <div className="space-y-2">
-                  {agents.map((agent: Agent) => (
+                  {filteredSupabaseAgents.map((agent) => (
                     <div
                       key={agent.id}
                       className={cn(
-                        "p-3 rounded-lg border cursor-pointer transition-colors",
-                        selectedAgent?.id === agent.id
-                          ? "border-accent-blue bg-accent-blue/10"
-                          : "border-border-primary hover:bg-surface-secondary"
+                        "p-3 rounded-lg border transition-colors",
+                        "border-border-primary hover:bg-surface-secondary"
                       )}
-                      onClick={() => setSelectedAgent(agent)}
                       data-testid={`agent-item-${agent.id}`}
                     >
-                      <div className="font-medium text-text-primary text-sm">{agent.name}</div>
-                      <div className="text-xs text-text-tertiary mt-1">
-                        Model: {agent.modelRouting.primary}
-                      </div>
-                      <div className="text-xs text-text-tertiary">
-                        {agent.published ? "Published" : "Draft"} - {agent.tools?.length || 0} tools
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium text-text-primary text-sm truncate">
+                              {agent.name}
+                            </span>
+                            {agent.is_shared && (
+                              <Badge variant="secondary" className="text-xs shrink-0">
+                                <Users className="h-3 w-3 mr-1" />
+                                Shared
+                              </Badge>
+                            )}
+                            {!agent.is_owner && (
+                              <Badge variant="outline" className="text-xs shrink-0">
+                                Shared with me
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-xs text-text-tertiary">
+                            Model: {agent.model}
+                          </div>
+                          {agent.description && (
+                            <div className="text-xs text-text-tertiary mt-1 line-clamp-1">
+                              {agent.description}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleOpenTestModal(agent.id, agent.name)}
+                            data-testid={`button-test-agent-${agent.id}`}
+                            title="Test agent"
+                          >
+                            <Play className="h-4 w-4" />
+                          </Button>
+                          {agent.is_owner && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleOpenShareModal(agent.id, agent.name, agent.shared_with || [])}
+                              data-testid={`button-share-agent-${agent.id}`}
+                              title="Share agent"
+                            >
+                              <Share2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -499,6 +658,30 @@ const Agents = () => {
             )}
           </div>
         </div>
+      )}
+
+      {/* Share Agent Modal */}
+      {selectedAgentForShare && currentUserId && (
+        <ShareAgentModal
+          open={shareModalOpen}
+          onOpenChange={setShareModalOpen}
+          agentId={selectedAgentForShare.id}
+          agentName={selectedAgentForShare.name}
+          currentUserId={currentUserId}
+          currentSharedWith={selectedAgentForShare.sharedWith}
+          onShare={handleShareAgent}
+        />
+      )}
+
+      {/* Test Agent Modal */}
+      {selectedAgentForTest && (
+        <TestAgentModal
+          open={testModalOpen}
+          onOpenChange={setTestModalOpen}
+          agentId={selectedAgentForTest.id}
+          agentName={selectedAgentForTest.name}
+          onExecute={handleExecuteAgent}
+        />
       )}
     </div>
   );

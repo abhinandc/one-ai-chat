@@ -1,8 +1,8 @@
 import { test, expect } from "@playwright/test";
 
 test("app loads and shows login page", async ({ page }) => {
-  await page.goto("http://localhost:5173");
-  
+  await page.goto("/");
+
   // Check if login page elements are present
   await expect(page.locator("h1")).toContainText("OneEdge");
   await expect(page.locator("text=OneOrigin's Unified AI Platform")).toBeVisible();
@@ -12,7 +12,7 @@ test("app loads and shows login page", async ({ page }) => {
 
 test("navigation works after authentication", async ({ page }) => {
   // Skip OAuth for testing, go directly to authenticated state
-  await page.goto("http://localhost:5173");
+  await page.goto("/");
   
   // Mock authentication by setting localStorage
   await page.evaluate(() => {

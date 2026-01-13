@@ -1,7 +1,7 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { GlassInput } from "@/components/ui/GlassInput";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -27,20 +27,20 @@ export function CreateAutomationModal({ open, onOpenChange, onSubmit }: CreateAu
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[525px] bg-card border-border-primary">
+      <DialogContent className="sm:max-w-[525px] bg-card border-border">
         <DialogHeader>
-          <DialogTitle className="text-text-primary">Create New Automation</DialogTitle>
-          <DialogDescription className="text-text-secondary">
+          <DialogTitle className="text-foreground">Create New Automation</DialogTitle>
+          <DialogDescription className="text-muted-foreground">
             Create a new automation workflow based on your agents
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-text-primary">
+              <Label htmlFor="name" className="text-foreground">
                 Automation Name
               </Label>
-              <GlassInput
+              <Input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -49,7 +49,7 @@ export function CreateAutomationModal({ open, onOpenChange, onSubmit }: CreateAu
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="description" className="text-text-primary">
+              <Label htmlFor="description" className="text-foreground">
                 Description
               </Label>
               <Textarea
@@ -57,7 +57,7 @@ export function CreateAutomationModal({ open, onOpenChange, onSubmit }: CreateAu
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe what this automation does..."
-                className="min-h-[100px] bg-surface-graphite border-border-primary text-text-primary"
+                className="min-h-[100px] bg-input border-border text-foreground"
                 required
               />
             </div>
@@ -66,7 +66,7 @@ export function CreateAutomationModal({ open, onOpenChange, onSubmit }: CreateAu
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-accent-blue hover:bg-accent-blue/90">
+            <Button type="submit" className="bg-primary hover:bg-primary/90">
               Create Automation
             </Button>
           </DialogFooter>

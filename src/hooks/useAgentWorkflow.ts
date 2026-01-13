@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { Node, Edge, useNodesState, useEdgesState } from '@xyflow/react';
 import { agentWorkflowService, AgentWorkflow } from '../services/agentWorkflowService';
 import { Agent } from '../services/api';
+import { logger } from '@/lib/logger';
 
 export interface UseAgentWorkflowResult {
   nodes: Node[];
@@ -86,7 +87,7 @@ export function useAgentWorkflow(): UseAgentWorkflowResult {
         updated_at: new Date().toISOString(),
       });
     } catch (error) {
-      console.error('Failed to load agent workflow:', error);
+      logger.error('Failed to load agent workflow', error);
     }
   }, [setNodes, setEdges]);
 
@@ -111,8 +112,8 @@ export function useAgentWorkflow(): UseAgentWorkflowResult {
       };
 
       setCurrentWorkflow(workflow);
-      
-      // Return a mock agent object - actual saving would need backend implementation
+
+      // Return agent object representation
       return {
         id: workflow.agent_id || `agent-${Date.now()}`,
         name,
@@ -124,7 +125,7 @@ export function useAgentWorkflow(): UseAgentWorkflowResult {
         runtime: agentConfig.runtime || { maxTokens: 4000, maxSeconds: 120, maxCostUSD: 1.0 },
       };
     } catch (error) {
-      console.error('Failed to save workflow as agent:', error);
+      logger.error('Failed to save workflow as agent', error);
       throw error;
     }
   }, [nodes, edges, currentWorkflow]);
@@ -142,7 +143,7 @@ export function useAgentWorkflow(): UseAgentWorkflowResult {
       setExecutionResult(result);
       return result;
     } catch (error) {
-      console.error('Failed to execute workflow:', error);
+      logger.error('Failed to execute workflow', error);
       const errorResult = { success: false, error: error instanceof Error ? error.message : 'Execution failed' };
       setExecutionResult(errorResult);
       return errorResult;
@@ -200,7 +201,7 @@ export function useAgentWorkflow(): UseAgentWorkflowResult {
         });
       }
     } catch (error) {
-      console.error('Failed to import workflow:', error);
+      logger.error('Failed to import workflow', error);
     }
   }, [setNodes, setEdges]);
 

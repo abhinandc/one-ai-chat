@@ -24,6 +24,8 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
       "@typescript-eslint/no-unused-vars": "off",
+      // Prevent console usage - use logger from @/lib/logger instead
+      "no-console": ["error", { allow: [] }],
     },
   }
 );

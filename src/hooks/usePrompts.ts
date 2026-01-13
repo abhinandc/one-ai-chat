@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { promptService, PromptTemplate } from '../services/promptService';
 import supabaseClient from '../services/supabaseClient';
+import { logger } from '@/lib/logger';
 
 export function usePrompts(userEmail?: string) {
   const [prompts, setPrompts] = useState<PromptTemplate[]>([]);
@@ -44,7 +45,7 @@ export function usePrompts(userEmail?: string) {
       if (error) throw error;
       return (data || []).map(item => item.prompt_id);
     } catch (err) {
-      console.error('Failed to fetch liked prompts:', err);
+      logger.error('Failed to fetch liked prompts', err);
       return [];
     }
   };
@@ -54,7 +55,7 @@ export function usePrompts(userEmail?: string) {
     try {
       await supabaseClient.rpc('increment_prompt_uses', { prompt_id: promptId });
     } catch (err) {
-      console.error('Failed to increment uses:', err);
+      logger.error('Failed to increment uses', err);
     }
   };
 

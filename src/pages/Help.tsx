@@ -1,8 +1,8 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Search, Book, MessageCircle, Video, FileText, ExternalLink, ChevronRight, Star, ThumbsUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { GlassCard } from "@/components/ui/GlassCard";
-import { GlassInput } from "@/components/ui/GlassInput";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -320,10 +320,10 @@ export default function Help() {
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case "beginner": return "text-accent-green bg-accent-green/10";
-      case "intermediate": return "text-accent-orange bg-accent-orange/10";
-      case "advanced": return "text-accent-red bg-accent-red/10";
-      default: return "text-text-secondary";
+      case "beginner": return "text-green-600 bg-green-500/10";
+      case "intermediate": return "text-orange-500 bg-orange-500/10";
+      case "advanced": return "text-destructive bg-destructive/10";
+      default: return "text-muted-foreground";
     }
   };
 
@@ -355,26 +355,25 @@ export default function Help() {
   return (
     <div className="h-full flex flex-col bg-background">
       {/* Header */}
-      <div className="border-b border-border-primary/50 p-8">
+      <div className="border-b border-border p-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-8">
-            <div className="bg-gradient-to-r from-accent-blue/10 to-accent-purple/10 rounded-2xl p-8 mb-6">
-              <h1 className="text-4xl font-bold text-text-primary mb-4">Help Center</h1>
-              <p className="text-lg text-text-secondary mb-0">
+            <div className="bg-gradient-to-r from-primary/10 to-purple-500/10 rounded-2xl p-8 mb-6">
+              <h1 className="text-4xl font-bold text-foreground mb-4">Help Center</h1>
+              <p className="text-lg text-muted-foreground mb-0">
                 Find answers, tutorials, and resources to help you succeed with OneEdge
               </p>
             </div>
-            
+
             {/* Search */}
             <div className="max-w-2xl mx-auto">
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-text-tertiary" />
-                <GlassInput
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
                   placeholder="Search for help articles, tutorials, or FAQs..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-12 h-14 text-lg"
-                  variant="search"
                 />
               </div>
             </div>
@@ -383,40 +382,36 @@ export default function Help() {
           {/* Quick Actions */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {quickActions.map((action, index) => (
-              <GlassCard 
-                key={index} 
-                className="p-4 hover:border-accent-blue/30 transition-colors cursor-pointer"
+              <Card
+                key={index}
+                className="p-4 hover:border-primary/30 transition-colors cursor-pointer"
                 onClick={() => {
                   if (action.action === "docs") {
-                    // Show getting started guide
-                    alert("OneEdge Documentation\n\nComplete setup and usage guides for:\nâ€¢ Docker deployment with docker-compose-oneai.yml\nâ€¢ vLLM model configuration\nâ€¢ OnePass MCP service setup\nâ€¢ Agent creation and management\nâ€¢ Chat interface customization\n\nThis would normally open comprehensive documentation.");
+                    alert("OneEdge Documentation\n\nComplete setup and usage guides for:\n- Docker deployment with docker-compose-oneai.yml\n- vLLM model configuration\n- OnePass MCP service setup\n- Agent creation and management\n- Chat interface customization\n\nThis would normally open comprehensive documentation.");
                   } else if (action.action === "api") {
-                    // Try to open MCP API, fallback to info
                     try {
                       window.open("http://localhost:6060/api", "_blank");
                     } catch (e) {
-                      alert("MCP API Reference\n\nOnePass MCP service endpoints:\nâ€¢ GET /api/mcp/agents - List agents\nâ€¢ POST /api/mcp/agents - Create agent\nâ€¢ GET /api/mcp/tools - List tools\nâ€¢ GET /api/mcp/capabilities - List capabilities\n\nService running at: http://localhost:6060");
+                      alert("MCP API Reference\n\nOnePass MCP service endpoints:\n- GET /api/mcp/agents - List agents\n- POST /api/mcp/agents - Create agent\n- GET /api/mcp/tools - List tools\n- GET /api/mcp/capabilities - List capabilities\n\nService running at: http://localhost:6060");
                     }
                   } else if (action.action === "docker") {
-                    // Show Docker setup guide
                     setDialogContent({ title: "Docker Setup Guide", content: "Deploy OneEdge with Docker Compose:\n\n1. Navigate to F:/LLM_STATE/docker\n2. Run: docker compose -f docker-compose-oneai.yml up -d\n3. Access UI at: http://localhost:3010\n4. Check services: vLLM (8000), LiteLLM (4000), MCP (6060)" }); setDialogOpen(true);
                   } else if (action.action === "github") {
-                    // Show GitHub info
-                    alert("GitHub Repository\n\nOneEdge Platform Source Code\n\nFeatures:\nâ€¢ Docker-based deployment\nâ€¢ Multi-model support (vLLM, Ollama, LiteLLM)\nâ€¢ Agent management with MCP\nâ€¢ Modern React UI with Shadcn\n\nThis would normally open the GitHub repository.");
+                    alert("GitHub Repository\n\nOneEdge Platform Source Code\n\nFeatures:\n- Docker-based deployment\n- Multi-model support (vLLM, Ollama, LiteLLM)\n- Agent management with MCP\n- Modern React UI with Shadcn\n\nThis would normally open the GitHub repository.");
                   }
                 }}
               >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-accent-blue/10 rounded-lg text-accent-blue">
+                  <div className="p-2 bg-primary/10 rounded-lg text-primary">
                     {action.icon}
                   </div>
                   <div>
-                    <h3 className="font-medium text-text-primary">{action.title}</h3>
-                    <p className="text-sm text-text-secondary">{action.description}</p>
+                    <h3 className="font-medium text-foreground">{action.title}</h3>
+                    <p className="text-sm text-muted-foreground">{action.description}</p>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-text-tertiary ml-auto" />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground ml-auto" />
                 </div>
-              </GlassCard>
+              </Card>
             ))}
           </div>
         </div>
@@ -442,7 +437,7 @@ export default function Help() {
                   onClick={() => setSelectedCategory(category)}
                   className={cn(
                     "whitespace-nowrap",
-                    selectedCategory === category && "bg-accent-blue hover:bg-accent-blue/90"
+                    selectedCategory === category && "bg-primary hover:bg-primary/90"
                   )}
                 >
                   {category}
@@ -453,56 +448,55 @@ export default function Help() {
             <TabsContent value="articles" className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredArticles.map((article) => (
-                  <GlassCard key={article.id} className="p-6 hover:border-accent-blue/30 transition-colors group cursor-pointer">
+                  <Card key={article.id} className="p-6 hover:border-primary/30 transition-colors group cursor-pointer">
                     <div className="space-y-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <h3 className="font-semibold text-text-primary group-hover:text-accent-blue transition-colors line-clamp-2">
+                          <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
                             {article.title}
                           </h3>
-                          <p className="text-sm text-text-secondary mt-1">{article.category}</p>
+                          <p className="text-sm text-muted-foreground mt-1">{article.category}</p>
                         </div>
                         <Badge variant="secondary" className="text-xs">
                           {article.readTime}
                         </Badge>
                       </div>
 
-                      <p className="text-sm text-text-secondary line-clamp-3">
+                      <p className="text-sm text-muted-foreground line-clamp-3">
                         {article.description}
                       </p>
 
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-4">
                           <div className="flex items-center gap-1">
-                            <Star className="h-3 w-3 text-accent-orange" />
-                            <span className="text-text-secondary">{article.popularity}</span>
+                            <Star className="h-3 w-3 text-orange-500" />
+                            <span className="text-muted-foreground">{article.popularity}</span>
                           </div>
                           <div className="flex items-center gap-1">
-                            <ThumbsUp className="h-3 w-3 text-text-secondary" />
-                            <span className="text-text-secondary">
+                            <ThumbsUp className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-muted-foreground">
                               {helpfulCounts[`article-${article.id}`] || article.helpful}
                             </span>
                           </div>
                         </div>
-                        <span className="text-text-tertiary">
+                        <span className="text-muted-foreground">
                           {article.lastUpdated.toLocaleDateString()}
                         </span>
                       </div>
 
                       <div className="flex gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           className="flex-1"
                           onClick={() => {
-                            // Show article content in a modal or navigate to detailed view
                             setDialogContent({ title: article.title, content: article.description }); setDialogOpen(true);
                           }}
                         >
                           <FileText className="h-3 w-3 mr-2" />
                           Read Article
                         </Button>
-                        <Button 
+                        <Button
                           variant={helpfulItems.has(`article-${article.id}`) ? "default" : "ghost"}
                           size="sm"
                           onClick={() => handleHelpful('article', article.id, article.helpful)}
@@ -511,7 +505,7 @@ export default function Help() {
                         </Button>
                       </div>
                     </div>
-                  </GlassCard>
+                  </Card>
                 ))}
               </div>
             </TabsContent>
@@ -519,14 +513,14 @@ export default function Help() {
             <TabsContent value="tutorials" className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {tutorials.map((tutorial) => (
-                  <GlassCard key={tutorial.id} className="p-6 hover:border-accent-blue/30 transition-colors group cursor-pointer">
+                  <Card key={tutorial.id} className="p-6 hover:border-primary/30 transition-colors group cursor-pointer">
                     <div className="space-y-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <h3 className="font-semibold text-text-primary group-hover:text-accent-blue transition-colors">
+                          <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
                             {tutorial.title}
                           </h3>
-                          <p className="text-sm text-text-secondary mt-1">{tutorial.category}</p>
+                          <p className="text-sm text-muted-foreground mt-1">{tutorial.category}</p>
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge className={cn("text-xs", getDifficultyColor(tutorial.difficulty))}>
@@ -538,23 +532,22 @@ export default function Help() {
                         </div>
                       </div>
 
-                      <p className="text-sm text-text-secondary">
+                      <p className="text-sm text-muted-foreground">
                         {tutorial.description}
                       </p>
 
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-1">
-                          <Video className="h-3 w-3 text-text-secondary" />
-                          <span className="text-text-secondary">{tutorial.views.toLocaleString()} views</span>
+                          <Video className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-muted-foreground">{tutorial.views.toLocaleString()} views</span>
                         </div>
                       </div>
 
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         className="w-full"
                         onClick={() => {
-                          // Show tutorial content or video player
                           setDialogContent({ title: tutorial.title, content: `Duration: ${tutorial.duration}\nDifficulty: ${tutorial.difficulty}\n\n${tutorial.description}` }); setDialogOpen(true);
                         }}
                       >
@@ -562,7 +555,7 @@ export default function Help() {
                         Watch Tutorial
                       </Button>
                     </div>
-                  </GlassCard>
+                  </Card>
                 ))}
               </div>
             </TabsContent>
@@ -570,10 +563,10 @@ export default function Help() {
             <TabsContent value="faq" className="space-y-6">
               <div className="space-y-4">
                 {filteredFAQs.map((faq) => (
-                  <GlassCard key={faq.id} className="p-6 hover:border-accent-blue/30 transition-colors">
+                  <Card key={faq.id} className="p-6 hover:border-primary/30 transition-colors">
                     <div className="space-y-4">
                       <div className="flex items-start justify-between">
-                        <h3 className="font-semibold text-text-primary flex-1">
+                        <h3 className="font-semibold text-foreground flex-1">
                           {faq.question}
                         </h3>
                         <Badge variant="secondary" className="text-xs ml-4">
@@ -581,18 +574,18 @@ export default function Help() {
                         </Badge>
                       </div>
 
-                      <p className="text-sm text-text-secondary leading-relaxed">
+                      <p className="text-sm text-muted-foreground leading-relaxed">
                         {faq.answer}
                       </p>
 
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1">
-                          <ThumbsUp className="h-3 w-3 text-text-secondary" />
-                          <span className="text-sm text-text-secondary">
+                          <ThumbsUp className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">
                             {helpfulCounts[`faq-${faq.id}`] || faq.helpful} people found this helpful
                           </span>
                         </div>
-                        <Button 
+                        <Button
                           variant={helpfulItems.has(`faq-${faq.id}`) ? "default" : "ghost"}
                           size="sm"
                           onClick={() => handleHelpful('faq', faq.id, faq.helpful)}
@@ -602,19 +595,19 @@ export default function Help() {
                         </Button>
                       </div>
                     </div>
-                  </GlassCard>
+                  </Card>
                 ))}
               </div>
             </TabsContent>
           </Tabs>
 
           {/* No Results */}
-          {((filteredArticles.length === 0 && searchQuery) || 
+          {((filteredArticles.length === 0 && searchQuery) ||
             (filteredFAQs.length === 0 && searchQuery)) && (
             <div className="text-center py-12">
-              <Search className="h-16 w-16 text-text-quaternary mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-text-primary mb-2">No results found</h3>
-              <p className="text-text-secondary">Try different keywords or browse by category</p>
+              <Search className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">No results found</h3>
+              <p className="text-muted-foreground">Try different keywords or browse by category</p>
             </div>
           )}
         </div>
