@@ -24,6 +24,11 @@ export interface ToolSubmission {
 
 class ToolService {
   async getInstalledTools(userEmail: string): Promise<ToolInstallation[]> {
+    if (!supabaseClient) {
+      console.warn('ToolService: Supabase client not configured');
+      return [];
+    }
+
     const { data, error } = await supabaseClient
       .from('tool_installations')
       .select('*')
@@ -56,6 +61,10 @@ class ToolService {
     });
 
     // Record installation
+    if (!supabaseClient) {
+      throw new Error('Supabase client not configured');
+    }
+
     const { data, error } = await supabaseClient
       .from('tool_installations')
       .insert({
@@ -80,6 +89,10 @@ class ToolService {
     await apiClient.deleteAgent(installation.agent_id);
 
     // Remove installation record
+    if (!supabaseClient) {
+      throw new Error('Supabase client not configured');
+    }
+
     const { error } = await supabaseClient
       .from('tool_installations')
       .delete()
@@ -90,6 +103,10 @@ class ToolService {
   }
 
   async getToolInstallation(id: string, userEmail: string): Promise<ToolInstallation | null> {
+    if (!supabaseClient) {
+      return null;
+    }
+
     const { data, error } = await supabaseClient
       .from('tool_installations')
       .select('*')
@@ -102,6 +119,10 @@ class ToolService {
   }
 
   async submitTool(submission: Omit<ToolSubmission, 'id' | 'submitted_at' | 'status'>): Promise<ToolSubmission> {
+    if (!supabaseClient) {
+      throw new Error('Supabase client not configured');
+    }
+
     const { data, error } = await supabaseClient
       .from('tool_submissions')
       .insert({
@@ -116,6 +137,11 @@ class ToolService {
   }
 
   async getToolSubmissions(userEmail: string): Promise<ToolSubmission[]> {
+    if (!supabaseClient) {
+      console.warn('ToolService: Supabase client not configured');
+      return [];
+    }
+
     const { data, error } = await supabaseClient
       .from('tool_submissions')
       .select('*')

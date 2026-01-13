@@ -1,15 +1,13 @@
 import React from "react";
-import { Heart, Github, Twitter, Linkedin } from "lucide-react";
+import { Github, Twitter, Linkedin } from "lucide-react";
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="fixed-footer glass-toolbar border-t border-border-primary bg-surface-graphite/95 backdrop-blur-xl">
+    <footer className="fixed-footer glass-toolbar border-t border-border-primary bg-surface-graphite">
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-text-secondary">
-            <span>Made with</span>
-            <Heart className="h-4 w-4 text-accent-red animate-gentle-bounce" />
-            <span>by OneEdge</span>
+            <span>&copy; 2026 OneOrigin Inc. All rights reserved.</span>
           </div>
           
           <div className="flex items-center gap-4">

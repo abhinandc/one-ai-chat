@@ -88,9 +88,9 @@ function MessageItem({ message, isStreaming }: MessageItemProps) {
         )}>
           <div className={cn(
             "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
-            isUser 
-              ? "bg-accent-blue text-white" 
-              : "bg-surface-secondary text-text-secondary"
+            isUser
+              ? "bg-accent-blue text-white"
+              : "bg-surface-graphite text-text-secondary"
           )}>
             {isUser ? "U" : "Agent"}
           </div>

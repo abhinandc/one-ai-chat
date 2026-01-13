@@ -1,97 +1,390 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { useModels } from "@/hooks/useModels";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useVirtualKeys } from "@/hooks/useVirtualKeys";
+import supabase from "@/services/supabaseClient";
+import { Key, Copy, Check, Eye, EyeOff, RefreshCw, Zap } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+interface VirtualKeyData {
+  id: string;
+  key_hash?: string;
+  key?: string;
+  token?: string;
+  label?: string;
+  key_alias?: string;
+  key_name?: string;
+  user_id?: string;
+  email?: string;
+  team_id?: string;
+  models?: string[];
+  models_json?: string[];
+  budget_usd?: number;
+  max_budget?: number;
+  expires_at?: string;
+  rpm?: number;
+  rpd?: number;
+  tpm?: number;
+  tpd?: number;
+  created_at?: string;
+  disabled?: boolean;
+  tags_json?: string[];
+  masked_key?: string;
+  metadata?: Record<string, unknown>;
+}
 
 const ModelsHub = () => {
   const user = useCurrentUser();
-  const { models, loading, error, refetch } = useModels();
-  const { virtualKeys, loading: keysLoading } = useVirtualKeys(user?.email);
+  const { toast } = useToast();
 
+  const [virtualKeys, setVirtualKeys] = useState<VirtualKeyData[]>([]);
+  const [keysLoading, setKeysLoading] = useState(true);
+  const [keysError, setKeysError] = useState<string | null>(null);
+  const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
+  const [visibleKeyId, setVisibleKeyId] = useState<string | null>(null);
+  const [activeKeyId, setActiveKeyId] = useState<string | null>(null);
+
+  // Fetch employee keys using Edge Function
+  const fetchVirtualKeys = async () => {
+    if (!supabase) {
+      setKeysError("Supabase not configured");
+      setKeysLoading(false);
+      return;
+    }
+
+    if (!user?.email) {
+      setKeysError("User not logged in");
+      setKeysLoading(false);
+      return;
+    }
+
+    try {
+      setKeysLoading(true);
+      setKeysError(null);
+
+      // Get the current session to ensure we have a valid auth token
+      const { data: sessionData } = await supabase.auth.getSession();
+      console.log('Session status:', sessionData?.session ? 'Active' : 'No session');
+
+      // Call the employee_keys Edge Function
+      const { data, error } = await supabase.functions.invoke('employee_keys', {
+        body: { email: user.email }
+      });
+
+      console.log('Employee Keys Edge Function Result:', { data, error, userEmail: user.email });
+
+      if (error) {
+        throw new Error(error.message || 'Edge function error');
+      }
+
+      // Handle different response formats from the Edge Function
+      // Could be: { keys: [...] } or { data: [...] } or just [...]
+      const keys = data?.keys || data?.data || (Array.isArray(data) ? data : []);
+      setVirtualKeys(keys);
+    } catch (err) {
+      console.error('Failed to fetch employee keys:', err);
+      setKeysError(err instanceof Error ? err.message : 'Failed to fetch employee keys');
+    } finally {
+      setKeysLoading(false);
+    }
+  };
+
+  // Load active key from localStorage
+  useEffect(() => {
+    const storedKey = localStorage.getItem('oneai_api_key');
+    if (storedKey && virtualKeys.length > 0) {
+      // Find which key matches the stored one
+      const matchingKey = virtualKeys.find(k => {
+        const keyValue = k.masked_key || k.key || k.token || k.key_hash;
+        return keyValue && storedKey.includes(keyValue.replace(/\.\.\./g, ''));
+      });
+      if (matchingKey) {
+        setActiveKeyId(matchingKey.id);
+      }
+    }
+  }, [virtualKeys]);
+
+  // Fetch data when user is available
+  useEffect(() => {
+    if (user?.email) {
+      fetchVirtualKeys();
+    }
+  }, [user?.email]);
+
+  // Get all unique model IDs assigned to the user via virtual keys
+  const assignedModelIds = useMemo(() => {
+    const ids = new Set<string>();
+    virtualKeys.forEach(key => {
+      // Handle different field names for models
+      const modelsList = key.models || key.models_json || [];
+      if (Array.isArray(modelsList)) {
+        modelsList.forEach(modelId => {
+          // Only add string model IDs
+          if (typeof modelId === 'string' && modelId.trim()) {
+            ids.add(modelId);
+          }
+        });
+      }
+    });
+    return ids;
+  }, [virtualKeys]);
+
+  // Helper to get key display value
+  const getKeyDisplayValue = (key: VirtualKeyData) => {
+    return key.masked_key || key.key || key.token || key.key_hash || 'sk-***';
+  };
+
+  // Helper to get key label
+  const getKeyLabel = (key: VirtualKeyData) => {
+    return key.label || key.key_alias || key.key_name || 'Virtual Key';
+  };
+
+  // Helper to get models list (ensure strings only)
+  const getKeyModels = (key: VirtualKeyData): string[] => {
+    const modelsList = key.models || key.models_json || [];
+    if (!Array.isArray(modelsList)) return [];
+    return modelsList.filter((m): m is string => typeof m === 'string' && m.trim() !== '');
+  };
+
+  // Helper to get budget
+  const getKeyBudget = (key: VirtualKeyData) => {
+    return key.budget_usd ?? key.max_budget ?? 0;
+  };
+
+  // Group assigned models by provider (extracted from model ID)
   const groupedByProvider = useMemo(() => {
-    const groups = new Map<string, typeof models>();
-    models.forEach((model) => {
-      const provider = model.metadata?.provider ?? model.owned_by ?? "unknown";
+    const groups = new Map<string, string[]>();
+    assignedModelIds.forEach((modelId) => {
+      if (typeof modelId !== 'string') return;
+      // Extract provider from model ID (e.g., "openai/gpt-4" -> "openai")
+      const provider = modelId.includes('/') ? modelId.split('/')[0] : 'other';
       if (!groups.has(provider)) {
         groups.set(provider, []);
       }
-      groups.get(provider)?.push(model);
+      groups.get(provider)?.push(modelId);
     });
     return Array.from(groups.entries());
-  }, [models]);
+  }, [assignedModelIds]);
+
+  const copyToClipboard = async (text: string, keyId: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedKeyId(keyId);
+      setTimeout(() => setCopiedKeyId(null), 2000);
+      toast({
+        title: "Copied to clipboard",
+        description: "API key copied successfully"
+      });
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      toast({
+        title: "Failed to copy",
+        description: "Could not copy to clipboard",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const setAsActiveKey = (key: string, keyId: string) => {
+    localStorage.setItem('oneai_api_key', key);
+    setActiveKeyId(keyId);
+    toast({
+      title: "API Key Activated",
+      description: "This key will be used for all API requests"
+    });
+  };
+
+  const handleRefresh = () => {
+    fetchVirtualKeys();
+  };
+
+  const loading = keysLoading;
 
   return (
     <div className="h-full bg-background overflow-y-auto">
       <div className="max-w-5xl mx-auto space-y-xl p-lg">
+        {/* Header */}
         <div className="flex items-center justify-between gap-md">
           <div className="space-y-xs">
-            <h1 className="text-3xl font-semibold text-text-primary font-display">Models & Access</h1>
+            <h1 className="text-3xl font-semibold text-text-primary font-display">Models & API Keys</h1>
             <p className="text-text-secondary">
-              The catalog below reflects the models exposed by the OneEdge Admin proxy. Paste the virtual key that was
-              issued to you to run completions.
+              Your assigned models and API keys from EdgeAdmin. Select a key to activate it for API requests.
             </p>
+            {user?.email && (
+              <p className="text-xs text-text-tertiary">
+                Logged in as: <span className="font-medium text-text-secondary">{user.email}</span>
+              </p>
+            )}
           </div>
-          <div className="flex gap-sm">
-            <Button variant="outline" onClick={() => refetch()} disabled={loading}>
-              Refresh
-            </Button>
-            <Button onClick={() => window.dispatchEvent(new CustomEvent('open-api-keys'))}>
-              Manage API Keys
-            </Button>
-          </div>
+          <Button variant="outline" onClick={handleRefresh} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </div>
 
+        {/* Virtual Keys Section */}
         <section className="space-y-md">
-          <h2 className="text-xl font-semibold text-text-primary">Your Virtual Keys</h2>
+          <div className="flex items-center gap-2">
+            <Key className="h-5 w-5 text-accent-blue" />
+            <h2 className="text-xl font-semibold text-text-primary">Your API Keys</h2>
+          </div>
+
           {keysLoading ? (
-            <GlassCard className="p-lg text-sm text-text-secondary">Loading key assignments?</GlassCard>
+            <GlassCard className="p-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-5 h-5 border-2 border-accent-blue border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm text-text-secondary">Loading your API keys...</span>
+              </div>
+            </GlassCard>
+          ) : keysError ? (
+            <GlassCard className="p-lg text-sm text-accent-orange bg-accent-orange/10 border-accent-orange/40">
+              <p className="font-medium">Error loading API keys:</p>
+              <p className="mt-1">{keysError}</p>
+              <p className="mt-2 text-xs text-text-tertiary">Check browser console for details</p>
+            </GlassCard>
           ) : virtualKeys.length === 0 ? (
-            <GlassCard id="api-keys" className="p-lg text-sm text-text-secondary">
-              No virtual keys were found for {user?.email ?? 'your account'}. Use the OneEdge Admin portal to issue a key
-              and paste it here.
+            <GlassCard className="p-lg">
+              <div className="text-center py-4">
+                <Key className="h-10 w-10 text-text-tertiary mx-auto mb-3" />
+                <p className="text-sm text-text-secondary mb-1">No API keys assigned</p>
+                <p className="text-xs text-text-tertiary">
+                  Contact your EdgeAdmin administrator to get API access for {user?.email}
+                </p>
+              </div>
             </GlassCard>
           ) : (
             <div className="grid gap-md">
-              {virtualKeys.map((key) => (
-                <GlassCard key={key.id} className="p-lg">
-                  <div className="flex items-center justify-between gap-md">
-                    <div>
-                      <p className="text-sm font-medium text-text-primary">{key.label || 'Virtual Key'}</p>
-                      <p className="text-xs text-text-tertiary mt-xs">Budget: {key.budget_usd ?? '?'} USD | Models assigned: {key.models_json?.length ?? 0}</p>
+              {virtualKeys.map((key) => {
+                const keyValue = getKeyDisplayValue(key);
+                const keyLabel = getKeyLabel(key);
+                const keyModels = getKeyModels(key);
+                const keyBudget = getKeyBudget(key);
+
+                return (
+                  <GlassCard
+                    key={key.id}
+                    className={`p-lg transition-all ${activeKeyId === key.id ? 'ring-2 ring-accent-blue border-accent-blue/50' : ''}`}
+                  >
+                    <div className="flex items-start justify-between gap-md mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-text-primary">{keyLabel}</p>
+                          {activeKeyId === key.id && (
+                            <Badge className="bg-accent-blue text-white text-xs">Active</Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4 mt-1 text-xs text-text-tertiary">
+                          <span>Budget: ${keyBudget.toFixed(2)}</span>
+                          <span>Models: {keyModels.length}</span>
+                          {key.rpm && <span>RPM: {key.rpm}</span>}
+                        </div>
+                      </div>
+                      <Badge variant={key.disabled ? 'destructive' : 'secondary'}>
+                        {key.disabled ? 'Disabled' : 'Active'}
+                      </Badge>
                     </div>
-                    <Badge variant={key.disabled ? 'destructive' : 'secondary'}>
-                      {key.disabled ? 'Disabled' : 'Active'}
-                    </Badge>
-                  </div>
-                  {key.models_json && key.models_json.length > 0 && (
-                    <div className="mt-sm flex flex-wrap gap-2">
-                      {key.models_json.map((model) => (
-                        <Badge key={model} variant="outline" className="text-xs">
-                          {model}
-                        </Badge>
-                      ))}
+
+                    {/* API Key Display */}
+                    <div className="bg-surface-graphite rounded-lg p-3 mb-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <code className="text-xs text-text-secondary font-mono flex-1 truncate">
+                          {visibleKeyId === key.id ? keyValue : '••••••••••••••••••••••••'}
+                        </code>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onClick={() => setVisibleKeyId(visibleKeyId === key.id ? null : key.id)}
+                          >
+                            {visibleKeyId === key.id ? (
+                              <EyeOff className="h-3.5 w-3.5" />
+                            ) : (
+                              <Eye className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onClick={() => copyToClipboard(keyValue, key.id)}
+                          >
+                            {copiedKeyId === key.id ? (
+                              <Check className="h-3.5 w-3.5 text-accent-green" />
+                            ) : (
+                              <Copy className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </GlassCard>
-              ))}
+
+                    {/* Assigned Models */}
+                    {keyModels.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {keyModels.map((model) => (
+                          <Badge key={model} variant="outline" className="text-xs">
+                            {model}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2">
+                      {activeKeyId !== key.id && (
+                        <Button
+                          size="sm"
+                          onClick={() => setAsActiveKey(keyValue, key.id)}
+                          className="text-xs"
+                        >
+                          <Zap className="h-3 w-3 mr-1" />
+                          Use This Key
+                        </Button>
+                      )}
+                      {activeKeyId === key.id && (
+                        <span className="text-xs text-accent-blue flex items-center gap-1">
+                          <Check className="h-3 w-3" />
+                          Currently in use for API requests
+                        </span>
+                      )}
+                    </div>
+                  </GlassCard>
+                );
+              })}
             </div>
           )}
         </section>
 
+        {/* Models Catalog Section */}
         <section className="space-y-md">
-          <h2 className="text-xl font-semibold text-text-primary">Model Catalog</h2>
-          {loading ? (
-            <GlassCard className="p-lg text-sm text-text-secondary">Loading models?</GlassCard>
-          ) : error ? (
-            <GlassCard className="p-lg text-sm text-accent-orange bg-accent-orange/10 border-accent-orange/40">
-              {error}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-accent-blue" />
+              <h2 className="text-xl font-semibold text-text-primary">Your Assigned Models</h2>
+            </div>
+            <span className="text-xs text-text-tertiary">
+              {assignedModelIds.size} model(s) available
+            </span>
+          </div>
+
+          {keysLoading ? (
+            <GlassCard className="p-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-5 h-5 border-2 border-accent-blue border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm text-text-secondary">Loading models...</span>
+              </div>
             </GlassCard>
-          ) : models.length === 0 ? (
-            <GlassCard className="p-lg text-sm text-text-secondary">
-              No models are currently exposed. Check back after an administrator publishes them.
+          ) : assignedModelIds.size === 0 ? (
+            <GlassCard className="p-lg">
+              <div className="text-center py-4">
+                <Zap className="h-10 w-10 text-text-tertiary mx-auto mb-3" />
+                <p className="text-sm text-text-secondary mb-1">No models assigned</p>
+                <p className="text-xs text-text-tertiary">
+                  Your API keys don't have any models assigned yet
+                </p>
+              </div>
             </GlassCard>
           ) : (
             <div className="space-y-lg">
@@ -101,32 +394,19 @@ const ModelsHub = () => {
                     <h3 className="text-lg font-semibold text-text-primary capitalize">{provider}</h3>
                     <span className="text-xs text-text-tertiary">{providerModels.length} model(s)</span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-lg">
-                    {providerModels.map((model) => (
-                      <GlassCard key={model.id} className="p-lg space-y-md hover:border-accent-blue/30 transition-colors">
-                        <div className="flex items-start justify-between gap-md">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-md">
+                    {providerModels.map((modelId) => (
+                      <GlassCard key={modelId} className="p-md hover:border-accent-blue/30 transition-colors">
+                        <div className="flex items-center justify-between gap-md">
                           <div>
-                            <h4 className="font-semibold text-text-primary">{model.id}</h4>
-                            <p className="text-xs text-text-tertiary uppercase tracking-wide">{model.object}</p>
+                            <h4 className="font-medium text-text-primary text-sm">
+                              {modelId.includes('/') ? modelId.split('/').slice(1).join('/') : modelId}
+                            </h4>
+                            <p className="text-xs text-text-tertiary capitalize">{provider}</p>
                           </div>
                           <Badge variant="secondary" className="text-xs">
-                            {model.metadata?.maxTokens ? `${model.metadata.maxTokens} tokens` : 'Context flexible'}
+                            Available
                           </Badge>
-                        </div>
-                        {model.metadata?.description && (
-                          <p className="text-sm text-text-secondary leading-relaxed">
-                            {model.metadata.description}
-                          </p>
-                        )}
-                        <div className="text-xs text-text-tertiary space-y-xs">
-                          <p>
-                            <span className="font-medium text-text-secondary">Endpoint:</span>{' '}
-                            {model.metadata?.endpoint ?? 'Managed by proxy'}
-                          </p>
-                          <p>
-                            <span className="font-medium text-text-secondary">Owned by:</span>{' '}
-                            {model.owned_by}
-                          </p>
                         </div>
                       </GlassCard>
                     ))}

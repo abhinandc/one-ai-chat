@@ -80,7 +80,7 @@ src/
   - Main content area adjusts padding based on sidebar state
 - December 31, 2025: Renamed from OneAI to OneEdge
   - Updated all references across the codebase
-- December 31, 2025: Migrated from Lovable to Replit environment
+- December 31, 2025: Configured for local development
   - Updated vite.config.ts to run on port 5000 with allowedHosts: true
   - Installed dependencies with npm
 

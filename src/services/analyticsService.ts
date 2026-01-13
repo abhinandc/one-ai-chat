@@ -33,6 +33,20 @@ export interface ActivityEvent {
 
 class AnalyticsService {
   async getUsageMetrics(userEmail: string): Promise<UsageMetrics> {
+    if (!supabaseClient) {
+      return {
+        user_email: userEmail,
+        total_requests: 0,
+        total_tokens: 0,
+        total_cost: 0,
+        requests_today: 0,
+        tokens_today: 0,
+        cost_today: 0,
+        top_models: [],
+        daily_usage: []
+      };
+    }
+
     try {
       const { data, error } = await supabaseClient.rpc('get_user_usage_metrics', {
         p_user_email: userEmail
@@ -67,6 +81,10 @@ class AnalyticsService {
   }
 
   async trackEvent(event: Omit<ActivityEvent, 'id' | 'timestamp'>): Promise<void> {
+    if (!supabaseClient) {
+      return;
+    }
+
     try {
       const { error } = await supabaseClient
         .from('activity_events')
@@ -82,6 +100,10 @@ class AnalyticsService {
   }
 
   async getActivityFeed(userEmail: string, limit: number = 10): Promise<ActivityEvent[]> {
+    if (!supabaseClient) {
+      return [];
+    }
+
     const { data, error } = await supabaseClient
       .from('activity_events')
       .select('*')
@@ -94,6 +116,10 @@ class AnalyticsService {
   }
 
   async recordAPICall(userEmail: string, model: string, tokens: number, cost: number): Promise<void> {
+    if (!supabaseClient) {
+      return;
+    }
+
     try {
       const { error } = await supabaseClient
         .from('api_usage_logs')
@@ -112,6 +138,17 @@ class AnalyticsService {
   }
 
   async getDashboardStats(userEmail: string) {
+    if (!supabaseClient) {
+      return {
+        total_conversations: 0,
+        total_automations: 0,
+        total_prompts: 0,
+        total_agents: 0,
+        requests_today: 0,
+        cost_today: 0
+      };
+    }
+
     try {
       const { data, error } = await supabaseClient.rpc('get_dashboard_stats', {
         p_user_email: userEmail

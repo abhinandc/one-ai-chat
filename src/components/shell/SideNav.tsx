@@ -42,8 +42,8 @@ export function SideNav({ collapsed = false, onToggleCollapsed }: SideNavProps) 
 
   return (
     <aside className={cn(
-      "fixed top-14 left-0 bottom-12 z-40 flex flex-col",
-      "bg-surface-graphite/50 backdrop-blur-sm border-r border-border-primary/50",
+      "fixed top-16 left-0 bottom-12 z-40 flex flex-col",
+      "bg-surface-graphite border-r border-border-primary",
       "transition-all duration-normal ease-out",
       collapsed ? "w-14" : "w-52"
     )}>

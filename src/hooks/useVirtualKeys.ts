@@ -33,12 +33,18 @@ export function useVirtualKeys(userEmail?: string) {
       return;
     }
 
+    if (!supabaseClient) {
+      setVirtualKeys([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
 
       const { data, error: fetchError } = await supabaseClient
-        ?.from('virtual_keys')
+        .from('virtual_keys')
         .select('*')
         .eq('email', userEmail)
         .eq('disabled', false)

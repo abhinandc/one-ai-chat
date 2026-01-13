@@ -24,6 +24,7 @@ interface ComposerProps {
 export function Composer({ conversation, onSendMessage, isStreaming, onStopStreaming, onUpdateSettings, availableModels = [] }: ComposerProps) {
   const [message, setMessage] = useState("");
   const [showSettings, setShowSettings] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [temperature, setTemperature] = useState(conversation?.settings.temperature || 0.7);
   const [maxTokens, setMaxTokens] = useState(conversation?.settings.maxTokens || 2048);
   const [stopSequences, setStopSequences] = useState(conversation?.settings.stopSequences?.join(", ") || "");
@@ -228,7 +229,7 @@ export function Composer({ conversation, onSendMessage, isStreaming, onStopStrea
             />
 
             {/* Action Buttons */}
-            <div className="absolute right-md top-md flex items-center gap-sm">
+            <div className="absolute right-md top-1/2 -translate-y-1/2 flex items-center gap-sm">
               <Button
                 type="button"
                 variant="ghost"
@@ -257,7 +258,12 @@ export function Composer({ conversation, onSendMessage, isStreaming, onStopStrea
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0 text-text-secondary hover:text-text-primary"
+                className={cn(
+                  "h-8 w-8 p-0 transition-all duration-200",
+                  isRecording
+                    ? "text-accent-red animate-pulse bg-accent-red/10"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
                 onClick={() => {
                   // Voice input functionality
                   if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -266,23 +272,31 @@ export function Composer({ conversation, onSendMessage, isStreaming, onStopStrea
                     recognition.continuous = false;
                     recognition.interimResults = false;
                     recognition.lang = 'en-US';
-                    
+
+                    setIsRecording(true);
+
                     recognition.onresult = (event: any) => {
                       const transcript = event.results[0][0].transcript;
                       setMessage(prev => prev + (prev ? ' ' : '') + transcript);
+                      setIsRecording(false);
                     };
-                    
+
                     recognition.onerror = (event: any) => {
                       console.error('Speech recognition error:', event.error);
+                      setIsRecording(false);
                     };
-                    
+
+                    recognition.onend = () => {
+                      setIsRecording(false);
+                    };
+
                     recognition.start();
                   } else {
                     alert('Speech recognition not supported in this browser');
                   }
                 }}
               >
-                <Mic className="h-4 w-4" />
+                <Mic className={cn("h-4 w-4", isRecording && "animate-pulse")} />
               </Button>
               
               <Button

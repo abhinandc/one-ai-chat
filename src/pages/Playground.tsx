@@ -103,7 +103,7 @@ export default function Playground() {
   const [hydrated, setHydrated] = useState(false);
   const { toast } = useToast();
 
-  const { models, loading: modelsLoading } = useModels();
+  const { models, loading: modelsLoading } = useModels(user?.email);
 
   useEffect(() => {
     setSelectedModel("");

@@ -5,8 +5,13 @@ class RealtimeService {
   private channels: Map<string, any> = new Map();
 
   subscribeToUserEvents(userEmail: string, callback: (event: any) => void) {
+    if (!supabaseClient) {
+      console.warn('RealtimeService: Supabase client not configured, skipping subscription');
+      return () => {};
+    }
+
     const channelName = `user_events:${userEmail}`;
-    
+
     if (this.channels.has(channelName)) {
       return () => this.unsubscribe(channelName);
     }
@@ -45,8 +50,12 @@ class RealtimeService {
   }
 
   subscribeToPromptUpdates(userEmail: string, callback: (event: any) => void) {
+    if (!supabaseClient) {
+      return () => {};
+    }
+
     const channelName = `prompts:${userEmail}`;
-    
+
     if (this.channels.has(channelName)) {
       return () => this.unsubscribe(channelName);
     }
@@ -85,8 +94,12 @@ class RealtimeService {
   }
 
   subscribeToAutomationUpdates(userEmail: string, callback: (event: any) => void) {
+    if (!supabaseClient) {
+      return () => {};
+    }
+
     const channelName = `automations:${userEmail}`;
-    
+
     if (this.channels.has(channelName)) {
       return () => this.unsubscribe(channelName);
     }
@@ -114,7 +127,7 @@ class RealtimeService {
 
   private unsubscribe(channelName: string) {
     const channel = this.channels.get(channelName);
-    if (channel) {
+    if (channel && supabaseClient) {
       supabaseClient.removeChannel(channel);
       this.channels.delete(channelName);
     }

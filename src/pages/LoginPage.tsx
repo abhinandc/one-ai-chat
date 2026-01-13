@@ -399,9 +399,13 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       </Button>
 
       <div className="w-full max-w-md space-y-xl">
-        <div className="text-center space-y-md">
-          <h1 className="text-4xl font-semibold text-text-primary font-display">OneEdge</h1>
-          <p className="text-lg text-text-secondary">OneOrigin's Unified AI Platform</p>
+        <div className="flex flex-col items-center justify-center space-y-md">
+          <img
+            src={darkMode ? "/logo-dark.svg" : "/logo-light.svg"}
+            alt="OneEdge"
+            className="h-32 w-auto"
+          />
+          <p className="text-lg text-text-secondary text-center">OneOrigin's Unified AI Platform</p>
         </div>
 
         <GlassCard variant="elevated" className="bg-card border-border-primary">

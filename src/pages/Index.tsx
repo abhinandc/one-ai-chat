@@ -10,10 +10,19 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useVirtualKeys, useActivityFeed, useUsageSummary } from "@/hooks/useSupabaseData";
 import { ModelComparisonPanel } from "@/components/ModelComparisonPanel";
 
+// Helper to convert name to sentence case (capitalize first letter of each word)
+const toSentenceCase = (str: string): string => {
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 const Index = () => {
   const user = useCurrentUser();
   const navigate = useNavigate();
-  const { models, loading: modelsLoading } = useModels();
+  const { models, loading: modelsLoading } = useModels(user?.email);
   const { data: virtualKeys } = useVirtualKeys(user?.email);
   const { data: activity } = useActivityFeed(user?.email, 5);
   const { data: usage } = useUsageSummary(user?.email);
@@ -25,22 +34,10 @@ const Index = () => {
   const [isComparing, setIsComparing] = useState(false);
   const [completedCount, setCompletedCount] = useState(0);
 
-  const defaultModels = useMemo(() => [
-    { id: "gpt-4o", object: "model", created: Date.now(), owned_by: "openai" },
-    { id: "claude-3-5-sonnet", object: "model", created: Date.now(), owned_by: "anthropic" },
-    { id: "gemini-pro", object: "model", created: Date.now(), owned_by: "google" },
-    { id: "llama-3.1-70b", object: "model", created: Date.now(), owned_by: "meta" },
-  ], []);
-
   const comparisonModels = useMemo(() => {
-    if (models.length >= 4) {
-      return models.slice(0, 4);
-    }
-    if (models.length > 0) {
-      return [...models, ...defaultModels.slice(0, 4 - models.length)];
-    }
-    return defaultModels;
-  }, [models, defaultModels]);
+    // Only use real models, no hardcoded fallbacks
+    return models.slice(0, 4);
+  }, [models]);
 
   // AI-powered model recommendation
   const recommendModel = useCallback((query: string) => {
@@ -83,7 +80,14 @@ const Index = () => {
   const handleSpotlightSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!spotlightQuery.trim()) return;
-    
+
+    // Don't show comparison if no real models are available
+    if (models.length === 0) {
+      // Navigate to chat instead
+      navigate(`/chat?prompt=${encodeURIComponent(spotlightQuery)}`);
+      return;
+    }
+
     setComparisonQuery(spotlightQuery);
     setIsComparing(true);
     setCompletedCount(0);
@@ -138,7 +142,7 @@ const Index = () => {
         {/* Welcome Header */}
         <div className="text-center space-y-2">
           <h1 className="text-5xl font-bold text-text-primary tracking-tight">
-            Welcome back, {user?.name || user?.email?.split("@")[0] || "User"}
+            Welcome back, {toSentenceCase(user?.name || user?.email?.split("@")[0] || "User")}
           </h1>
           <p className="text-xl text-text-secondary max-w-2xl mx-auto">
             What would you like to accomplish today?
@@ -156,7 +160,7 @@ const Index = () => {
             >
               <div className="absolute inset-0 bg-gradient-to-r from-accent-blue/20 to-accent-purple/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               
-              <div className="relative bg-surface-graphite/80 backdrop-blur-xl border border-border-primary/30 rounded-2xl shadow-lg overflow-hidden">
+              <div className="relative bg-surface-graphite border border-border-primary rounded-2xl shadow-lg overflow-hidden dark:backdrop-blur-none">
                 <div className="flex items-center p-6">
                   <Search className="h-6 w-6 text-text-secondary shrink-0" />
                   <input

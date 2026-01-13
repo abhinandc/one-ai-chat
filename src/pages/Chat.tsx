@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ConversationList } from "@/components/chat/ConversationList";
 import { Thread } from "@/components/chat/Thread";
 import { Composer } from "@/components/chat/Composer";
-import { InspectorPanel } from "@/components/chat/InspectorPanel";
+import { InspectorPanel, type ContextFile, type ContextLink } from "@/components/chat/InspectorPanel";
 import { useChat } from "@/hooks/useChat";
 import { useModels } from "@/services/api";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -12,14 +12,14 @@ import { useConversations } from "@/hooks/useConversations";
 import { conversationService } from "@/services/conversationService";
 import { analyticsService } from "@/services/analyticsService";
 import { useToast } from "@/hooks/use-toast";
-import { PanelLeftClose, PanelLeft, Settings2 } from "lucide-react";
+import { PanelLeftClose, PanelLeft, Paperclip } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Conversation, ConversationFolder, Message, Citation } from "@/types";
 
 const Chat = () => {
   const user = useCurrentUser();
   const { toast } = useToast();
-  const { models, loading: modelsLoading } = useModels();
+  const { models, loading: modelsLoading } = useModels(user?.email);
   const { conversations: supabaseConversations, loading: conversationsLoading, saveConversation, deleteConversation } = useConversations(user?.email);
   
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
@@ -29,6 +29,38 @@ const Chat = () => {
   const [systemPrompt, setSystemPrompt] = useState("");
   const [temperature, setTemperature] = useState(0.7);
   const [maxTokens, setMaxTokens] = useState(4000);
+  const [contextFiles, setContextFiles] = useState<ContextFile[]>([]);
+  const [contextLinks, setContextLinks] = useState<ContextLink[]>([]);
+
+  // Build RAG context prompt from attached files and links
+  const buildContextPrompt = useMemo(() => {
+    if (contextFiles.length === 0 && contextLinks.length === 0) {
+      return systemPrompt;
+    }
+
+    let contextPrompt = systemPrompt || "You are a helpful AI assistant.";
+
+    if (contextFiles.length > 0 || contextLinks.length > 0) {
+      contextPrompt += "\n\n--- CONTEXT ---\nThe user has provided the following context documents. Use this information to answer their questions:\n";
+
+      contextFiles.forEach((file, index) => {
+        contextPrompt += `\n### Document ${index + 1}: ${file.name}\n\`\`\`\n${file.content}\n\`\`\`\n`;
+      });
+
+      contextLinks.forEach((link) => {
+        contextPrompt += `\n### Reference Link: ${link.title}\nURL: ${link.url}\n`;
+      });
+
+      contextPrompt += "\n--- END CONTEXT ---\n\nPlease use the above context to help answer the user's questions. If the context is relevant, cite it in your response.";
+    }
+
+    return contextPrompt;
+  }, [systemPrompt, contextFiles, contextLinks]);
+
+  const handleContextChange = (files: ContextFile[], links: ContextLink[]) => {
+    setContextFiles(files);
+    setContextLinks(links);
+  };
   
   const {
     messages,
@@ -40,7 +72,7 @@ const Chat = () => {
     isStreaming
   } = useChat({
     model: selectedModel,
-    systemPrompt,
+    systemPrompt: buildContextPrompt,
     temperature,
     maxTokens,
     onMessage: (message) => {
@@ -278,7 +310,7 @@ const Chat = () => {
 
   if (conversationsLoading || modelsLoading) {
     return (
-      <div className="h-full flex items-center justify-center bg-background">
+      <div className="h-[calc(100vh-7rem)] flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-accent-blue border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-text-secondary">Loading chat...</p>
@@ -289,7 +321,7 @@ const Chat = () => {
 
   if (!user) {
     return (
-      <div className="h-full flex items-center justify-center bg-background">
+      <div className="h-[calc(100vh-7rem)] flex items-center justify-center bg-background">
         <div className="text-center">
           <h2 className="text-xl font-semibold text-text-primary mb-2">Authentication Required</h2>
           <p className="text-text-secondary">Please log in to use the chat feature</p>
@@ -299,11 +331,11 @@ const Chat = () => {
   }
 
   return (
-    <div className="h-full flex bg-background">
+    <div className="h-[calc(100vh-7rem)] flex bg-background overflow-hidden">
       {/* Conversation Sidebar - Collapsible */}
       <div 
         className={cn(
-          "border-r border-border-primary bg-surface-secondary transition-all duration-300 ease-in-out overflow-hidden",
+          "border-r border-border-primary bg-surface-graphite transition-all duration-300 ease-in-out overflow-hidden",
           showConversations ? "w-80" : "w-0"
         )}
       >
@@ -323,7 +355,7 @@ const Chat = () => {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Chat Header */}
-        <div className="flex items-center justify-between p-md border-b border-border-primary bg-surface-primary">
+        <div className="flex items-center justify-between p-md border-b border-border-primary bg-background">
           <div className="flex items-center gap-md">
             <Button
               onClick={() => setShowConversations(!showConversations)}
@@ -356,7 +388,7 @@ const Chat = () => {
               >
                 <SelectValue placeholder="Select Model..." />
               </SelectTrigger>
-              <SelectContent className="bg-surface-primary/95 backdrop-blur-xl border-border-primary/30 rounded-xl shadow-lg">
+              <SelectContent className="bg-background/95 backdrop-blur-xl border-border-primary/30 rounded-xl shadow-lg">
                 {models.map((model) => (
                   <SelectItem 
                     key={model.id} 
@@ -382,7 +414,7 @@ const Chat = () => {
               )}
               data-testid="button-toggle-inspector"
             >
-              <Settings2 className="h-5 w-5" />
+              <Paperclip className="h-5 w-5" />
             </Button>
           </div>
         </div>
@@ -399,7 +431,7 @@ const Chat = () => {
         </div>
 
         {/* Message Composer */}
-        <div className="border-t border-border-primary bg-surface-primary">
+        <div className="border-t border-border-primary bg-background">
           <Composer
             onSendMessage={handleSendMessage}
             disabled={isLoading || !selectedModel}
@@ -409,21 +441,10 @@ const Chat = () => {
         </div>
       </div>
 
-      {/* Inspector Panel */}
+      {/* Inspector Panel - RAG Context */}
       {inspectorOpen && (
-        <div className="w-80 border-l border-border-primary bg-surface-secondary">
-          <InspectorPanel
-            conversation={currentConversation}
-            systemPrompt={systemPrompt}
-            onSystemPromptChange={setSystemPrompt}
-            temperature={temperature}
-            onTemperatureChange={setTemperature}
-            maxTokens={maxTokens}
-            onMaxTokensChange={setMaxTokens}
-            selectedModel={selectedModel}
-            onModelChange={setSelectedModel}
-            models={models}
-          />
+        <div className="w-80 shrink-0 border-l border-border-primary bg-background">
+          <InspectorPanel onContextChange={handleContextChange} />
         </div>
       )}
     </div>

@@ -47,48 +47,72 @@ export type ModelWithMetadata = ApiModel & {
 
 export const apiClient = apiClientInstance;
 
-export function useModels() {
+export function useModels(userEmail?: string) {
   const [models, setModels] = useState<ModelWithMetadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchModels = async () => {
+    if (!supabaseClient) {
+      setError('Supabase not configured');
+      setLoading(false);
+      return;
+    }
+
+    if (!userEmail) {
+      setError('User email required');
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      const [apiModels, metaResponse] = await Promise.all([
-        apiClient.listModels(),
-        supabaseClient
-          ? supabaseClient.from("models").select("*")
-          : Promise.resolve({ data: null, error: null } as const),
-      ]);
 
-      if (metaResponse.error) {
-        console.warn('Unable to load model metadata from Supabase:', metaResponse.error.message);
+      // Fetch models from employee_keys Edge Function (assigned by EdgeAdmin)
+      const { data, error: fetchError } = await supabaseClient.functions.invoke('employee_keys', {
+        body: { email: userEmail }
+      });
+
+      console.log('Employee Keys (useModels):', { data, error: fetchError });
+
+      if (fetchError) {
+        throw new Error(fetchError.message || 'Edge function error');
       }
 
-      const metadataMap = new Map<string, any>();
-      (metaResponse.data ?? []).forEach((item: any) => {
-        metadataMap.set(item.name, item);
-      });
+      // Extract models from the employee_keys response
+      // Response could be: { models: [...] } or { keys: [{ models: [...] }] } or { data: { models: [...] } }
+      let modelsList: string[] = [];
 
-      const enriched = apiModels.map<ModelWithMetadata>((model) => {
-        const meta = metadataMap.get(model.id) ?? metadataMap.get(model.owned_by);
-        const metadata: ModelMetadata | undefined = meta
-          ? {
-              provider: meta.provider,
-              description: meta.metadata_json?.description ?? meta.metadata_json?.summary,
-              endpoint: meta.endpoint_base,
-              maxTokens: meta.metadata_json?.max_tokens,
-              raw: meta.metadata_json ?? null,
-            }
-          : undefined;
+      if (data?.models && Array.isArray(data.models)) {
+        // Direct models array in response
+        modelsList = data.models;
+      } else if (data?.keys && Array.isArray(data.keys)) {
+        // Models from keys array
+        data.keys.forEach((key: any) => {
+          const keyModels = key.models || key.models_json || [];
+          modelsList.push(...keyModels);
+        });
+      } else if (Array.isArray(data)) {
+        // Response is array of keys
+        data.forEach((key: any) => {
+          const keyModels = key.models || key.models_json || [];
+          modelsList.push(...keyModels);
+        });
+      }
 
-        return {
-          ...model,
-          owned_by: meta?.provider ?? model.owned_by,
-          metadata,
-        };
-      });
+      // Dedupe models
+      const uniqueModels = [...new Set(modelsList)];
+
+      // Transform to the expected format
+      const enriched = uniqueModels.map<ModelWithMetadata>((modelId: string) => ({
+        id: modelId,
+        object: 'model',
+        created: Date.now() / 1000,
+        owned_by: modelId.split('/')[0] || 'unknown',
+        metadata: {
+          provider: modelId.split('/')[0] || undefined,
+        },
+      }));
 
       setModels(enriched);
       setError(null);
@@ -103,8 +127,10 @@ export function useModels() {
   };
 
   useEffect(() => {
-    fetchModels();
-  }, []);
+    if (userEmail) {
+      fetchModels();
+    }
+  }, [userEmail]);
 
   return { models, loading, error, refetch: fetchModels };
 }

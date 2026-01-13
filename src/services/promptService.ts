@@ -18,6 +18,11 @@ export interface PromptTemplate {
 
 class PromptService {
   async getPrompts(userEmail: string): Promise<PromptTemplate[]> {
+    if (!supabaseClient) {
+      console.warn('PromptService: Supabase client not configured');
+      return [];
+    }
+
     const { data, error } = await supabaseClient
       .from('prompt_templates')
       .select('*')
@@ -29,6 +34,10 @@ class PromptService {
   }
 
   async createPrompt(prompt: Omit<PromptTemplate, 'id' | 'created_at' | 'updated_at' | 'likes_count' | 'uses_count'>): Promise<PromptTemplate> {
+    if (!supabaseClient) {
+      throw new Error('Supabase client not configured');
+    }
+
     const { data, error } = await supabaseClient
       .from('prompt_templates')
       .insert({ ...prompt, likes_count: 0, uses_count: 0 })
@@ -40,6 +49,10 @@ class PromptService {
   }
 
   async likePrompt(promptId: string, userEmail: string): Promise<void> {
+    if (!supabaseClient) {
+      throw new Error('Supabase client not configured');
+    }
+
     const { data: existing } = await supabaseClient
       .from('prompt_likes')
       .select('*')
@@ -57,6 +70,10 @@ class PromptService {
   }
 
   async deletePrompt(id: string, userEmail: string): Promise<void> {
+    if (!supabaseClient) {
+      throw new Error('Supabase client not configured');
+    }
+
     const { error } = await supabaseClient
       .from('prompt_templates')
       .delete()

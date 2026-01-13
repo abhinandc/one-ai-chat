@@ -23,9 +23,10 @@ interface TopBarProps {
   onToggleSidebar?: () => void;
   onOpenCommandPalette?: () => void;
   onLogout?: () => void;
+  sidebarCollapsed?: boolean;
 }
 
-export function TopBar({ onToggleSidebar, onOpenCommandPalette, onLogout }: TopBarProps) {
+export function TopBar({ onToggleSidebar, onOpenCommandPalette, onLogout, sidebarCollapsed = false }: TopBarProps) {
   const [darkMode, setDarkMode] = useState(false);
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const [apiKeysOpen, setApiKeysOpen] = useState(false);
@@ -80,15 +81,22 @@ export function TopBar({ onToggleSidebar, onOpenCommandPalette, onLogout }: TopB
 
   return (
     <>
-    <GlassToolbar className="flex items-center justify-between gap-4">
-      {/* Left Section - Logo */}
-      <GlassToolbarSection className="flex-shrink-0">
+    <GlassToolbar className="flex items-center gap-4">
+      {/* Left Section - Logo (fixed width matching sidebar) */}
+      <GlassToolbarSection className={cn(
+        "flex-shrink-0 justify-start transition-all duration-normal ease-out",
+        sidebarCollapsed ? "w-14" : "w-52"
+      )}>
         <div className="flex items-center gap-2">
-          <span className="text-lg font-semibold text-text-primary">OneEdge</span>
+          <img
+            src={darkMode ? "/logo-dark.svg" : "/logo-light.svg"}
+            alt="OneEdge"
+            className="h-14"
+          />
         </div>
       </GlassToolbarSection>
 
-      {/* Center Section - Search */}
+      {/* Center Section - Search (centered in main content area) */}
       <GlassToolbarSection className="flex-1 justify-center">
         <div className="relative w-full max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-text-tertiary" />

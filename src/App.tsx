@@ -95,10 +95,11 @@ const App = () => {
           <Sonner />
           <BrowserRouter>
             <div className="min-h-screen w-full bg-background">
-              <TopBar 
+              <TopBar
                 onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
                 onOpenCommandPalette={() => setCommandPaletteOpen(true)}
                 onLogout={handleLogout}
+                sidebarCollapsed={sidebarCollapsed}
               />
               
               <SideNav 
@@ -107,7 +108,7 @@ const App = () => {
               />
               
               <main className={cn(
-                "pt-14 pb-12 min-h-screen transition-all duration-normal ease-out overflow-auto",
+                "pt-16 pb-12 min-h-screen transition-all duration-normal ease-out overflow-auto",
                 sidebarCollapsed ? "pl-14" : "pl-52"
               )}>
                 <Routes>
@@ -125,7 +126,7 @@ const App = () => {
                 </Routes>
               </main>
               
-              <Footer />
+              <Footer sidebarCollapsed={sidebarCollapsed} />
               
               <CommandPalette 
                 open={commandPaletteOpen}

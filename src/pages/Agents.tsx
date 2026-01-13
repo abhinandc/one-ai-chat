@@ -85,9 +85,9 @@ const Agents = () => {
   const [activeTab, setActiveTab] = useState<'n8n' | 'custom'>('n8n');
   const [togglingWorkflow, setTogglingWorkflow] = useState<string | null>(null);
   
-  const { agents, loading: agentsLoading, createAgent, deleteAgent, refetch } = useAgents({ env: 'all' });
-  const { models, loading: modelsLoading } = useModels();
   const user = useCurrentUser();
+  const { agents, loading: agentsLoading, createAgent, deleteAgent, refetch } = useAgents({ env: 'all' });
+  const { models, loading: modelsLoading } = useModels(user?.email);
   const { toast } = useToast();
   const { workflows: n8nWorkflows, loading: n8nLoading, error: n8nError, hasCredentials, refetch: refetchN8N, toggleActive } = useN8NWorkflows();
 
@@ -204,7 +204,7 @@ const Agents = () => {
   };
 
   return (
-    <div className="h-full flex flex-col bg-surface-primary">
+    <div className="h-full flex flex-col bg-background">
       <div className="flex items-center justify-between p-4 border-b border-border-primary">
         <div>
           <h1 className="text-xl font-semibold text-text-primary">Agents</h1>
@@ -217,8 +217,8 @@ const Agents = () => {
               className={cn(
                 "px-4 py-2 text-sm font-medium transition-colors",
                 activeTab === 'n8n' 
-                  ? "bg-accent-blue text-white" 
-                  : "bg-surface-secondary text-text-secondary hover:text-text-primary"
+                  ? "bg-accent-blue text-white"
+                  : "bg-surface-graphite text-text-secondary hover:text-text-primary"
               )}
               data-testid="tab-n8n"
             >
@@ -229,8 +229,8 @@ const Agents = () => {
               className={cn(
                 "px-4 py-2 text-sm font-medium transition-colors",
                 activeTab === 'custom' 
-                  ? "bg-accent-blue text-white" 
-                  : "bg-surface-secondary text-text-secondary hover:text-text-primary"
+                  ? "bg-accent-blue text-white"
+                  : "bg-surface-graphite text-text-secondary hover:text-text-primary"
               )}
               data-testid="tab-custom"
             >
@@ -448,7 +448,7 @@ const Agents = () => {
                         "p-3 rounded-lg border cursor-pointer transition-colors",
                         selectedAgent?.id === agent.id
                           ? "border-accent-blue bg-accent-blue/10"
-                          : "border-border-primary hover:bg-surface-secondary"
+                          : "border-border-primary hover:bg-surface-graphite"
                       )}
                       onClick={() => setSelectedAgent(agent)}
                       data-testid={`agent-item-${agent.id}`}
@@ -476,10 +476,10 @@ const Agents = () => {
               onConnect={onConnect}
               nodeTypes={nodeTypes}
               fitView
-              className="bg-surface-primary"
+              className="bg-background"
             >
-              <Controls className="bg-surface-secondary border-border-primary" />
-              <MiniMap className="bg-surface-secondary border-border-primary" />
+              <Controls className="bg-surface-graphite border-border-primary" />
+              <MiniMap className="bg-surface-graphite border-border-primary" />
               <Background gap={20} size={1} className="opacity-20" />
             </ReactFlow>
 
