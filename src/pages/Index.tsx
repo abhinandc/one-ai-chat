@@ -1,78 +1,46 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  Search,
-  Sparkles,
-  MessageSquare,
-  Bot,
-  Wallet,
-  Command,
-  ArrowRight,
-  X,
-  Activity,
-  Zap,
-  CheckCircle,
-} from "lucide-react";
+import { Search, Sparkles, TrendingUp, Clock, MessageSquare, Bot, Zap, Command, ArrowRight, X } from "lucide-react";
+import { GlassCard } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useModels } from "@/hooks/useModels";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useVirtualKeys, useActivityFeed } from "@/hooks/useSupabaseData";
-import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
+import { useVirtualKeys, useActivityFeed, useUsageSummary } from "@/hooks/useSupabaseData";
 import { ModelComparisonPanel } from "@/components/ModelComparisonPanel";
-import { MetricCard, QuickActionsGrid, RecentActivity } from "@/components/dashboard";
-import {
-  fadeInUp,
-  staggerContainer,
-  scaleIn,
-  TIMING,
-} from "@/lib/animations";
 
 const Index = () => {
   const user = useCurrentUser();
   const navigate = useNavigate();
   const { models, loading: modelsLoading } = useModels();
   const { data: virtualKeys } = useVirtualKeys(user?.email);
-  const { data: activity, loading: activityLoading } = useActivityFeed(user?.email, 10);
-  const { metrics, loading: metricsLoading } = useDashboardMetrics(user?.email);
-
+  const { data: activity } = useActivityFeed(user?.email, 5);
+  const { data: usage } = useUsageSummary(user?.email);
+  
   const [spotlightQuery, setSpotlightQuery] = useState("");
   const [spotlightFocused, setSpotlightFocused] = useState(false);
-  const [aiSuggestion, setAiSuggestion] = useState<{
-    model: { id: string };
-    reason: string;
-    action: string;
-  } | null>(null);
+  const [aiSuggestion, setAiSuggestion] = useState<any>(null);
   const [comparisonQuery, setComparisonQuery] = useState("");
   const [isComparing, setIsComparing] = useState(false);
   const [completedCount, setCompletedCount] = useState(0);
 
-  const inputRef = useRef<HTMLInputElement>(null);
+  const defaultModels = useMemo(() => [
+    { id: "gpt-4o", object: "model", created: Date.now(), owned_by: "openai" },
+    { id: "claude-3-5-sonnet", object: "model", created: Date.now(), owned_by: "anthropic" },
+    { id: "gemini-pro", object: "model", created: Date.now(), owned_by: "google" },
+    { id: "llama-3.1-70b", object: "model", created: Date.now(), owned_by: "meta" },
+  ], []);
 
-  // Keyboard shortcut for spotlight (Cmd+K / Ctrl+K)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        inputRef.current?.focus();
-        setSpotlightFocused(true);
-      }
-      if (e.key === "Escape" && spotlightFocused) {
-        inputRef.current?.blur();
-        setSpotlightFocused(false);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [spotlightFocused]);
-
-  // Only use real models from virtual keys - no dummy data
   const comparisonModels = useMemo(() => {
-    // Return top 4 models from actual virtual keys
-    return models.slice(0, 4);
-  }, [models]);
+    if (models.length >= 4) {
+      return models.slice(0, 4);
+    }
+    if (models.length > 0) {
+      return [...models, ...defaultModels.slice(0, 4 - models.length)];
+    }
+    return defaultModels;
+  }, [models, defaultModels]);
 
   // AI-powered model recommendation
   const recommendModel = useCallback((query: string) => {
@@ -99,12 +67,12 @@ const Index = () => {
 
     setAiSuggestion({
       model: recommended,
-      reason: getRecommendationReason(lowerQuery),
+      reason: getRecommendationReason(lowerQuery, recommended),
       action: "/chat?model=" + recommended.id + "&prompt=" + encodeURIComponent(query)
     });
   }, [models]);
 
-  const getRecommendationReason = (query: string) => {
+  const getRecommendationReason = (query: string, model: any) => {
     if (query.includes("code")) return "Best for coding tasks";
     if (query.includes("chat")) return "Optimized for conversations";
     if (query.includes("analyze")) return "Great for data analysis";
@@ -115,7 +83,7 @@ const Index = () => {
   const handleSpotlightSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!spotlightQuery.trim()) return;
-
+    
     setComparisonQuery(spotlightQuery);
     setIsComparing(true);
     setCompletedCount(0);
@@ -132,81 +100,66 @@ const Index = () => {
     setCompletedCount(0);
   };
 
-  const handleSelectModel = (modelId: string) => {
-    // Navigate to chat with the query and selected model
-    navigate(`/chat?model=${modelId}&prompt=${encodeURIComponent(comparisonQuery)}`);
-  };
-
-  // Format currency for display
-  const formatCurrency = (value: number) => {
-    if (value < 0.01) return '<$0.01';
-    return `$${value.toFixed(2)}`;
-  };
-
-  // Get sparkline data for metrics
-  const sparklineData = useMemo(() => {
-    const daily = metrics.trends.daily || [];
-    return {
-      requests: daily.map(d => d.requests),
-      tokens: daily.map(d => d.tokens),
-      cost: daily.map(d => d.cost),
-    };
-  }, [metrics.trends.daily]);
-
-  // Get greeting based on time of day
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 17) return "Good afternoon";
-    return "Good evening";
-  }, []);
+  const stats = useMemo(() => [
+    {
+      label: "API Requests",
+      value: usage.totalRequests || 0,
+      change: "All time",
+      icon: TrendingUp,
+      color: "text-accent-blue"
+    },
+    {
+      label: "Models Available",
+      value: models.length,
+      change: "Ready to use",
+      icon: Bot,
+      color: "text-accent-green"
+    },
+    {
+      label: "Virtual Keys",
+      value: virtualKeys.filter(k => !k.disabled).length,
+      change: "Active",
+      icon: Sparkles,
+      color: "text-accent-orange"
+    },
+    {
+      label: "Recent Activity",
+      value: activity.length,
+      change: "Last 24h",
+      icon: Clock,
+      color: "text-accent-purple"
+    }
+  ], [usage, models, virtualKeys, activity]);
 
   return (
     <div className="min-h-full bg-background overflow-y-auto">
-      <motion.div
-        className="max-w-6xl mx-auto px-6 md:px-8 py-8 md:py-12 space-y-8 md:space-y-10"
-        variants={staggerContainer}
-        initial="hidden"
-        animate="visible"
-      >
+      <div className="max-w-6xl mx-auto px-8 py-16 space-y-12">
+        
         {/* Welcome Header */}
-        <motion.div variants={fadeInUp} className="text-center space-y-3">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground tracking-tight">
-            {greeting}, {user?.name || user?.email?.split("@")[0] || "User"}
+        <div className="text-center space-y-2">
+          <h1 className="text-5xl font-bold text-text-primary tracking-tight">
+            Welcome back, {user?.name || user?.email?.split("@")[0] || "User"}
           </h1>
-          <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-xl text-text-secondary max-w-2xl mx-auto">
             What would you like to accomplish today?
           </p>
-        </motion.div>
+        </div>
 
         {/* Spotlight Search - Mac Style */}
-        <motion.div variants={fadeInUp} className="max-w-3xl mx-auto">
+        <div className="max-w-3xl mx-auto">
           <form onSubmit={handleSpotlightSearch} className="relative">
-            <motion.div
-              className="relative group"
-              animate={{
-                scale: spotlightFocused ? 1.02 : 1,
-              }}
-              transition={{ duration: TIMING.fast }}
+            <div
+              className={cn(
+                "relative group transition-all duration-300",
+                spotlightFocused && "scale-105"
+              )}
             >
-              {/* Glow effect */}
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 rounded-2xl blur-xl"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: spotlightFocused ? 0.8 : 0 }}
-                transition={{ duration: TIMING.normal }}
-              />
-
-              <div className="relative bg-card/90 backdrop-blur-xl border border-border rounded-2xl shadow-2xl shadow-black/10 overflow-hidden">
-                <div className="flex items-center p-4 md:p-6">
-                  <motion.div
-                    animate={{ rotate: spotlightFocused ? 360 : 0 }}
-                    transition={{ duration: 0.5, ease: "easeOut" }}
-                  >
-                    <Search className="h-5 w-5 md:h-6 md:w-6 text-muted-foreground shrink-0" />
-                  </motion.div>
+              <div className="absolute inset-0 bg-gradient-to-r from-accent-blue/20 to-accent-purple/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              
+              <div className="relative bg-surface-graphite/80 backdrop-blur-xl border border-border-primary/30 rounded-2xl shadow-lg overflow-hidden">
+                <div className="flex items-center p-6">
+                  <Search className="h-6 w-6 text-text-secondary shrink-0" />
                   <input
-                    ref={inputRef}
                     type="text"
                     value={spotlightQuery}
                     onChange={(e) => {
@@ -215,216 +168,185 @@ const Index = () => {
                     }}
                     onFocus={() => setSpotlightFocused(true)}
                     onBlur={() => setTimeout(() => setSpotlightFocused(false), 200)}
-                    placeholder="Ask anything... Compare models side by side"
-                    className="flex-1 bg-transparent border-none outline-none text-base md:text-lg text-foreground placeholder:text-muted-foreground text-center focus:ring-0 px-4"
+                    placeholder="What's on your mind? Try out the best model."
+                    className="flex-1 bg-transparent border-none outline-none text-lg text-text-primary placeholder:text-text-tertiary text-center focus:ring-0"
                     data-testid="input-spotlight-search"
                   />
-                  <kbd className="hidden sm:flex px-2.5 py-1.5 text-xs font-semibold text-muted-foreground bg-muted border border-border rounded-lg shrink-0 items-center gap-1 hover:bg-accent transition-colors">
-                    <Command className="h-3 w-3" /> K
+                  <kbd className="px-2 py-1 text-xs font-semibold text-text-tertiary bg-surface-graphite border border-border-secondary/50 rounded shrink-0">
+                    <Command className="h-3 w-3 inline" /> K
                   </kbd>
                 </div>
 
                 {/* AI Suggestion */}
-                <AnimatePresence>
-                  {aiSuggestion && spotlightQuery && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: TIMING.fast }}
-                      className="overflow-hidden"
-                    >
-                      <div className="border-t border-border p-4 bg-gradient-to-r from-primary/5 via-primary/3 to-primary/5">
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <motion.div
-                              className="p-2 bg-primary/10 rounded-lg shrink-0"
-                              animate={{ scale: [1, 1.1, 1] }}
-                              transition={{ duration: 2, repeat: Infinity }}
-                            >
-                              <Sparkles className="h-4 w-4 text-primary" />
-                            </motion.div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium text-foreground truncate">
-                                Recommended: {aiSuggestion.model.id}
-                              </p>
-                              <p className="text-xs text-muted-foreground">{aiSuggestion.reason}</p>
-                            </div>
-                          </div>
-                          <Button
-                            type="submit"
-                            size="sm"
-                            className="bg-primary hover:bg-primary/90 shrink-0 gap-1"
-                          >
-                            Compare
-                            <ArrowRight className="h-4 w-4" />
-                          </Button>
+                {aiSuggestion && spotlightQuery && (
+                  <div className="border-t border-border-primary/30 p-4 bg-gradient-to-r from-accent-blue/5 to-accent-purple/5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-accent-blue/10 rounded-lg">
+                          <Sparkles className="h-4 w-4 text-accent-blue" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-text-primary">
+                            Recommended: {aiSuggestion.model.id}
+                          </p>
+                          <p className="text-xs text-text-secondary">{aiSuggestion.reason}</p>
                         </div>
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                      <Button
+                        type="submit"
+                        size="sm"
+                        className="bg-accent-blue hover:bg-accent-blue/90"
+                      >
+                        Start <ArrowRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
-            </motion.div>
+            </div>
           </form>
-        </motion.div>
+        </div>
 
         {/* Model Comparison Grid */}
-        <AnimatePresence mode="wait">
-          {isComparing && comparisonModels.length > 0 && (
-            <motion.div
-              key="comparison"
-              variants={scaleIn}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="space-y-4"
-            >
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-xl font-semibold text-foreground truncate">
-                    Comparing {comparisonModels.length} models
-                  </h2>
-                  <p className="text-sm text-muted-foreground truncate">"{comparisonQuery}"</p>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <Badge
-                    variant="secondary"
-                    className={cn(
-                      "transition-colors",
-                      completedCount === comparisonModels.length && "bg-green-500/10 text-green-600"
-                    )}
-                  >
-                    {completedCount === comparisonModels.length && (
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                    )}
-                    {completedCount}/{comparisonModels.length} complete
-                  </Badge>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={handleCloseComparison}
-                    data-testid="button-close-comparison"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
+        {isComparing && comparisonModels.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-xl font-semibold text-text-primary truncate">
+                  Comparing {comparisonModels.length} models
+                </h2>
+                <p className="text-sm text-text-secondary truncate">"{comparisonQuery}"</p>
               </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <Badge variant="secondary">
+                  {completedCount}/{comparisonModels.length} complete
+                </Badge>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={handleCloseComparison}
+                  data-testid="button-close-comparison"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {comparisonModels.map((model) => (
+                <div key={model.id} className="h-80">
+                  <ModelComparisonPanel
+                    model={model}
+                    query={comparisonQuery}
+                    onComplete={handleComparisonComplete}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-              <motion.div
-                className="grid grid-cols-1 md:grid-cols-2 gap-4"
-                variants={staggerContainer}
-                initial="hidden"
-                animate="visible"
-              >
-                {comparisonModels.map((model, index) => (
-                  <motion.div
-                    key={model.id}
-                    className="h-80 relative group"
-                    variants={fadeInUp}
-                    custom={index}
-                  >
-                    <ModelComparisonPanel
-                      model={model}
-                      query={comparisonQuery}
-                      onComplete={handleComparisonComplete}
-                    />
-                    {/* Select this response button */}
-                    <motion.div
-                      className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity"
-                      initial={{ y: 10 }}
-                      whileHover={{ y: 0 }}
-                    >
-                      <Button
-                        size="sm"
-                        onClick={() => handleSelectModel(model.id)}
-                        className="bg-primary hover:bg-primary/90 shadow-lg"
-                      >
-                        <Zap className="h-3 w-3 mr-1" />
-                        Use this response
-                      </Button>
-                    </motion.div>
-                  </motion.div>
-                ))}
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Metrics Grid */}
-        <motion.div
-          variants={fadeInUp}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
-        >
-          <MetricCard
-            title="Today's Messages"
-            value={metrics.today.messages}
-            subtitle="Sent today"
-            icon={MessageSquare}
-            iconColor="text-primary"
-            trend={metrics.trends.weeklyChange !== 0 ? {
-              value: metrics.trends.weeklyChange,
-              label: "vs last week"
-            } : undefined}
-            sparklineData={sparklineData.requests}
-            sparklineColor="hsl(var(--primary))"
-            loading={metricsLoading}
-          />
-
-          <MetricCard
-            title="Models Available"
-            value={modelsLoading ? "..." : models.length}
-            subtitle="Ready to use"
-            icon={Bot}
-            iconColor="text-green-600"
-            loading={modelsLoading}
-          />
-
-          <MetricCard
-            title="Virtual Keys"
-            value={virtualKeys.filter(k => !k.disabled).length}
-            subtitle="Active keys"
-            icon={Activity}
-            iconColor="text-orange-600"
-          />
-
-          <MetricCard
-            title="Budget Used"
-            value={metrics.budget.total
-              ? `${metrics.budget.percentage}%`
-              : formatCurrency(metrics.budget.used)
-            }
-            subtitle={metrics.budget.total
-              ? `${formatCurrency(metrics.budget.used)} of ${formatCurrency(metrics.budget.total)}`
-              : "This week"
-            }
-            icon={Wallet}
-            iconColor="text-purple-600"
-            sparklineData={sparklineData.cost}
-            sparklineColor="hsl(var(--chart-4))"
-            loading={metricsLoading}
-          />
-        </motion.div>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          {stats.map((stat, index) => {
+            const Icon = stat.icon;
+            return (
+              <GlassCard key={stat.label} className="p-6 hover-lift">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Icon className={cn("h-5 w-5", stat.color)} />
+                    <Badge variant="secondary" className="text-xs">
+                      {stat.change}
+                    </Badge>
+                  </div>
+                  <div>
+                    <div className="text-3xl font-bold text-text-primary tabular-nums">
+                      {modelsLoading && index === 1 ? "..." : stat.value}
+                    </div>
+                    <div className="text-sm text-text-secondary mt-1">
+                      {stat.label}
+                    </div>
+                  </div>
+                </div>
+              </GlassCard>
+            );
+          })}
+        </div>
 
         {/* Quick Actions */}
-        <motion.div variants={fadeInUp}>
-          <QuickActionsGrid
-            recentConversation={activity[0] ? {
-              id: (activity[0].metadata as { conversationId?: string })?.conversationId || 'recent',
-              title: activity[0].action.replace(/_/g, ' '),
-            } : undefined}
-          />
-        </motion.div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            { icon: MessageSquare, title: "Start Chat", desc: "Begin AI conversation", href: "/chat", color: "accent-blue" },
+            { icon: Bot, title: "Build Agent", desc: "Create custom workflow", href: "/agents", color: "accent-green" },
+            { icon: Zap, title: "Playground", desc: "Experiment with models", href: "/playground", color: "accent-orange" }
+          ].map((action) => {
+            const Icon = action.icon;
+            return (
+              <GlassCard
+                key={action.href}
+                className="p-6 hover-lift cursor-pointer group"
+                onClick={() => navigate(action.href)}
+              >
+                <div className="flex items-center gap-4">
+                  <div className={cn("p-3 rounded-xl", `bg-${action.color}/10`)}>
+                    <Icon className={cn("h-6 w-6", `text-${action.color}`)} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-text-primary group-hover:text-accent-blue transition-colors">
+                      {action.title}
+                    </h3>
+                    <p className="text-sm text-text-secondary">{action.desc}</p>
+                  </div>
+                  <ArrowRight className="h-5 w-5 text-text-tertiary opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </GlassCard>
+            );
+          })}
+        </div>
 
         {/* Recent Activity */}
-        <motion.div variants={fadeInUp}>
-          <RecentActivity
-            activities={activity}
-            loading={activityLoading}
-            onViewAll={() => navigate('/chat')}
-          />
-        </motion.div>
-      </motion.div>
+        <div>
+          <h2 className="text-2xl font-semibold text-text-primary mb-6">Recent Activity</h2>
+          <GlassCard className="overflow-hidden">
+            {activity.length === 0 ? (
+              <div className="p-8 text-center text-text-secondary">
+                <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No recent activity for {user?.email}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => navigate("/chat")}
+                >
+                  Start Your First Chat
+                </Button>
+              </div>
+            ) : (
+              <div className="divide-y divide-border-primary/10">
+                {activity.map((event) => (
+                  <div
+                    key={event.id}
+                    className="flex items-center gap-4 p-4 hover:bg-surface-graphite/20 transition-colors"
+                  >
+                    <div className="p-2 bg-accent-blue/10 rounded-lg">
+                      <Zap className="h-4 w-4 text-accent-blue" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-text-primary">
+                        {event.action.replace(/_/g, " ")}
+                      </p>
+                      <p className="text-xs text-text-tertiary">
+                        {new Date(event.timestamp).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </GlassCard>
+        </div>
+
+      </div>
     </div>
   );
 };

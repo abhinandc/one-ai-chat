@@ -1,65 +1,73 @@
-# OneEdge - Unified AI Platform
+# Welcome to your Lovable project
 
-OneOrigin's enterprise AI platform providing controlled access to multiple AI models.
+## Project info
 
-## Overview
+**URL**: https://lovable.dev/projects/033657a9-b91a-475b-a197-5325e3efa48a
 
-OneEdge is an employee-facing AI platform that provides enterprise teams with:
-- **Unified AI Access** - Single interface to access multiple AI models (Claude, GPT, Gemini, etc.)
-- **Enterprise Governance** - Centralized control over model access, budgets, and usage
-- **Process Automation** - AI-powered workflow automations integrated with enterprise stack
-- **Knowledge Sharing** - Internal prompt engineering community with curated external feeds
-- **Voice AI Assistant** - Sia, a persistent AI companion
+## How can I edit this code?
 
-## Tech Stack
+There are several ways of editing your application.
 
-- **Frontend**: React 18, TypeScript, Vite
-- **Styling**: TailwindCSS, shadcn/ui components
-- **State Management**: TanStack React Query, Zustand
-- **Backend**: Supabase (PostgreSQL + Edge Functions)
-- **Auth**: Google OAuth (GSuite enterprise)
+**Use Lovable**
 
-## Getting Started
+Simply visit the [Lovable Project](https://lovable.dev/projects/033657a9-b91a-475b-a197-5325e3efa48a) and start prompting.
 
-```bash
-# Install dependencies
-pnpm install
+Changes made via Lovable will be committed automatically to this repo.
 
-# Start development server
-pnpm dev
+**Use your preferred IDE**
 
-# Build for production
-pnpm build
+If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
 
-# Run tests
-pnpm test
+The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+
+Follow these steps:
+
+```sh
+# Step 1: Clone the repository using the project's Git URL.
+git clone <YOUR_GIT_URL>
+
+# Step 2: Navigate to the project directory.
+cd <YOUR_PROJECT_NAME>
+
+# Step 3: Install the necessary dependencies.
+npm i
+
+# Step 4: Start the development server with auto-reloading and an instant preview.
+npm run dev
 ```
 
-## Environment Variables
+**Edit a file directly in GitHub**
 
-Required in `.env`:
-```
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_anon_key
-```
+- Navigate to the desired file(s).
+- Click the "Edit" button (pencil icon) at the top right of the file view.
+- Make your changes and commit the changes.
 
-## Project Structure
+**Use GitHub Codespaces**
 
-```
-src/
-├── components/       # React components
-│   ├── ui/           # shadcn/ui components
-│   ├── shell/        # App shell (SideNav, TopBar, Footer)
-│   ├── chat/         # Chat interface components
-│   ├── agents/       # Agent workflow components
-│   └── automations/  # Automation components
-├── hooks/            # Custom React hooks
-├── pages/            # Page components (routes)
-├── services/         # API and Supabase services
-├── styles/           # Global styles and tokens
-└── types/            # TypeScript type definitions
-```
+- Navigate to the main page of your repository.
+- Click on the "Code" button (green button) near the top right.
+- Select the "Codespaces" tab.
+- Click on "New codespace" to launch a new Codespace environment.
+- Edit files directly within the Codespace and commit and push your changes once you're done.
 
-## License
+## What technologies are used for this project?
 
-Copyright 2025 OneOrigin. All rights reserved.
+This project is built with:
+
+- Vite
+- TypeScript
+- React
+- shadcn-ui
+- Tailwind CSS
+
+## How can I deploy this project?
+
+Simply open [Lovable](https://lovable.dev/projects/033657a9-b91a-475b-a197-5325e3efa48a) and click on Share -> Publish.
+
+## Can I connect a custom domain to my Lovable project?
+
+Yes, you can!
+
+To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+
+Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)

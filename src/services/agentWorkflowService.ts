@@ -2,20 +2,16 @@ import { Node, Edge } from '@xyflow/react';
 import { apiClient, Agent } from './api';
 import supabaseClient from './supabaseClient';
 
-export interface AgentWorkflowData {
-  nodes: Node[];
-  edges: Edge[];
-  model_id?: string;
-  is_active?: boolean;
-}
-
 export interface AgentWorkflow {
   id: string;
   user_email: string;
   agent_id: string;
   name: string;
   description: string;
-  workflow_data: AgentWorkflowData;
+  workflow_data: {
+    nodes: Node[];
+    edges: Edge[];
+  };
   created_at: string;
   updated_at: string;
 }
@@ -71,7 +67,7 @@ class AgentWorkflowService {
     const nodes: Node[] = [];
     const edges: Edge[] = [];
 
-    // Create system prompt node from agent name
+    // Create system prompt node (agents don't have metadata.systemPrompt, use name as placeholder)
     nodes.push({
       id: 'system-1',
       type: 'system',

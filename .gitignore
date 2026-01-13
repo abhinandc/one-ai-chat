@@ -23,14 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 
-# Test artifacts
-test-results/
-reports/
-.auth/
-*.html
-playwright-report/
-coverage/
-
 # Auto Claude generated files
 .auto-claude/
 .auto-claude-security.json
@@ -39,16 +31,3 @@ coverage/
 .worktrees/
 .security-key
 logs/security/
-
-# EdgeVault Security - NEVER commit encryption keys
-.edgevault-key-*.txt
-*.pem
-*.key
-*.secret
-
-# Environment files - NEVER commit
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local

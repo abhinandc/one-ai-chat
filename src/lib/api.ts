@@ -1,5 +1,3 @@
-import { apiLogger as logger } from './logger';
-
 const sanitizeBase = (value?: string) => {
   if (!value) {
     return '';
@@ -203,7 +201,7 @@ export class OneEdgeClient {
           return stored;
         }
       } catch (error) {
-        logger.warn('Unable to read Virtual Key from localStorage', { error });
+        console.warn('Unable to read Virtual Key from localStorage:', error);
       }
     }
 
@@ -401,7 +399,7 @@ export class OneEdgeClient {
     try {
       return await this.requestMcp<Agent>(`/agents/${id}`);
     } catch (error) {
-      logger.error('Failed to fetch agent', error);
+      console.error('Failed to fetch agent:', error);
       return null;
     }
   }
@@ -450,7 +448,7 @@ export class OneEdgeClient {
     try {
       return await this.requestMcp<any>(`/permissions/${agentId}/${subjectId}`);
     } catch (error) {
-      logger.error('Failed to fetch permission', error);
+      console.error('Failed to fetch permission:', error);
       return null;
     }
   }
@@ -529,7 +527,7 @@ export async function* parseSSEStream(stream: ReadableStream<Uint8Array>): Async
           const parsed = JSON.parse(data) as ChatCompletionChunk;
           yield parsed;
         } catch (error) {
-          logger.warn('Failed to parse SSE data chunk', { data, error });
+          console.warn('Failed to parse SSE data chunk:', { data, error });
         }
       }
     }

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { toolService, ToolInstallation, ToolSubmission } from '../services/toolService';
 import supabaseClient from '../services/supabaseClient';
-import { logger } from '@/lib/logger';
 
 // Define Tool type locally since it's not exported from toolService
 export interface Tool {
@@ -45,7 +44,7 @@ export function useTools(userEmail?: string): UseToolsResult {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch tools';
       setError(errorMessage);
-      logger.error('Failed to fetch tools', err);
+      console.error('Failed to fetch tools:', err);
     } finally {
       setLoading(false);
     }
@@ -59,7 +58,7 @@ export function useTools(userEmail?: string): UseToolsResult {
       await fetchTools();
       return result;
     } catch (error) {
-      logger.error('Failed to install tool', error);
+      console.error('Failed to install tool:', error);
       throw error;
     }
   };
@@ -71,7 +70,7 @@ export function useTools(userEmail?: string): UseToolsResult {
       await toolService.uninstallTool(installationId, userEmail);
       await fetchTools();
     } catch (error) {
-      logger.error('Failed to uninstall tool', error);
+      console.error('Failed to uninstall tool:', error);
       throw error;
     }
   };
@@ -91,7 +90,7 @@ export function useTools(userEmail?: string): UseToolsResult {
       if (error) throw error;
       return data;
     } catch (error) {
-      logger.error('Failed to get tool usage', error);
+      console.error('Failed to get tool usage:', error);
       throw error;
     }
   };
@@ -102,7 +101,7 @@ export function useTools(userEmail?: string): UseToolsResult {
       await fetchTools();
       return newTool;
     } catch (error) {
-      logger.error('Failed to submit tool', error);
+      console.error('Failed to submit tool:', error);
       throw error;
     }
   };

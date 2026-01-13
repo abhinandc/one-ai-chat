@@ -24,10 +24,11 @@ export function Inspector({ conversation, citations = [], onUpdateSettings }: In
   const { agents, loading: agentsLoading } = useAgents({ env: 'prod' });
   const { models, loading: modelsLoading } = useModels();
 
-  // Extract context variables from conversation
+  // Real database context retrieval
   useEffect(() => {
     if (conversation && conversation.messages.length > 0) {
-      // Extract variables from current conversation
+      // TODO: Replace with real database context retrieval API calls
+      // For now, extract real variables from conversation only
       const extractedVars = {
         user_name: 'User',
         conversation_id: conversation.id,

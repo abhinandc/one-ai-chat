@@ -12,16 +12,7 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
-  errorInfo: React.ErrorInfo | null;
-}
-
-/**
- * Type guard for custom error reporting function on window
- */
-function hasReportError(
-  win: Window & typeof globalThis
-): win is Window & typeof globalThis & { reportError: (error: Error, errorInfo: React.ErrorInfo) => void } {
-  return typeof (win as Window & { reportError?: unknown }).reportError === 'function';
+  errorInfo: any;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -34,13 +25,13 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: any) {
     console.error("Application Error:", error, errorInfo);
     this.setState({ error, errorInfo });
-
+    
     // Report to error tracking service if available
-    if (typeof window !== "undefined" && hasReportError(window)) {
-      window.reportError(error, errorInfo);
+    if (typeof window !== "undefined" && (window as any).reportError) {
+      (window as any).reportError(error, errorInfo);
     }
   }
 

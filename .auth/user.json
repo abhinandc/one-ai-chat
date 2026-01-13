@@ -1,0 +1,22 @@
+{
+  "cookies": [],
+  "origins": [
+    {
+      "origin": "http://localhost:5000",
+      "localStorage": [
+        {
+          "name": "oneai_api_key",
+          "value": "sk-test-e2e-key"
+        },
+        {
+          "name": "oneedge_auth_token",
+          "value": "mock-auth-token-for-e2e"
+        },
+        {
+          "name": "oneedge_user",
+          "value": "{\"email\":\"e2e-test@oneorigin.us\",\"name\":\"E2E Test User\",\"givenName\":\"E2E\",\"familyName\":\"Test\",\"picture\":\"https://ui-avatars.com/api/?name=E2E+Test&background=0D8ABC&color=fff\"}"
+        }
+      ]
+    }
+  ]
+}

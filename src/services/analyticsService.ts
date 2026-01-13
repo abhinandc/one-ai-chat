@@ -1,5 +1,4 @@
 import supabaseClient from './supabaseClient';
-import { logger } from '@/lib/logger';
 
 export interface UsageMetrics {
   user_email: string;
@@ -52,7 +51,7 @@ class AnalyticsService {
         daily_usage: []
       };
     } catch (error) {
-      logger.error('Failed to fetch usage metrics', error);
+      console.error('Failed to fetch usage metrics:', error);
       return {
         user_email: userEmail,
         total_requests: 0,
@@ -78,7 +77,7 @@ class AnalyticsService {
 
       if (error) throw error;
     } catch (error) {
-      logger.error('Failed to track event', error);
+      console.error('Failed to track event:', error);
     }
   }
 
@@ -108,7 +107,7 @@ class AnalyticsService {
 
       if (error) throw error;
     } catch (error) {
-      logger.error('Failed to record API call', error);
+      console.error('Failed to record API call:', error);
     }
   }
 
@@ -128,7 +127,7 @@ class AnalyticsService {
         cost_today: 0
       };
     } catch (error) {
-      logger.error('Failed to fetch dashboard stats', error);
+      console.error('Failed to fetch dashboard stats:', error);
       return {
         total_conversations: 0,
         total_automations: 0,

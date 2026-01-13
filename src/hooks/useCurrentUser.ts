@@ -1,7 +1,5 @@
 ﻿import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase';
 import supabaseClient from '@/services/supabaseClient';
-import { authLogger as logger } from '@/lib/logger';
 
 export interface CurrentUser {
   email: string;
@@ -80,7 +78,7 @@ const parseStoredUser = (): CurrentUser | null => {
       };
     }
   } catch (error) {
-    logger.warn('Unable to parse stored user', { error });
+    console.warn('Unable to parse stored user', error);
   }
 
   return null;
@@ -89,7 +87,6 @@ const parseStoredUser = (): CurrentUser | null => {
 export function useCurrentUser(): CurrentUser | null {
   const [user, setUser] = useState<CurrentUser | null>(() => parseStoredUser());
 
-  // Listen to localStorage changes (backward compatibility)
   useEffect(() => {
     const handler = () => {
       setUser(parseStoredUser());
@@ -101,73 +98,10 @@ export function useCurrentUser(): CurrentUser | null {
     };
   }, []);
 
-  // Sync with Supabase Auth session
   useEffect(() => {
-    let cancelled = false;
-
-    const syncWithAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-
-        if (cancelled) return;
-
-        if (session?.user) {
-          const authUser = session.user;
-          const userProfile: CurrentUser = {
-            email: authUser.email!,
-            name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || authUser.email,
-            picture: authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture,
-            givenName: authUser.user_metadata?.given_name,
-            familyName: authUser.user_metadata?.family_name,
-          };
-
-          setUser(userProfile);
-          persistUser(userProfile);
-        } else if (!user) {
-          // No session and no stored user - ensure we're cleared
-          setUser(null);
-        }
-      } catch (error) {
-        logger.warn('Error syncing with Supabase Auth', { error });
-      }
-    };
-
-    syncWithAuth();
-
-    // Subscribe to auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (cancelled) return;
-
-        if (event === 'SIGNED_OUT') {
-          setUser(null);
-          persistUser(null);
-        } else if (session?.user) {
-          const authUser = session.user;
-          const userProfile: CurrentUser = {
-            email: authUser.email!,
-            name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || authUser.email,
-            picture: authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture,
-            givenName: authUser.user_metadata?.given_name,
-            familyName: authUser.user_metadata?.family_name,
-          };
-
-          setUser(userProfile);
-          persistUser(userProfile);
-        }
-      }
-    );
-
-    return () => {
-      cancelled = true;
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  // Load additional profile data from app_users table
-  useEffect(() => {
+    const supabase = supabaseClient;
     const email = user?.email;
-    if (!email) {
+    if (!supabase || !email) {
       return;
     }
 
@@ -175,17 +109,17 @@ export function useCurrentUser(): CurrentUser | null {
 
     const loadProfile = async () => {
       try {
-        const { data: dbUser, error: dbUserError } = await supabaseClient
-          .from('app_users')
-          .select('name, avatar_url')
+        const { data: dbUser, error: dbUserError } = await supabase
+          .from('users')
+          .select('name')
           .eq('email', email)
           .maybeSingle();
 
         let resolvedName = normalizeValue(dbUser?.name) ?? user?.name;
-        let resolvedPicture = dbUser?.avatar_url ?? user?.picture;
+        let resolvedPicture = user?.picture;
 
         if (dbUserError && dbUserError.code !== 'PGRST116') {
-          logger.warn('Unable to load app_users profile', { error: dbUserError.message });
+          console.warn('Unable to load users profile', dbUserError.message);
         }
 
         if (cancelled) {
@@ -222,7 +156,7 @@ export function useCurrentUser(): CurrentUser | null {
           return next;
         });
       } catch (error) {
-        logger.warn('Failed to hydrate current user profile', { error });
+        console.warn('Failed to hydrate current user profile', error);
       }
     };
 

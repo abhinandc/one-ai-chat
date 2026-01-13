@@ -4,15 +4,6 @@ import { ChevronDown } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
-/**
- * Accordion Component
- *
- * Constitution Compliance:
- * - 44px minimum touch targets (Apple HIG)
- * - Animation: 200ms for content expand/collapse
- * - OKLCH colors via CSS custom properties
- */
-
 const Accordion = AccordionPrimitive.Root
 
 const AccordionItem = React.forwardRef<
@@ -21,7 +12,7 @@ const AccordionItem = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AccordionPrimitive.Item
     ref={ref}
-    className={cn("border-b border-border", className)}
+    className={cn("border-b", className)}
     {...props}
   />
 ))
@@ -35,21 +26,13 @@ const AccordionTrigger = React.forwardRef<
     <AccordionPrimitive.Trigger
       ref={ref}
       className={cn(
-        "flex flex-1 items-center justify-between",
-        // Touch target (Apple HIG: 44px minimum)
-        "min-h-touch py-4",
-        "font-medium text-foreground",
-        // Transitions (Constitution: micro 150ms)
-        "transition-all duration-micro ease-out",
-        "hover:text-primary",
-        // Icon rotation
-        "[&[data-state=open]>svg]:rotate-180",
+        "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline [&[data-state=open]>svg]:rotate-180",
         className
       )}
       {...props}
     >
       {children}
-      <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-fast ease-out" />
+      <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 ))
@@ -61,11 +44,7 @@ const AccordionContent = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <AccordionPrimitive.Content
     ref={ref}
-    className={cn(
-      "overflow-hidden text-sm text-muted-foreground",
-      "transition-all",
-      "data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
-    )}
+    className="overflow-hidden text-sm transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
     {...props}
   >
     <div className={cn("pb-4 pt-0", className)}>{children}</div>

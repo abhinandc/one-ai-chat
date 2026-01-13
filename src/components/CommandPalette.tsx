@@ -17,7 +17,8 @@ import {
   Workflow,
   HardDrive,
   FileText,
-  Star,
+  Wrench,
+  Play,
   HelpCircle,
   Search,
   Settings,
@@ -31,7 +32,8 @@ const navigationCommands = [
   { icon: Workflow, label: "Go to Automations", href: "/automations", shortcut: "g z" },
   { icon: HardDrive, label: "Go to Model Hub", href: "/models", shortcut: "g m" },
   { icon: FileText, label: "Go to Prompts", href: "/prompts", shortcut: "g p" },
-  { icon: Star, label: "Go to AI Gallery", href: "/ai-gallery", shortcut: "g g" },
+  { icon: Wrench, label: "Go to Tools", href: "/tools", shortcut: "g t" },
+  { icon: Play, label: "Go to Playground", href: "/playground", shortcut: "g y" },
   { icon: HelpCircle, label: "Show Help", href: "/help", shortcut: "?" }
 ];
 
