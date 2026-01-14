@@ -193,35 +193,35 @@ export class OneEdgeClient {
     return `${base}${normalizedPath}`;
   }
 
-  private getStoredCredentials(): { api_key: string; full_endpoint: string; model_key: string; auth_header: string } | null {
+  private getStoredCredentials(): { api_key: string; full_endpoint: string; api_path?: string; model_key: string; auth_header: string } | null {
     if (typeof window !== 'undefined' && window.localStorage) {
       try {
         const stored = window.localStorage.getItem('oneai_credentials');
         if (stored) {
           return JSON.parse(stored);
         }
-      } catch (error) {
-        console.warn('Unable to read credentials from localStorage:', error);
+      } catch {
+        // Silently fail
       }
     }
     return null;
   }
 
-  private getAllStoredCredentials(): { api_key: string; full_endpoint: string; model_key: string; auth_header: string; provider: string }[] {
+  private getAllStoredCredentials(): { api_key: string; full_endpoint: string; api_path?: string; model_key: string; auth_header: string; provider: string }[] {
     if (typeof window !== 'undefined' && window.localStorage) {
       try {
         const stored = window.localStorage.getItem('oneai_all_credentials');
         if (stored) {
           return JSON.parse(stored);
         }
-      } catch (error) {
-        console.warn('Unable to read all credentials from localStorage:', error);
+      } catch {
+        // Silently fail
       }
     }
     return [];
   }
 
-  private getCredentialForModel(modelName: string): { api_key: string; full_endpoint: string; model_key: string; auth_header: string; provider?: string } | null {
+  private getCredentialForModel(modelName: string): { api_key: string; full_endpoint: string; api_path?: string; model_key: string; auth_header: string; provider?: string } | null {
     const allCreds = this.getAllStoredCredentials();
     const modelCred = allCreds.find(c => c.model_key === modelName);
     if (modelCred) {
@@ -245,8 +245,8 @@ export class OneEdgeClient {
         if (stored) {
           return stored;
         }
-      } catch (error) {
-        console.warn('Unable to read Virtual Key from localStorage:', error);
+      } catch {
+        // Silently fail
       }
     }
 

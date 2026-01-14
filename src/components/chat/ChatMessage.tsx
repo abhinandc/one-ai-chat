@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { CopyIcon, CheckIcon, CubeIcon, ReloadIcon } from "@radix-ui/react-icons";
+import { CopyIcon, CheckIcon, ReloadIcon } from "@radix-ui/react-icons";
 import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/types";
 
@@ -23,7 +22,7 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Render markdown-like content
+  // Render markdown-like content with proper formatting
   const renderContent = (content: string) => {
     // Handle code blocks
     if (content.includes("```")) {
@@ -64,102 +63,113 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
 
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
+      initial={{ opacity: 0, y: 20, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ 
+        duration: 0.4, 
+        ease: [0.25, 0.46, 0.45, 0.94],
+        opacity: { duration: 0.3 }
+      }}
       className={cn(
-        "group w-full",
-        isUser ? "bg-transparent" : "bg-muted/30"
+        "group w-full py-4",
+        isUser ? "bg-transparent" : "bg-gradient-to-r from-muted/20 via-muted/10 to-transparent"
       )}
     >
       <div className={cn(
-        "mx-auto max-w-3xl px-4 py-6",
-        isUser && "flex justify-end"
+        "mx-auto max-w-3xl px-4",
+        isUser ? "flex justify-start" : "flex justify-start"
       )}>
-        <div className={cn(
-          "flex gap-4",
-          isUser && "flex-row-reverse max-w-[85%]"
-        )}>
-          {/* Avatar */}
-          {isAssistant && (
-            <Avatar className="h-8 w-8 shrink-0">
-              <AvatarFallback className="bg-accent-green/20 text-accent-green text-xs font-medium">
-                <CubeIcon className="h-4 w-4" />
-              </AvatarFallback>
-            </Avatar>
-          )}
-          
-          {isUser && (
-            <Avatar className="h-8 w-8 shrink-0">
-              <AvatarFallback className="bg-primary/20 text-primary text-xs font-medium">
-                U
-              </AvatarFallback>
-            </Avatar>
-          )}
-
-          {/* Content */}
-          <div className={cn(
-            "flex-1 space-y-2 overflow-hidden",
-            isUser && "text-right"
-          )}>
-            {/* Role label */}
-            <div className="text-sm font-semibold text-foreground">
-              {isUser ? "You" : "OneEdge"}
-            </div>
-
-            {/* Message content */}
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.2, delay: 0.1 }}
-              className={cn(
-                "prose prose-sm dark:prose-invert max-w-none text-foreground",
-                isUser && "inline-block text-left bg-primary/10 rounded-2xl rounded-tr-sm px-4 py-3"
-              )}
-            >
+        <div className="flex flex-col gap-2 max-w-[85%]">
+          {/* Message content with shader-like gradient border for assistant */}
+          <motion.div 
+            initial={{ opacity: 0, x: isUser ? -10 : 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            className={cn(
+              "relative overflow-hidden",
+              isUser && "rounded-2xl rounded-tl-sm bg-primary/10 backdrop-blur-sm",
+              isAssistant && "rounded-2xl"
+            )}
+          >
+            {/* Shader-like animated gradient background for assistant messages */}
+            {isAssistant && (
+              <motion.div 
+                className="absolute inset-0 opacity-30 pointer-events-none"
+                style={{
+                  background: "linear-gradient(135deg, hsl(var(--primary)/0.1) 0%, hsl(var(--accent)/0.05) 50%, transparent 100%)"
+                }}
+                animate={{
+                  backgroundPosition: ["0% 0%", "100% 100%"],
+                }}
+                transition={{
+                  duration: 8,
+                  repeat: Infinity,
+                  repeatType: "reverse",
+                  ease: "linear"
+                }}
+              />
+            )}
+            
+            <div className={cn(
+              "relative z-10 px-4 py-3",
+              "prose prose-sm dark:prose-invert max-w-none text-foreground"
+            )}>
               {renderContent(message.content)}
               
-              {/* Streaming indicator */}
+              {/* Streaming indicator with pulse animation */}
               {isStreaming && (
                 <motion.span 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: [0.4, 1, 0.4] }}
-                  transition={{ duration: 1, repeat: Infinity }}
-                  className="inline-block w-2 h-4 ml-1 bg-foreground/60 rounded-sm" 
-                />
+                  className="inline-flex items-center gap-1 ml-2"
+                >
+                  <motion.span 
+                    className="w-1.5 h-1.5 rounded-full bg-primary"
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 0.8, repeat: Infinity, delay: 0 }}
+                  />
+                  <motion.span 
+                    className="w-1.5 h-1.5 rounded-full bg-primary"
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 0.8, repeat: Infinity, delay: 0.2 }}
+                  />
+                  <motion.span 
+                    className="w-1.5 h-1.5 rounded-full bg-primary"
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 0.8, repeat: Infinity, delay: 0.4 }}
+                  />
+                </motion.span>
               )}
-            </motion.div>
+            </div>
+          </motion.div>
 
-            {/* Actions - only for assistant messages */}
-            {isAssistant && !isStreaming && (
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
-                className="flex items-center gap-1 pt-2 opacity-0 group-hover:opacity-100 transition-opacity"
+          {/* Actions - only for assistant messages */}
+          {isAssistant && !isStreaming && (
+            <motion.div 
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+            >
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                onClick={copyToClipboard}
               >
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                  onClick={copyToClipboard}
-                >
-                  {copied ? (
-                    <CheckIcon className="h-3.5 w-3.5" />
-                  ) : (
-                    <CopyIcon className="h-3.5 w-3.5" />
-                  )}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                >
-                  <ReloadIcon className="h-3.5 w-3.5" />
-                </Button>
-              </motion.div>
-            )}
-          </div>
+                {copied ? (
+                  <CheckIcon className="h-3.5 w-3.5" />
+                ) : (
+                  <CopyIcon className="h-3.5 w-3.5" />
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+              >
+                <ReloadIcon className="h-3.5 w-3.5" />
+              </Button>
+            </motion.div>
+          )}
         </div>
       </div>
     </motion.div>
@@ -176,7 +186,12 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
   };
 
   return (
-    <div className="my-4 rounded-lg overflow-hidden border border-border">
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="my-4 rounded-lg overflow-hidden border border-border"
+    >
       <div className="flex items-center justify-between bg-muted px-4 py-2">
         <span className="text-xs font-medium text-muted-foreground">
           {language || "code"}
@@ -203,6 +218,6 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
       <pre className="p-4 overflow-x-auto bg-background/50">
         <code className="text-sm font-mono text-foreground">{code}</code>
       </pre>
-    </div>
+    </motion.div>
   );
 }
