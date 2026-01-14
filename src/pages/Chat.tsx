@@ -242,11 +242,14 @@ const Chat = () => {
     // Check if credentials are configured
     const creds = getStoredCredentials();
     if (!creds?.api_key || creds.api_key.length < 20) {
+      // Show more specific error
+      const errorMsg = keyError || "No API credentials found. Credentials are loaded automatically from your assigned keys.";
       toast({
-        title: "API Credentials Required",
-        description: "Please go to Models Hub and activate an API key first",
+        title: "API Credentials Not Loaded",
+        description: errorMsg,
         variant: "destructive",
       });
+      console.error('Missing credentials:', { creds, keyError, keyInitialized, keyLoading });
       return;
     }
 
