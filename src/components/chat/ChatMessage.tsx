@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CopyIcon, CheckIcon, PersonIcon, CubeIcon, ReloadIcon } from "@radix-ui/react-icons";
+import { CopyIcon, CheckIcon, CubeIcon, ReloadIcon } from "@radix-ui/react-icons";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -68,15 +68,17 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
     )}>
       <div className="mx-auto max-w-3xl px-4 py-6">
         <div className="flex gap-4">
-          {/* Avatar */}
-          <Avatar className="h-8 w-8 shrink-0">
-            <AvatarFallback className={cn(
-              "text-xs font-medium",
-              isUser ? "bg-primary text-primary-foreground" : "bg-accent-green/20 text-accent-green"
-            )}>
-              {isUser ? <PersonIcon className="h-4 w-4" /> : <CubeIcon className="h-4 w-4" />}
-            </AvatarFallback>
-          </Avatar>
+          {/* Avatar - only for assistant */}
+          {isAssistant && (
+            <Avatar className="h-8 w-8 shrink-0">
+              <AvatarFallback className="bg-accent-green/20 text-accent-green text-xs font-medium">
+                <CubeIcon className="h-4 w-4" />
+              </AvatarFallback>
+            </Avatar>
+          )}
+          
+          {/* Spacer for user messages to align with assistant */}
+          {isUser && <div className="w-8 shrink-0" />}
 
           {/* Content */}
           <div className="flex-1 space-y-2 overflow-hidden">
