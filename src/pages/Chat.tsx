@@ -333,7 +333,7 @@ const Chat = () => {
   const currentModel = models.find((m) => m.id === selectedModel);
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col bg-background overflow-hidden relative">
+    <div className="h-[calc(100vh-4rem-60px)] flex flex-col bg-background overflow-hidden relative">
       {/* Sidebar */}
       <ChatSidebar
         conversations={uiConversations}
@@ -409,7 +409,7 @@ const Chat = () => {
         />
 
         {/* Input */}
-        <div className="p-4 pb-6 bg-gradient-to-t from-background via-background to-transparent">
+        <div className="p-4 pb-6 bg-gradient-to-t from-background via-background to-transparent relative z-10">
           <AIInput
             onSend={handleSendMessage}
             isLoading={isStreaming}

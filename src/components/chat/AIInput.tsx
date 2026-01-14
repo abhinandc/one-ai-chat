@@ -177,7 +177,7 @@ export function AIInput({
         </AnimatePresence>
 
         {/* Input Container */}
-        <div className="relative flex items-center rounded-2xl border border-border bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background transition-shadow">
+        <div className="relative flex items-center rounded-2xl border border-border bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background transition-shadow z-50">
           {/* Left Actions */}
           <div className="flex items-center gap-1 pl-2">
             {/* Plus Menu */}

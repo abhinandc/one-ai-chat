@@ -138,9 +138,6 @@ const App = () => {
     );
   }
 
-  // Check if current route should hide footer
-  const shouldHideFooter = window.location.pathname === '/chat';
-
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
@@ -176,8 +173,6 @@ const AppContent = ({
   setCommandPaletteOpen: (v: boolean) => void;
   onLogout: () => void;
 }) => {
-  const location = window.location;
-  const isChat = location.pathname === '/chat';
 
   return (
     <div className="min-h-screen w-full bg-background">
@@ -194,9 +189,8 @@ const AppContent = ({
       />
       
       <main className={cn(
-        "pt-16 min-h-screen transition-all duration-normal ease-out",
-        sidebarCollapsed ? "pl-14" : "pl-52",
-        isChat ? "" : "pb-12 overflow-auto"
+        "pt-16 min-h-screen transition-all duration-normal ease-out pb-16 overflow-auto",
+        sidebarCollapsed ? "pl-14" : "pl-52"
       )}>
         <Routes>
           <Route path="/" element={<Index />} />
@@ -213,8 +207,7 @@ const AppContent = ({
         </Routes>
       </main>
       
-      {!isChat && <Footer sidebarCollapsed={sidebarCollapsed} />}
-      
+      <Footer sidebarCollapsed={sidebarCollapsed} />
       <CommandPalette 
         open={commandPaletteOpen}
         onOpenChange={setCommandPaletteOpen}
