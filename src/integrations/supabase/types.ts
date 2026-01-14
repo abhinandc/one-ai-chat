@@ -1625,7 +1625,13 @@ export type Database = {
           default_api_path: string
           extra_headers: Json | null
           id: string
+          max_tokens_default: number | null
           provider: string
+          request_format: string | null
+          response_format: string | null
+          supports_streaming: boolean | null
+          supports_temperature_and_top_p: boolean | null
+          system_message_format: string | null
           updated_at: string | null
         }
         Insert: {
@@ -1637,7 +1643,13 @@ export type Database = {
           default_api_path?: string
           extra_headers?: Json | null
           id?: string
+          max_tokens_default?: number | null
           provider: string
+          request_format?: string | null
+          response_format?: string | null
+          supports_streaming?: boolean | null
+          supports_temperature_and_top_p?: boolean | null
+          system_message_format?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -1649,7 +1661,13 @@ export type Database = {
           default_api_path?: string
           extra_headers?: Json | null
           id?: string
+          max_tokens_default?: number | null
           provider?: string
+          request_format?: string | null
+          response_format?: string | null
+          supports_streaming?: boolean | null
+          supports_temperature_and_top_p?: boolean | null
+          system_message_format?: string | null
           updated_at?: string | null
         }
         Relationships: []

@@ -88,6 +88,15 @@ serve(async (req) => {
       console.warn(`[llm-proxy] No provider_config for ${provider}, using defaults`);
     }
 
+    // Extract provider config values with defaults
+    const requestFormat = providerConfig?.request_format || 'openai';
+    const responseFormat = providerConfig?.response_format || 'openai';
+    const supportsTemperatureAndTopP = providerConfig?.supports_temperature_and_top_p ?? true;
+    const maxTokensDefault = providerConfig?.max_tokens_default || 4096;
+    const systemMessageFormat = providerConfig?.system_message_format || 'message';
+    
+    console.log(`[llm-proxy] Request format: ${requestFormat}, Response format: ${responseFormat}`);
+
     // Get LLM credentials for this provider
     const { data: credential, error: credError } = await supabase
       .from('llm_credentials')
@@ -106,7 +115,6 @@ serve(async (req) => {
     const apiKey = modelData.api_key_encrypted || credential.api_key_encrypted;
     
     // Build endpoint URL from database config
-    // Priority: model.endpoint_url > credential.base_url > credential.endpoint_url > provider_config.base_url
     const baseUrl = modelData.endpoint_url || credential.base_url || credential.endpoint_url || providerConfig?.base_url;
     
     if (!baseUrl) {
@@ -128,19 +136,26 @@ serve(async (req) => {
       );
     }
 
-    // Replace {model} placeholder in API path (for Gemini-style endpoints)
+    // Replace {model} placeholder in API path
     apiPath = apiPath.replace('{model}', actualModelId);
     
     // For streaming Gemini, use streamGenerateContent
-    if ((provider === 'google' || provider === 'gemini') && stream && apiPath.includes(':generateContent')) {
+    if (requestFormat === 'gemini' && stream && apiPath.includes(':generateContent')) {
       apiPath = apiPath.replace(':generateContent', ':streamGenerateContent');
     }
 
-    const fullEndpoint = `${baseUrl}${apiPath}`;
-    console.log(`[llm-proxy] Endpoint: ${fullEndpoint}`);
+    let fullEndpoint = `${baseUrl}${apiPath}`;
+    
+    // For Gemini, add API key as query parameter
+    if (requestFormat === 'gemini') {
+      const separator = fullEndpoint.includes('?') ? '&' : '?';
+      fullEndpoint = `${fullEndpoint}${separator}key=${apiKey}`;
+    }
+    
+    console.log(`[llm-proxy] Endpoint: ${fullEndpoint.replace(apiKey, '***')}`);
 
     // Build request headers from provider config
-    const authHeader2 = providerConfig?.auth_header || 'Authorization';
+    const authHeaderName = providerConfig?.auth_header || 'Authorization';
     const authPrefix = providerConfig?.auth_prefix ?? 'Bearer ';
     const extraHeaders = providerConfig?.extra_headers || {};
     
@@ -148,12 +163,9 @@ serve(async (req) => {
       'Content-Type': 'application/json',
     };
 
-    // Add authentication header based on provider config
-    if (provider === 'google' || provider === 'gemini') {
-      // For Google/Gemini, the API key is passed as a query parameter, not a header
-      // Already handled in the endpoint URL
-    } else {
-      headers[authHeader2] = `${authPrefix}${apiKey}`;
+    // Add authentication header (except for Gemini which uses query param)
+    if (requestFormat !== 'gemini') {
+      headers[authHeaderName] = `${authPrefix}${apiKey}`;
     }
 
     // Add any extra headers from provider config
@@ -163,109 +175,21 @@ serve(async (req) => {
       }
     }
 
-    // Build request body based on provider
-    let requestBody: any;
+    // Build request body based on request_format from database
+    const requestBody = buildRequestBody({
+      requestFormat,
+      systemMessageFormat,
+      actualModelId,
+      messages,
+      stream,
+      temperature,
+      max_tokens,
+      top_p,
+      maxTokensDefault,
+      supportsTemperatureAndTopP,
+    });
 
-    if (provider === 'anthropic') {
-      // Anthropic format
-      const systemMsg = messages.find((m: any) => m.role === 'system');
-      const nonSystemMsgs = messages.filter((m: any) => m.role !== 'system');
-      
-      requestBody = {
-        model: actualModelId,
-        messages: nonSystemMsgs,
-        stream: stream,
-        max_tokens: max_tokens || 4096,
-      };
-      
-      if (systemMsg) {
-        requestBody.system = systemMsg.content;
-      }
-      // Anthropic doesn't allow both temperature and top_p - use only temperature
-      if (temperature !== undefined) {
-        requestBody.temperature = temperature;
-      } else if (top_p !== undefined) {
-        requestBody.top_p = top_p;
-      }
-      
-    } else if (provider === 'google' || provider === 'gemini') {
-      // Gemini format
-      requestBody = {
-        contents: messages.filter((m: any) => m.role !== 'system').map((m: any) => ({
-          role: m.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: m.content }]
-        })),
-        generationConfig: {
-          maxOutputTokens: max_tokens || 4096,
-        }
-      };
-      
-      if (temperature !== undefined) requestBody.generationConfig.temperature = temperature;
-      if (top_p !== undefined) requestBody.generationConfig.topP = top_p;
-      
-      const geminiSystemMsg = messages.find((m: any) => m.role === 'system');
-      if (geminiSystemMsg) {
-        requestBody.systemInstruction = { parts: [{ text: geminiSystemMsg.content }] };
-      }
-      
-      // Add API key to URL for Gemini
-      const separator = fullEndpoint.includes('?') ? '&' : '?';
-      const geminiEndpoint = `${fullEndpoint}${separator}key=${apiKey}`;
-      
-      console.log(`[llm-proxy] Making request to Gemini API`);
-      
-      const response = await fetch(geminiEndpoint, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[llm-proxy] API error ${response.status}:`, errorText);
-        return new Response(
-          JSON.stringify({ error: `API error: ${response.status}`, details: errorText }),
-          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Transform Gemini response to OpenAI format
-      if (stream && response.body) {
-        console.log('[llm-proxy] Streaming Gemini response');
-        return transformGeminiStream(response.body, model, corsHeaders);
-      } else {
-        const data = await response.json();
-        const openAIResponse = transformGeminiResponse(data, model);
-        return new Response(
-          JSON.stringify(openAIResponse),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-    } else if (provider === 'cohere') {
-      // Cohere v2 format
-      requestBody = {
-        model: actualModelId,
-        messages: messages,
-        stream: stream,
-      };
-      if (max_tokens) requestBody.max_tokens = max_tokens;
-      if (temperature !== undefined) requestBody.temperature = temperature;
-      if (top_p !== undefined) requestBody.p = top_p;
-      
-    } else {
-      // OpenAI-compatible format (default for most providers)
-      requestBody = {
-        model: actualModelId,
-        messages: messages,
-        stream: stream,
-      };
-      if (max_tokens) requestBody.max_tokens = max_tokens;
-      if (temperature !== undefined) requestBody.temperature = temperature;
-      if (top_p !== undefined) requestBody.top_p = top_p;
-    }
-
-    console.log(`[llm-proxy] Making request to ${fullEndpoint}`);
+    console.log(`[llm-proxy] Making request with format: ${requestFormat}`);
 
     // Make the API call
     const response = await fetch(fullEndpoint, {
@@ -283,16 +207,19 @@ serve(async (req) => {
       );
     }
 
-    // Handle streaming response
+    // Handle response based on response_format from database
     if (stream && response.body) {
-      console.log('[llm-proxy] Streaming response');
+      console.log(`[llm-proxy] Streaming response with format: ${responseFormat}`);
       
-      // For Anthropic, transform SSE format to OpenAI format
-      if (provider === 'anthropic') {
+      if (responseFormat === 'anthropic') {
         return transformAnthropicStream(response.body, model, corsHeaders);
+      } else if (responseFormat === 'gemini') {
+        return transformGeminiStream(response.body, model, corsHeaders);
+      } else if (responseFormat === 'cohere') {
+        return transformCohereStream(response.body, model, corsHeaders);
       }
       
-      // For OpenAI-compatible providers, pass through directly
+      // OpenAI-compatible, pass through directly
       return new Response(response.body, {
         headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
       });
@@ -301,33 +228,24 @@ serve(async (req) => {
     // Non-streaming response
     const data = await response.json();
     
-    // Transform Anthropic response to OpenAI format
-    if (provider === 'anthropic') {
-      const openAIResponse = {
-        id: data.id,
-        object: 'chat.completion',
-        created: Math.floor(Date.now() / 1000),
-        model: model,
-        choices: [{
-          index: 0,
-          message: {
-            role: 'assistant',
-            content: data.content?.[0]?.text || ''
-          },
-          finish_reason: data.stop_reason || 'stop'
-        }],
-        usage: {
-          prompt_tokens: data.usage?.input_tokens || 0,
-          completion_tokens: data.usage?.output_tokens || 0,
-          total_tokens: (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0)
-        }
-      };
+    if (responseFormat === 'anthropic') {
       return new Response(
-        JSON.stringify(openAIResponse),
+        JSON.stringify(transformAnthropicResponse(data, model)),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } else if (responseFormat === 'gemini') {
+      return new Response(
+        JSON.stringify(transformGeminiResponse(data, model)),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } else if (responseFormat === 'cohere') {
+      return new Response(
+        JSON.stringify(transformCohereResponse(data, model)),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // OpenAI format, return as-is
     return new Response(
       JSON.stringify(data),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -341,6 +259,118 @@ serve(async (req) => {
     );
   }
 });
+
+// Build request body based on request format from database
+function buildRequestBody(params: {
+  requestFormat: string;
+  systemMessageFormat: string;
+  actualModelId: string;
+  messages: any[];
+  stream: boolean;
+  temperature?: number;
+  max_tokens?: number;
+  top_p?: number;
+  maxTokensDefault: number;
+  supportsTemperatureAndTopP: boolean;
+}): any {
+  const {
+    requestFormat,
+    systemMessageFormat,
+    actualModelId,
+    messages,
+    stream,
+    temperature,
+    max_tokens,
+    top_p,
+    maxTokensDefault,
+    supportsTemperatureAndTopP,
+  } = params;
+
+  const systemMsg = messages.find((m: any) => m.role === 'system');
+  const nonSystemMsgs = messages.filter((m: any) => m.role !== 'system');
+
+  if (requestFormat === 'anthropic') {
+    const body: any = {
+      model: actualModelId,
+      messages: nonSystemMsgs,
+      stream: stream,
+      max_tokens: max_tokens || maxTokensDefault,
+    };
+    
+    // Anthropic uses system as a top-level field
+    if (systemMsg) {
+      body.system = systemMsg.content;
+    }
+    
+    // Anthropic doesn't support both temperature and top_p
+    if (temperature !== undefined) {
+      body.temperature = temperature;
+    } else if (top_p !== undefined) {
+      body.top_p = top_p;
+    }
+    
+    return body;
+  }
+
+  if (requestFormat === 'gemini') {
+    const body: any = {
+      contents: nonSystemMsgs.map((m: any) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }]
+      })),
+      generationConfig: {
+        maxOutputTokens: max_tokens || maxTokensDefault,
+      }
+    };
+    
+    if (temperature !== undefined) body.generationConfig.temperature = temperature;
+    if (top_p !== undefined) body.generationConfig.topP = top_p;
+    
+    if (systemMsg) {
+      body.systemInstruction = { parts: [{ text: systemMsg.content }] };
+    }
+    
+    return body;
+  }
+
+  if (requestFormat === 'cohere') {
+    const body: any = {
+      model: actualModelId,
+      messages: messages,
+      stream: stream,
+    };
+    
+    if (max_tokens) body.max_tokens = max_tokens;
+    if (temperature !== undefined) body.temperature = temperature;
+    if (top_p !== undefined) body.p = top_p;
+    
+    return body;
+  }
+
+  // OpenAI-compatible format (default)
+  const body: any = {
+    model: actualModelId,
+    messages: messages,
+    stream: stream,
+  };
+  
+  if (max_tokens) body.max_tokens = max_tokens;
+  
+  // Handle temperature and top_p based on provider support
+  if (supportsTemperatureAndTopP) {
+    if (temperature !== undefined) body.temperature = temperature;
+    if (top_p !== undefined) body.top_p = top_p;
+  } else {
+    // Only use temperature if provider doesn't support both
+    if (temperature !== undefined) {
+      body.temperature = temperature;
+    } else if (top_p !== undefined) {
+      body.top_p = top_p;
+    }
+  }
+  
+  return body;
+}
 
 // Transform Anthropic streaming response to OpenAI format
 function transformAnthropicStream(body: ReadableStream, model: string, corsHeaders: Record<string, string>): Response {
@@ -415,6 +445,29 @@ function transformAnthropicStream(body: ReadableStream, model: string, corsHeade
   });
 }
 
+// Transform Anthropic non-streaming response to OpenAI format
+function transformAnthropicResponse(data: any, model: string): any {
+  return {
+    id: data.id,
+    object: 'chat.completion',
+    created: Math.floor(Date.now() / 1000),
+    model: model,
+    choices: [{
+      index: 0,
+      message: {
+        role: 'assistant',
+        content: data.content?.[0]?.text || ''
+      },
+      finish_reason: data.stop_reason || 'stop'
+    }],
+    usage: {
+      prompt_tokens: data.usage?.input_tokens || 0,
+      completion_tokens: data.usage?.output_tokens || 0,
+      total_tokens: (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0)
+    }
+  };
+}
+
 // Transform Gemini streaming response to OpenAI format
 function transformGeminiStream(body: ReadableStream, model: string, corsHeaders: Record<string, string>): Response {
   const reader = body.getReader();
@@ -431,7 +484,6 @@ function transformGeminiStream(body: ReadableStream, model: string, corsHeaders:
         
         buffer += decoder.decode(value, { stream: true });
         
-        // Gemini streams JSON objects separated by newlines
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
         
@@ -500,12 +552,102 @@ function transformGeminiResponse(data: any, model: string): any {
         role: 'assistant',
         content: data.candidates?.[0]?.content?.parts?.[0]?.text || ''
       },
-      finish_reason: data.candidates?.[0]?.finishReason === 'STOP' ? 'stop' : 'stop'
+      finish_reason: data.candidates?.[0]?.finishReason || 'stop'
     }],
     usage: {
       prompt_tokens: data.usageMetadata?.promptTokenCount || 0,
       completion_tokens: data.usageMetadata?.candidatesTokenCount || 0,
       total_tokens: data.usageMetadata?.totalTokenCount || 0
+    }
+  };
+}
+
+// Transform Cohere streaming response to OpenAI format
+function transformCohereStream(body: ReadableStream, model: string, corsHeaders: Record<string, string>): Response {
+  const reader = body.getReader();
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  
+  const transformStream = new ReadableStream({
+    async start(controller) {
+      let buffer = '';
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          
+          try {
+            const parsed = JSON.parse(line);
+            
+            if (parsed.event_type === 'text-generation' && parsed.text) {
+              const openAIChunk = {
+                id: 'msg',
+                object: 'chat.completion.chunk',
+                created: Math.floor(Date.now() / 1000),
+                model: model,
+                choices: [{
+                  index: 0,
+                  delta: { content: parsed.text },
+                  finish_reason: null
+                }]
+              };
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(openAIChunk)}\n\n`));
+            } else if (parsed.event_type === 'stream-end') {
+              const openAIChunk = {
+                id: 'msg',
+                object: 'chat.completion.chunk',
+                created: Math.floor(Date.now() / 1000),
+                model: model,
+                choices: [{
+                  index: 0,
+                  delta: {},
+                  finish_reason: 'stop'
+                }]
+              };
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(openAIChunk)}\n\n`));
+              controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+            }
+          } catch (e) {
+            // Skip unparseable lines
+          }
+        }
+      }
+      
+      controller.close();
+    }
+  });
+  
+  return new Response(transformStream, {
+    headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
+  });
+}
+
+// Transform Cohere non-streaming response to OpenAI format
+function transformCohereResponse(data: any, model: string): any {
+  return {
+    id: data.generation_id || 'msg',
+    object: 'chat.completion',
+    created: Math.floor(Date.now() / 1000),
+    model: model,
+    choices: [{
+      index: 0,
+      message: {
+        role: 'assistant',
+        content: data.text || data.message?.content?.[0]?.text || ''
+      },
+      finish_reason: data.finish_reason || 'stop'
+    }],
+    usage: {
+      prompt_tokens: data.meta?.tokens?.input_tokens || 0,
+      completion_tokens: data.meta?.tokens?.output_tokens || 0,
+      total_tokens: (data.meta?.tokens?.input_tokens || 0) + (data.meta?.tokens?.output_tokens || 0)
     }
   };
 }
