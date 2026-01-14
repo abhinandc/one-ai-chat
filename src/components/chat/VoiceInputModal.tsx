@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Loader2 } from "lucide-react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -32,11 +32,29 @@ export function VoiceInputModal({
     }
   }, [open]);
 
+  // Auto-start listening when modal opens
+  useEffect(() => {
+    if (open && !isListening) {
+      startListening();
+    }
+  }, [open]);
+
+  // Auto-send transcript when user stops speaking (after a pause)
+  useEffect(() => {
+    if (!isListening && transcript.trim()) {
+      // Small delay to allow final words to be captured
+      const timer = setTimeout(() => {
+        onTranscript(transcript.trim());
+        onOpenChange(false);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isListening, transcript, onTranscript, onOpenChange]);
+
   const startListening = () => {
     setError(null);
     setTranscript("");
 
-    // Check for browser support
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
@@ -92,120 +110,135 @@ export function VoiceInputModal({
     setIsListening(false);
   };
 
-  const handleSubmit = () => {
-    if (transcript.trim()) {
-      onTranscript(transcript.trim());
-      onOpenChange(false);
-    }
-  };
-
-  const handleCancel = () => {
+  const handleClose = () => {
     stopListening();
     onOpenChange(false);
   };
 
+  const toggleListening = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-none w-screen h-screen m-0 p-0 bg-background/95 backdrop-blur-xl border-none rounded-none flex flex-col items-center justify-center">
+      <DialogContent className="max-w-none w-screen h-screen m-0 p-0 bg-background/98 backdrop-blur-2xl border-none rounded-none flex flex-col items-center justify-center">
         {/* Close button */}
         <Button
           variant="ghost"
           size="icon"
-          className="absolute top-4 right-4 h-10 w-10 rounded-full"
-          onClick={handleCancel}
+          className="absolute top-6 right-6 h-10 w-10 rounded-full text-muted-foreground hover:text-foreground"
+          onClick={handleClose}
         >
           <X className="h-5 w-5" />
         </Button>
 
-        <div className="flex flex-col items-center justify-center gap-8 max-w-2xl px-8">
-          {/* Animated mic indicator */}
+        <div className="flex flex-col items-center justify-center gap-12 max-w-2xl px-8">
+          {/* Animated Orb */}
           <div className="relative">
-            {/* Pulsing rings */}
+            {/* Outer glow rings */}
             <AnimatePresence>
               {isListening && (
                 <>
                   <motion.div
-                    initial={{ scale: 1, opacity: 0.5 }}
-                    animate={{ scale: 2, opacity: 0 }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                    className="absolute inset-0 rounded-full bg-primary/30"
+                    initial={{ scale: 1, opacity: 0.3 }}
+                    animate={{ scale: 2.5, opacity: 0 }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
+                    className="absolute inset-0 rounded-full bg-primary/20"
+                    style={{ width: 160, height: 160, left: -16, top: -16 }}
                   />
                   <motion.div
-                    initial={{ scale: 1, opacity: 0.5 }}
+                    initial={{ scale: 1, opacity: 0.3 }}
+                    animate={{ scale: 2, opacity: 0 }}
+                    transition={{ duration: 2, repeat: Infinity, delay: 0.5, ease: "easeOut" }}
+                    className="absolute inset-0 rounded-full bg-primary/25"
+                    style={{ width: 160, height: 160, left: -16, top: -16 }}
+                  />
+                  <motion.div
+                    initial={{ scale: 1, opacity: 0.4 }}
                     animate={{ scale: 1.5, opacity: 0 }}
-                    transition={{ duration: 1.5, repeat: Infinity, delay: 0.5 }}
+                    transition={{ duration: 2, repeat: Infinity, delay: 1, ease: "easeOut" }}
                     className="absolute inset-0 rounded-full bg-primary/30"
+                    style={{ width: 160, height: 160, left: -16, top: -16 }}
                   />
                 </>
               )}
             </AnimatePresence>
 
-            {/* Main orb button */}
+            {/* Main orb */}
             <motion.button
               whileTap={{ scale: 0.95 }}
-              onClick={isListening ? stopListening : startListening}
-              className={cn(
-                "relative z-10 h-32 w-32 rounded-full flex items-center justify-center transition-colors",
-                isListening
-                  ? "bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/40"
-                  : "bg-gradient-to-br from-muted to-muted/70 hover:from-primary/30 hover:to-primary/10"
-              )}
+              onClick={toggleListening}
+              className="relative z-10"
             >
-              {/* Inner orb glow */}
-              <div className={cn(
-                "h-16 w-16 rounded-full transition-colors",
-                isListening
-                  ? "bg-gradient-to-br from-primary-foreground/90 to-primary-foreground/60"
-                  : "bg-gradient-to-br from-muted-foreground/30 to-muted-foreground/10"
-              )} />
+              <motion.div
+                animate={isListening ? {
+                  boxShadow: [
+                    "0 0 40px rgba(var(--primary-rgb, 59, 130, 246), 0.4)",
+                    "0 0 80px rgba(var(--primary-rgb, 59, 130, 246), 0.6)",
+                    "0 0 40px rgba(var(--primary-rgb, 59, 130, 246), 0.4)",
+                  ]
+                } : {}}
+                transition={{ duration: 1.5, repeat: Infinity }}
+                className={cn(
+                  "h-32 w-32 rounded-full flex items-center justify-center transition-all duration-300",
+                  isListening
+                    ? "bg-gradient-to-br from-primary via-primary/90 to-primary/70"
+                    : "bg-gradient-to-br from-muted via-muted/80 to-muted/60 hover:from-primary/40 hover:to-primary/20"
+                )}
+              >
+                {/* Inner orb core */}
+                <motion.div
+                  animate={isListening ? { scale: [1, 1.1, 1] } : {}}
+                  transition={{ duration: 0.8, repeat: Infinity }}
+                  className={cn(
+                    "h-16 w-16 rounded-full transition-all duration-300",
+                    isListening
+                      ? "bg-gradient-to-br from-white/90 to-white/60"
+                      : "bg-gradient-to-br from-muted-foreground/20 to-muted-foreground/5"
+                  )}
+                />
+              </motion.div>
             </motion.button>
           </div>
 
-          {/* Status text */}
-          <div className="text-center space-y-2">
-            <h2 className="text-2xl font-semibold">
-              {isListening ? "Listening..." : "Talk to Sia"}
-            </h2>
-            <p className="text-muted-foreground">
-              {isListening
-                ? "Speak clearly into your microphone"
-                : "Tap the orb to start talking"}
-            </p>
-          </div>
+          {/* Minimal status text */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-sm text-muted-foreground/70 font-light tracking-wide"
+          >
+            {isListening ? "Listening..." : error ? error : "Tap to speak"}
+          </motion.p>
 
-          {/* Transcript display */}
+          {/* Live transcript display - light and elegant */}
           <AnimatePresence mode="wait">
             {transcript && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="w-full max-h-[200px] overflow-y-auto rounded-xl bg-muted/50 p-6"
+                className="min-h-[60px] flex items-center justify-center"
               >
-                <p className="text-lg text-center">{transcript}</p>
+                <p className="text-2xl md:text-3xl font-light text-center text-foreground/90 leading-relaxed">
+                  {transcript}
+                </p>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Error display */}
-          {error && (
-            <div className="text-destructive text-sm text-center">{error}</div>
-          )}
-
-          {/* Action buttons */}
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="lg" onClick={handleCancel}>
-              Cancel
-            </Button>
-            <Button
-              size="lg"
-              onClick={handleSubmit}
-              disabled={!transcript.trim()}
-              className="min-w-[120px]"
-            >
-              Send
-            </Button>
-          </div>
+          {/* Subtle hint at bottom */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.5 }}
+            transition={{ delay: 1 }}
+            className="absolute bottom-8 text-xs text-muted-foreground/50"
+          >
+            Tap orb to stop • Press X to cancel
+          </motion.p>
         </div>
       </DialogContent>
     </Dialog>
