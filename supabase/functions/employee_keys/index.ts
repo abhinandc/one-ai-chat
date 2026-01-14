@@ -14,25 +14,56 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { email } = await req.json();
-    
-    if (!email) {
+    // 1. AUTHENTICATE: Require valid JWT
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      console.error('[employee_keys] Missing or invalid Authorization header');
       return new Response(
-        JSON.stringify({ success: false, error: 'Email is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: 'Unauthorized - missing token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`[employee_keys] Fetching keys for: ${email}`);
+    // Create client with user's auth context
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
 
-    // 1. Get user's virtual keys
+    // Verify the JWT and get user claims
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getUser(token);
+    
+    if (claimsError || !claimsData?.user) {
+      console.error('[employee_keys] Invalid token:', claimsError?.message);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized - invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get authenticated user's email - this is trusted, not from user input
+    const authenticatedEmail = claimsData.user.email?.toLowerCase();
+    if (!authenticatedEmail) {
+      console.error('[employee_keys] No email in token');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized - no email in token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`[employee_keys] Authenticated user: ${authenticatedEmail}`);
+
+    // Use service role for database queries (bypasses RLS for admin-level access)
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // 2. Get user's virtual keys - ONLY for authenticated user
     const { data: virtualKeys, error: vkError } = await supabase
       .from('virtual_keys')
       .select('*')
-      .eq('email', email.toLowerCase())
+      .eq('email', authenticatedEmail)
       .eq('disabled', false);
 
     if (vkError) {
@@ -44,7 +75,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: true, 
-          email, 
+          email: authenticatedEmail, 
           total_keys: 0, 
           keys: [],
           credentials: [],
@@ -54,9 +85,9 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[employee_keys] Found ${virtualKeys.length} virtual keys`);
+    console.log(`[employee_keys] Found ${virtualKeys.length} virtual keys for ${authenticatedEmail}`);
 
-    // 2. Get all model names from virtual keys (models_json contains names, not UUIDs)
+    // 3. Get all model names from virtual keys
     const allModelNames: string[] = [];
     for (const vk of virtualKeys) {
       const models = vk.models_json || [];
@@ -67,7 +98,6 @@ serve(async (req) => {
           } else if (m?.name) {
             allModelNames.push(m.name);
           } else if (m?.id) {
-            // Could be a UUID, but we'll try by name first
             allModelNames.push(m.id);
           }
         }
@@ -76,7 +106,7 @@ serve(async (req) => {
     const uniqueModelNames = [...new Set(allModelNames)];
     console.log(`[employee_keys] Model names: ${uniqueModelNames.join(', ')}`);
 
-    // 3. Get model details by NAME
+    // 4. Get model details by NAME
     const { data: models, error: modelsError } = await supabase
       .from('models')
       .select('*')
@@ -86,16 +116,15 @@ serve(async (req) => {
       console.error('[employee_keys] Error fetching models:', modelsError);
     }
 
-    // Create maps for both name and id lookup
     const modelsByName = new Map((models || []).map(m => [m.name, m]));
     const modelsById = new Map((models || []).map(m => [m.id, m]));
     console.log(`[employee_keys] Fetched ${models?.length || 0} models`);
 
-    // 4. Get unique providers from models
+    // 5. Get unique providers from models
     const providers = [...new Set((models || []).map(m => m.provider?.toLowerCase()).filter(Boolean))];
     console.log(`[employee_keys] Providers: ${providers.join(', ')}`);
 
-    // 5. Get LLM credentials for these providers
+    // 6. Get LLM credentials for these providers
     const { data: credentials, error: credError } = await supabase
       .from('llm_credentials')
       .select('*')
@@ -108,7 +137,7 @@ serve(async (req) => {
     const credentialsMap = new Map((credentials || []).map(c => [c.provider?.toLowerCase(), c]));
     console.log(`[employee_keys] Fetched ${credentials?.length || 0} LLM credentials`);
 
-    // 6. Build response with decrypted credentials
+    // 7. Build response with decrypted credentials
     const responseCredentials: any[] = [];
     const responseKeys: any[] = [];
 
@@ -117,23 +146,17 @@ serve(async (req) => {
       const enrichedModels: any[] = [];
 
       for (const modelRef of vkModels) {
-        // modelRef can be a string (name) or an object with name/id
         const modelName = typeof modelRef === 'string' ? modelRef : (modelRef?.name || modelRef?.id);
-        
-        // Try to find model by name first, then by id
         let model = modelsByName.get(modelName) || modelsById.get(modelName);
         
         if (model) {
           const provider = model.provider?.toLowerCase() || 'openai';
           const cred = credentialsMap.get(provider);
           
-          // Get the API key - either from model directly or from llm_credentials
           const apiKey = model.api_key_encrypted || cred?.api_key_encrypted || null;
           
-          // Build endpoint URL
           let endpointUrl = model.endpoint_url || cred?.endpoint_url;
           if (!endpointUrl) {
-            // Default endpoints by provider
             switch (provider) {
               case 'openai':
                 endpointUrl = 'https://api.openai.com';
@@ -173,7 +196,6 @@ serve(async (req) => {
             config: model.config || {},
           });
 
-          // Add to credentials array (for useVirtualKeyInit) - one per model
           if (apiKey) {
             responseCredentials.push({
               api_key: apiKey,
@@ -220,7 +242,6 @@ serve(async (req) => {
       });
     }
 
-    // Also get all available models for reference
     const { data: allModels } = await supabase
       .from('models')
       .select('id, name, display_name, provider, max_tokens, context_length, cost_per_1k_input, cost_per_1k_output')
@@ -229,16 +250,16 @@ serve(async (req) => {
 
     const response = {
       success: true,
-      email,
+      email: authenticatedEmail,
       total_keys: virtualKeys.length,
       keys: responseKeys,
-      credentials: responseCredentials, // This is what useVirtualKeyInit needs!
+      credentials: responseCredentials,
       all_models_count: allModels?.length || 0,
       all_models: allModels || [],
       has_unrestricted_access: false,
     };
 
-    console.log(`[employee_keys] Returning ${responseCredentials.length} credentials for ${email}`);
+    console.log(`[employee_keys] Returning ${responseCredentials.length} credentials for ${authenticatedEmail}`);
 
     return new Response(
       JSON.stringify(response),
