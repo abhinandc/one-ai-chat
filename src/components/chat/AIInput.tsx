@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ArrowUp, Paperclip, X, Square, Plus, Mic, Globe, ImageIcon, Sparkles, Zap, Brain, Code2, ChevronDown } from "lucide-react";
+import { ArrowUp, Paperclip, X, Square, Plus, Globe, ImageIcon, Sparkles, Zap, Brain, Code2, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -8,6 +8,12 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { VoiceInputModal } from "./VoiceInputModal";
@@ -177,7 +183,7 @@ export function AIInput({
         </AnimatePresence>
 
         {/* Input Container */}
-        <div className="relative flex items-center rounded-2xl border border-border bg-background shadow-sm transition-shadow z-50">
+        <div className="relative flex items-center rounded-2xl border border-border bg-background shadow-sm z-50">
           {/* Left Actions */}
           <div className="flex items-center gap-1 pl-2">
             {/* Plus Menu */}
@@ -272,6 +278,7 @@ export function AIInput({
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             disabled={disabled || isLoading}
+            style={{ outline: 'none', boxShadow: 'none' }}
             rows={1}
             className={cn(
               "flex-1 resize-none bg-transparent py-3 px-2 text-sm outline-none",
@@ -283,16 +290,29 @@ export function AIInput({
 
           {/* Right Actions */}
           <div className="flex items-center gap-1 pr-2">
-            {/* Voice Button */}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-              onClick={() => setVoiceModalOpen(true)}
-            >
-              <Mic className="h-5 w-5" />
-            </Button>
+            {/* Voice Orb Button - Talk to Sia */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground relative"
+                    onClick={() => setVoiceModalOpen(true)}
+                  >
+                    {/* Voice Orb Icon */}
+                    <div className="relative h-5 w-5 flex items-center justify-center">
+                      <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/40 to-primary/20 animate-pulse" />
+                      <div className="relative h-3 w-3 rounded-full bg-gradient-to-br from-primary to-primary/70 shadow-sm shadow-primary/30" />
+                    </div>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p>Talk to Sia</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
 
             {/* Send/Stop Button */}
             {isLoading ? (

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Mic, MicOff, Loader2 } from "lucide-react";
+import { X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -140,34 +140,36 @@ export function VoiceInputModal({
               )}
             </AnimatePresence>
 
-            {/* Main mic button */}
+            {/* Main orb button */}
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={isListening ? stopListening : startListening}
               className={cn(
                 "relative z-10 h-32 w-32 rounded-full flex items-center justify-center transition-colors",
                 isListening
-                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
-                  : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                  ? "bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/40"
+                  : "bg-gradient-to-br from-muted to-muted/70 hover:from-primary/30 hover:to-primary/10"
               )}
             >
-              {isListening ? (
-                <Mic className="h-12 w-12" />
-              ) : (
-                <MicOff className="h-12 w-12" />
-              )}
+              {/* Inner orb glow */}
+              <div className={cn(
+                "h-16 w-16 rounded-full transition-colors",
+                isListening
+                  ? "bg-gradient-to-br from-primary-foreground/90 to-primary-foreground/60"
+                  : "bg-gradient-to-br from-muted-foreground/30 to-muted-foreground/10"
+              )} />
             </motion.button>
           </div>
 
           {/* Status text */}
           <div className="text-center space-y-2">
             <h2 className="text-2xl font-semibold">
-              {isListening ? "Listening..." : "Tap to speak"}
+              {isListening ? "Listening..." : "Talk to Sia"}
             </h2>
             <p className="text-muted-foreground">
               {isListening
                 ? "Speak clearly into your microphone"
-                : "Click the microphone to start voice input"}
+                : "Tap the orb to start talking"}
             </p>
           </div>
 
