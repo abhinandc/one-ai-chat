@@ -138,6 +138,9 @@ const App = () => {
     );
   }
 
+  // Check if current route should hide footer
+  const shouldHideFooter = window.location.pathname === '/chat';
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
@@ -145,49 +148,78 @@ const App = () => {
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <div className="min-h-screen w-full bg-background">
-              <TopBar
-                onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
-                onOpenCommandPalette={() => setCommandPaletteOpen(true)}
-                onLogout={handleLogout}
-                sidebarCollapsed={sidebarCollapsed}
-              />
-              
-              <SideNav 
-                collapsed={sidebarCollapsed}
-                onToggleCollapsed={() => setSidebarCollapsed(!sidebarCollapsed)}
-              />
-              
-              <main className={cn(
-                "pt-16 pb-12 min-h-screen transition-all duration-normal ease-out overflow-auto",
-                sidebarCollapsed ? "pl-14" : "pl-52"
-              )}>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/chat" element={<Chat />} />
-                  <Route path="/agents" element={<Agents />} />
-                  <Route path="/automations" element={<Automations />} />
-                  <Route path="/models" element={<ModelsHub />} />
-                  <Route path="/prompts" element={<PromptLibrary />} />
-                  <Route path="/playground" element={<Playground />} />
-                  <Route path="/tools" element={<ToolsGallery />} />
-                  <Route path="/help" element={<Help />} />
-                  <Route path="/theme" element={<Theme />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </main>
-              
-              <Footer sidebarCollapsed={sidebarCollapsed} />
-              
-              <CommandPalette 
-                open={commandPaletteOpen}
-                onOpenChange={setCommandPaletteOpen}
-              />
-            </div>
+            <AppContent 
+              sidebarCollapsed={sidebarCollapsed}
+              setSidebarCollapsed={setSidebarCollapsed}
+              commandPaletteOpen={commandPaletteOpen}
+              setCommandPaletteOpen={setCommandPaletteOpen}
+              onLogout={handleLogout}
+            />
           </BrowserRouter>
         </TooltipProvider>
       </QueryClientProvider>
     </ErrorBoundary>
+  );
+};
+
+// Separate component to use useLocation
+const AppContent = ({
+  sidebarCollapsed,
+  setSidebarCollapsed,
+  commandPaletteOpen,
+  setCommandPaletteOpen,
+  onLogout,
+}: {
+  sidebarCollapsed: boolean;
+  setSidebarCollapsed: (v: boolean) => void;
+  commandPaletteOpen: boolean;
+  setCommandPaletteOpen: (v: boolean) => void;
+  onLogout: () => void;
+}) => {
+  const location = window.location;
+  const isChat = location.pathname === '/chat';
+
+  return (
+    <div className="min-h-screen w-full bg-background">
+      <TopBar
+        onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+        onLogout={onLogout}
+        sidebarCollapsed={sidebarCollapsed}
+      />
+      
+      <SideNav 
+        collapsed={sidebarCollapsed}
+        onToggleCollapsed={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
+      
+      <main className={cn(
+        "pt-16 min-h-screen transition-all duration-normal ease-out",
+        sidebarCollapsed ? "pl-14" : "pl-52",
+        isChat ? "" : "pb-12 overflow-auto"
+      )}>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/chat" element={<Chat />} />
+          <Route path="/agents" element={<Agents />} />
+          <Route path="/automations" element={<Automations />} />
+          <Route path="/models" element={<ModelsHub />} />
+          <Route path="/prompts" element={<PromptLibrary />} />
+          <Route path="/playground" element={<Playground />} />
+          <Route path="/tools" element={<ToolsGallery />} />
+          <Route path="/help" element={<Help />} />
+          <Route path="/theme" element={<Theme />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </main>
+      
+      {!isChat && <Footer sidebarCollapsed={sidebarCollapsed} />}
+      
+      <CommandPalette 
+        open={commandPaletteOpen}
+        onOpenChange={setCommandPaletteOpen}
+      />
+    </div>
   );
 };
 
