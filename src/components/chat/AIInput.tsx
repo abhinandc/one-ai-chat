@@ -230,7 +230,7 @@ export function AIInput({
                   className="h-8 gap-1.5 px-2 text-muted-foreground hover:text-foreground"
                 >
                   <currentMode.icon className="h-4 w-4" />
-                  <span className="text-xs font-medium">{currentMode.label}</span>
+                  <span className="text-base font-medium">{currentMode.label}</span>
                   <ChevronDownIcon className="h-3 w-3 opacity-50" />
                 </Button>
               </DropdownMenuTrigger>
@@ -281,10 +281,10 @@ export function AIInput({
             style={{ outline: 'none', boxShadow: 'none' }}
             rows={1}
             className={cn(
-              "flex-1 resize-none bg-transparent py-3 px-2 text-sm text-center outline-none",
-              "placeholder:text-muted-foreground placeholder:text-center",
+              "flex-1 resize-none bg-transparent py-4 px-3 text-base text-center outline-none",
+              "placeholder:text-muted-foreground/50 placeholder:text-center",
               "disabled:opacity-50 disabled:cursor-not-allowed",
-              "min-h-[48px] max-h-[200px]"
+              "min-h-[56px] max-h-[200px]"
             )}
           />
 

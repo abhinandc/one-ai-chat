@@ -11,10 +11,11 @@ export interface StoredCredential {
 }
 
 const CREDENTIALS_STORAGE_KEY = 'oneai_credentials';
+const ALL_CREDENTIALS_KEY = 'oneai_all_credentials';
 const API_KEY_STORAGE_KEY = 'oneai_api_key';
 
 /**
- * Get stored credentials from localStorage
+ * Get stored credentials from localStorage (default/first credential)
  */
 export function getStoredCredentials(): StoredCredential | null {
   if (typeof window === 'undefined') return null;
@@ -27,6 +28,30 @@ export function getStoredCredentials(): StoredCredential | null {
     console.warn('Unable to read credentials from localStorage:', error);
   }
   return null;
+}
+
+/**
+ * Get all stored credentials (for multi-model support)
+ */
+export function getAllStoredCredentials(): StoredCredential[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const stored = localStorage.getItem(ALL_CREDENTIALS_KEY);
+    if (stored) {
+      return JSON.parse(stored) as StoredCredential[];
+    }
+  } catch (error) {
+    console.warn('Unable to read all credentials from localStorage:', error);
+  }
+  return [];
+}
+
+/**
+ * Get credential for a specific model
+ */
+export function getCredentialForModel(modelName: string): StoredCredential | null {
+  const allCreds = getAllStoredCredentials();
+  return allCreds.find(c => c.model_key === modelName) || getStoredCredentials();
 }
 
 /**
@@ -85,26 +110,31 @@ export function useVirtualKeyInit(userEmail?: string) {
         });
         
         if (data?.credentials && Array.isArray(data.credentials) && data.credentials.length > 0) {
-          const cred = data.credentials[0];
-          
-          if (cred.api_key && cred.api_key.length > 20 && !cred.api_key.includes('***') && !cred.api_key.includes('...')) {
-            // Store full credential info for dynamic endpoint usage
-            const storedCred: StoredCredential = {
+          // Store ALL credentials for multi-model support
+          const allCreds: StoredCredential[] = data.credentials
+            .filter((cred: any) => cred.api_key && cred.api_key.length > 20 && !cred.api_key.includes('***') && !cred.api_key.includes('...'))
+            .map((cred: any) => ({
               api_key: cred.api_key,
               full_endpoint: cred.full_endpoint || `${cred.endpoint_url}${cred.api_path}`,
               model_key: cred.model_key || cred.model_name,
               provider: cred.provider,
               auth_type: cred.auth_type || 'bearer',
               auth_header: cred.auth_header || 'Authorization',
-            };
+            }));
+
+          if (allCreds.length > 0) {
+            // Store all credentials
+            localStorage.setItem(ALL_CREDENTIALS_KEY, JSON.stringify(allCreds));
             
-            localStorage.setItem(CREDENTIALS_STORAGE_KEY, JSON.stringify(storedCred));
-            localStorage.setItem(API_KEY_STORAGE_KEY, cred.api_key);
+            // Store first as default
+            const defaultCred = allCreds[0];
+            localStorage.setItem(CREDENTIALS_STORAGE_KEY, JSON.stringify(defaultCred));
+            localStorage.setItem(API_KEY_STORAGE_KEY, defaultCred.api_key);
             
-            console.log('Credentials auto-initialized from credentials array:', { 
-              endpoint: storedCred.full_endpoint, 
-              model: storedCred.model_key,
-              provider: storedCred.provider 
+            console.log('Credentials auto-initialized:', { 
+              total: allCreds.length,
+              models: allCreds.map(c => c.model_key),
+              defaultModel: defaultCred.model_key
             });
             setInitialized(true);
             return;
