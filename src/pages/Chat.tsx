@@ -26,7 +26,7 @@ const Chat = () => {
   const { toast } = useToast();
   
   // Auto-initialize virtual API key from employee_keys
-  const { initialized: keyInitialized, loading: keyLoading } = useVirtualKeyInit(user?.email);
+  const { initialized: keyInitialized, loading: keyLoading, error: keyError } = useVirtualKeyInit(user?.email);
   
   const { models, loading: modelsLoading } = useModels(user?.email);
   const {
@@ -234,6 +234,17 @@ const Chat = () => {
       toast({
         title: "No model selected",
         description: "Please select a model to send messages",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if API key is configured
+    const apiKey = localStorage.getItem('oneai_api_key');
+    if (!apiKey || apiKey.includes('***') || apiKey.length < 20) {
+      toast({
+        title: "API Key Required",
+        description: "Please go to Models Hub and activate an API key first",
         variant: "destructive",
       });
       return;

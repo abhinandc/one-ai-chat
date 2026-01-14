@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { CopyIcon, CheckIcon, CubeIcon, ReloadIcon } from "@radix-ui/react-icons";
+import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -62,13 +63,24 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
   };
 
   return (
-    <div className={cn(
-      "group w-full",
-      isUser ? "bg-transparent" : "bg-muted/30"
-    )}>
-      <div className="mx-auto max-w-3xl px-4 py-6">
-        <div className="flex gap-4">
-          {/* Avatar - only for assistant */}
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className={cn(
+        "group w-full",
+        isUser ? "bg-transparent" : "bg-muted/30"
+      )}
+    >
+      <div className={cn(
+        "mx-auto max-w-3xl px-4 py-6",
+        isUser && "flex justify-end"
+      )}>
+        <div className={cn(
+          "flex gap-4",
+          isUser && "flex-row-reverse max-w-[85%]"
+        )}>
+          {/* Avatar */}
           {isAssistant && (
             <Avatar className="h-8 w-8 shrink-0">
               <AvatarFallback className="bg-accent-green/20 text-accent-green text-xs font-medium">
@@ -77,29 +89,55 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
             </Avatar>
           )}
           
-          {/* Spacer for user messages to align with assistant */}
-          {isUser && <div className="w-8 shrink-0" />}
+          {isUser && (
+            <Avatar className="h-8 w-8 shrink-0">
+              <AvatarFallback className="bg-primary/20 text-primary text-xs font-medium">
+                U
+              </AvatarFallback>
+            </Avatar>
+          )}
 
           {/* Content */}
-          <div className="flex-1 space-y-2 overflow-hidden">
+          <div className={cn(
+            "flex-1 space-y-2 overflow-hidden",
+            isUser && "text-right"
+          )}>
             {/* Role label */}
             <div className="text-sm font-semibold text-foreground">
               {isUser ? "You" : "OneEdge"}
             </div>
 
             {/* Message content */}
-            <div className="prose prose-sm dark:prose-invert max-w-none text-foreground">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2, delay: 0.1 }}
+              className={cn(
+                "prose prose-sm dark:prose-invert max-w-none text-foreground",
+                isUser && "inline-block text-left bg-primary/10 rounded-2xl rounded-tr-sm px-4 py-3"
+              )}
+            >
               {renderContent(message.content)}
               
               {/* Streaming indicator */}
               {isStreaming && (
-                <span className="inline-block w-2 h-4 ml-1 bg-foreground/60 animate-pulse rounded-sm" />
+                <motion.span 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: [0.4, 1, 0.4] }}
+                  transition={{ duration: 1, repeat: Infinity }}
+                  className="inline-block w-2 h-4 ml-1 bg-foreground/60 rounded-sm" 
+                />
               )}
-            </div>
+            </motion.div>
 
             {/* Actions - only for assistant messages */}
             {isAssistant && !isStreaming && (
-              <div className="flex items-center gap-1 pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="flex items-center gap-1 pt-2 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
                 <Button
                   variant="ghost"
                   size="icon"
@@ -119,12 +157,12 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
                 >
                   <ReloadIcon className="h-3.5 w-3.5" />
                 </Button>
-              </div>
+              </motion.div>
             )}
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
