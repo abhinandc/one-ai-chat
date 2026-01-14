@@ -53,34 +53,52 @@ export function useModels(userEmail?: string) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchModels = async () => {
-    if (!supabaseClient) {
-      setError('Supabase not configured');
-      setLoading(false);
-      return;
-    }
-
-    if (!userEmail) {
-      setError('User email required');
-      setLoading(false);
-      return;
-    }
-
     try {
       setLoading(true);
 
-      // Fetch models from employee_keys Edge Function (assigned by EdgeAdmin)
+      // First try to get models from localStorage (set by useVirtualKeyInit)
+      const allCredsStr = localStorage.getItem('oneai_all_credentials');
+      if (allCredsStr) {
+        const allCreds = JSON.parse(allCredsStr);
+        if (Array.isArray(allCreds) && allCreds.length > 0) {
+          const enriched = allCreds.map<ModelWithMetadata>((cred: any) => ({
+            id: cred.model_key,
+            object: 'model',
+            created: Date.now() / 1000,
+            owned_by: cred.provider || 'unknown',
+            metadata: {
+              provider: cred.provider,
+              description: cred.model_key,
+              endpoint: cred.full_endpoint,
+              maxTokens: 4096,
+              raw: cred,
+            },
+          }));
+          setModels(enriched);
+          setError(null);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Fallback: fetch from edge function if not in localStorage
+      if (!supabaseClient || !userEmail) {
+        setError('Credentials not loaded yet');
+        setLoading(false);
+        return;
+      }
+
       const { data, error: fetchError } = await supabaseClient.functions.invoke('employee_keys', {
         body: { email: userEmail }
       });
 
-      console.log('Employee Keys (useModels):', { data, error: fetchError });
+      console.log('useModels - employee_keys response:', { data, error: fetchError });
 
       if (fetchError) {
         throw new Error(fetchError.message || 'Edge function error');
       }
 
       // Extract models from the employee_keys response
-      // New format: { credentials: [...], keys: [{ models: [{id, name, provider, ...}] }] }
       const modelObjects: any[] = [];
 
       // First check credentials array (has full model info)
@@ -101,12 +119,11 @@ export function useModels(userEmail?: string) {
         });
       }
 
-      // Then check keys array (also has model info)
+      // Then check keys array
       if (data?.keys && Array.isArray(data.keys)) {
         data.keys.forEach((key: any) => {
           const keyModels = key.models || [];
           keyModels.forEach((m: any) => {
-            // m can be an object or a string
             if (typeof m === 'object' && m.name) {
               if (!modelObjects.find(existing => existing.name === m.name)) {
                 modelObjects.push(m);
@@ -120,9 +137,8 @@ export function useModels(userEmail?: string) {
         });
       }
 
-      // Transform to the expected format
       const enriched = modelObjects.map<ModelWithMetadata>((model: any) => ({
-        id: model.name || model.id, // Use name as ID for API calls
+        id: model.name || model.id,
         object: 'model',
         created: Date.now() / 1000,
         owned_by: model.provider || 'unknown',
@@ -148,9 +164,11 @@ export function useModels(userEmail?: string) {
   };
 
   useEffect(() => {
-    if (userEmail) {
+    // Small delay to wait for useVirtualKeyInit to populate localStorage
+    const timer = setTimeout(() => {
       fetchModels();
-    }
+    }, 100);
+    return () => clearTimeout(timer);
   }, [userEmail]);
 
   return { models, loading, error, refetch: fetchModels };
