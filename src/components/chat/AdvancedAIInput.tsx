@@ -5,7 +5,6 @@ import {
   Plus, 
   Paperclip, 
   Image as ImageIcon,
-  Mic,
   ChevronDown,
   X,
   Sparkles,
@@ -29,16 +28,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
 import { AnimatedBadge } from "@/components/ui/animated-badge";
 import { SiaConversation } from "./SiaConversation";
-
-interface Model {
-  id: string;
-  name: string;
-  provider?: string;
-  api_path?: string;
-}
 
 interface AdvancedAIInputProps {
   onSend: (message: string) => void;
@@ -47,11 +38,10 @@ interface AdvancedAIInputProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
-  models?: Model[];
-  selectedModel?: string;
-  onModelChange?: (modelId: string) => void;
   onModeChange?: (mode: string) => void;
 }
+
+const STORAGE_KEY_MODE = "oneEdge_chat_mode";
 
 const modes = [
   { 
@@ -90,22 +80,26 @@ export function AdvancedAIInput({
   placeholder = "What's on your mind?",
   disabled = false,
   className,
-  models = [],
-  selectedModel,
-  onModelChange,
   onModeChange,
 }: AdvancedAIInputProps) {
   const [message, setMessage] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
-  const [selectedMode, setSelectedMode] = useState("fast");
+  
+  // Persist mode selection in localStorage
+  const [selectedMode, setSelectedMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(STORAGE_KEY_MODE) || "fast";
+    }
+    return "fast";
+  });
+  
   const [siaOpen, setSiaOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentMode = modes.find((m) => m.id === selectedMode) || modes[1];
-  const currentModel = models.find((m) => m.id === selectedModel);
 
   // Auto-resize textarea
   const adjustHeight = useCallback(() => {
@@ -123,6 +117,10 @@ export function AdvancedAIInput({
 
   const handleModeChange = (modeId: string) => {
     setSelectedMode(modeId);
+    // Persist to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY_MODE, modeId);
+    }
     onModeChange?.(modeId);
   };
 
@@ -169,115 +167,51 @@ export function AdvancedAIInput({
   return (
     <div className={cn("w-full relative z-50", className)}>
       <div className="relative mx-auto max-w-3xl">
-        {/* Model Selector - Top Left */}
-        {models.length > 0 && (
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 mb-3 pl-1"
-          >
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+        {/* Attachments Preview */}
+        {attachments.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-2 px-1">
+            {attachments.map((file, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg text-sm border border-border/50 animate-fade-in"
+              >
+                <Paperclip className="h-3 w-3 text-muted-foreground" />
+                <span className="truncate max-w-[150px]">{file.name}</span>
                 <Button
                   variant="ghost"
-                  size="sm"
-                  className="h-8 gap-2 px-3 bg-muted/50 hover:bg-muted border border-border/50 rounded-lg"
-                >
-                  <span className="text-sm font-medium truncate max-w-[200px]">
-                    {currentModel?.name || selectedModel || "Select model"}
-                  </span>
-                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-72">
-                {models.map((model) => (
-                  <DropdownMenuItem
-                    key={model.id}
-                    onClick={() => onModelChange?.(model.id)}
-                    className={cn(
-                      "flex flex-col items-start gap-0.5 py-2",
-                      model.id === selectedModel && "bg-muted"
-                    )}
-                  >
-                    <span className="font-medium text-sm">{model.name}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {model.provider}{model.api_path ? ` • ${model.api_path}` : ''}
-                    </span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* Mode Badge */}
-            <AnimatedBadge variant="shimmer" className="cursor-pointer">
-              <currentMode.icon className="h-3 w-3" />
-              {currentMode.label}
-            </AnimatedBadge>
-          </motion.div>
-        )}
-
-        {/* Attachments Preview */}
-        <AnimatePresence>
-          {attachments.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              className="flex flex-wrap gap-2 mb-2 px-1"
-            >
-              {attachments.map((file, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.9, opacity: 0 }}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg text-sm border border-border/50"
-                >
-                  <Paperclip className="h-3 w-3 text-muted-foreground" />
-                  <span className="truncate max-w-[150px]">{file.name}</span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5 hover:bg-destructive/20"
-                    onClick={() => removeAttachment(index)}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </motion.div>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Selected Tool Badge */}
-        <AnimatePresence>
-          {selectedTool && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="flex items-center gap-2 mb-2 px-1"
-            >
-              <AnimatedBadge variant="glow">
-                {(() => {
-                  const tool = tools.find(t => t.id === selectedTool);
-                  const Icon = tool?.icon;
-                  return Icon ? <Icon className="h-3 w-3" /> : null;
-                })()}
-                {tools.find(t => t.id === selectedTool)?.label}
-                <button
-                  onClick={() => setSelectedTool(null)}
-                  className="ml-1 hover:bg-primary/20 rounded-full p-0.5"
+                  size="icon"
+                  className="h-5 w-5 hover:bg-destructive/20"
+                  onClick={() => removeAttachment(index)}
                 >
                   <X className="h-3 w-3" />
-                </button>
-              </AnimatedBadge>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Selected Tool Badge */}
+        {selectedTool && (
+          <div className="flex items-center gap-2 mb-2 px-1 animate-fade-in">
+            <AnimatedBadge variant="glow">
+              {(() => {
+                const tool = tools.find(t => t.id === selectedTool);
+                const Icon = tool?.icon;
+                return Icon ? <Icon className="h-3 w-3" /> : null;
+              })()}
+              {tools.find(t => t.id === selectedTool)?.label}
+              <button
+                onClick={() => setSelectedTool(null)}
+                className="ml-1 hover:bg-primary/20 rounded-full p-0.5"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </AnimatedBadge>
+          </div>
+        )}
 
         {/* Main Input Container */}
-        <motion.div 
+        <div 
           className={cn(
             "relative flex items-end rounded-2xl border bg-background shadow-lg transition-all duration-300",
             isFocused 
@@ -285,31 +219,12 @@ export function AdvancedAIInput({
               : "border-border",
             isLoading && "opacity-80"
           )}
-          animate={{
+          style={{
             boxShadow: isFocused 
-              ? "0 0 0 2px hsl(var(--primary) / 0.1), 0 4px 20px hsl(var(--primary) / 0.1)" 
+              ? "0 0 0 1px hsl(var(--primary) / 0.2), 0 4px 20px hsl(var(--primary) / 0.1)" 
               : "0 4px 12px rgba(0, 0, 0, 0.1)"
           }}
         >
-          {/* Shimmer border effect when focused */}
-          {isFocused && (
-            <motion.div
-              className="absolute inset-0 rounded-2xl pointer-events-none overflow-hidden"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
-              <div className="absolute inset-0 rounded-2xl border-2 border-primary/20" />
-              <motion.div
-                className="absolute top-0 left-0 w-full h-full"
-                style={{
-                  background: "linear-gradient(90deg, transparent, hsl(var(--primary) / 0.1), transparent)",
-                }}
-                animate={{ x: ["-100%", "100%"] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              />
-            </motion.div>
-          )}
-
           {/* Left Actions */}
           <div className="flex items-center gap-1 pl-3 pb-3">
             {/* Plus Menu */}
@@ -416,11 +331,13 @@ export function AdvancedAIInput({
               disabled={disabled || isLoading}
               rows={1}
               className={cn(
-                "w-full resize-none bg-transparent py-4 px-2 text-base outline-none",
+                "w-full resize-none bg-transparent py-4 px-2 text-base",
                 "placeholder:text-muted-foreground/50",
                 "disabled:opacity-50 disabled:cursor-not-allowed",
-                "min-h-[56px] max-h-[200px]"
+                "min-h-[56px] max-h-[200px]",
+                "focus:outline-none focus:ring-0 focus:border-none"
               )}
+              style={{ outline: 'none' }}
             />
           </div>
 
@@ -437,25 +354,9 @@ export function AdvancedAIInput({
                     className="h-9 w-9 text-muted-foreground hover:text-foreground rounded-xl relative overflow-hidden group"
                     onClick={() => setSiaOpen(true)}
                   >
-                    {/* Animated gradient background */}
-                    <motion.div
-                      className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity"
-                      animate={{
-                        background: [
-                          "linear-gradient(135deg, hsl(var(--primary) / 0.2), hsl(var(--primary) / 0.05))",
-                          "linear-gradient(225deg, hsl(var(--primary) / 0.3), hsl(var(--primary) / 0.1))",
-                          "linear-gradient(135deg, hsl(var(--primary) / 0.2), hsl(var(--primary) / 0.05))",
-                        ]
-                      }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                    />
                     {/* Orb */}
                     <div className="relative h-5 w-5 flex items-center justify-center">
-                      <motion.div 
-                        className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/40 to-primary/20"
-                        animate={{ scale: [1, 1.2, 1] }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                      />
+                      <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/40 to-primary/20 group-hover:scale-110 transition-transform" />
                       <div className="relative h-3 w-3 rounded-full bg-gradient-to-br from-primary to-primary/70 shadow-sm shadow-primary/30" />
                     </div>
                   </Button>
@@ -478,41 +379,31 @@ export function AdvancedAIInput({
                 <Square className="h-4 w-4 fill-current" />
               </Button>
             ) : (
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              <Button
+                type="button"
+                size="icon"
+                className={cn(
+                  "h-9 w-9 rounded-xl transition-all duration-200",
+                  canSend 
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md shadow-primary/20" 
+                    : "bg-muted text-muted-foreground"
+                )}
+                disabled={!canSend}
+                onClick={handleSend}
               >
-                <Button
-                  type="button"
-                  size="icon"
-                  className={cn(
-                    "h-9 w-9 rounded-xl transition-all duration-200",
-                    canSend 
-                      ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20" 
-                      : "bg-muted text-muted-foreground cursor-not-allowed"
-                  )}
-                  disabled={!canSend}
-                  onClick={handleSend}
-                >
-                  <ArrowUp className="h-4 w-4" />
-                </Button>
-              </motion.div>
+                <ArrowUp className="h-4 w-4" />
+              </Button>
             )}
           </div>
-        </motion.div>
+        </div>
 
-        {/* Footer hint */}
-        <motion.p 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="mt-3 text-center text-xs text-muted-foreground/60"
-        >
+        {/* Footer */}
+        <p className="text-center text-xs text-muted-foreground mt-3">
           OneEdge can make mistakes. Check important info.
-        </motion.p>
+        </p>
       </div>
 
-      {/* Sia Voice Conversation Modal */}
+      {/* Sia Voice Modal */}
       <SiaConversation
         open={siaOpen}
         onOpenChange={setSiaOpen}

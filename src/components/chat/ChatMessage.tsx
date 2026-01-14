@@ -1,9 +1,7 @@
-import { useState, memo } from "react";
+import { useState, memo, useCallback } from "react";
 import { CopyIcon, CheckIcon, ReloadIcon } from "@radix-ui/react-icons";
-import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { AITextLoading } from "@/components/ui/ai-text-loading";
 import { ThinkingLine } from "@/components/ui/shimmer-text";
 import type { Message } from "@/types";
 
@@ -17,7 +15,6 @@ interface ChatMessageProps {
 export const ChatMessage = memo(function ChatMessage({ 
   message, 
   isStreaming,
-  isFirstMessage 
 }: ChatMessageProps) {
   const [copied, setCopied] = useState(false);
   
@@ -25,14 +22,14 @@ export const ChatMessage = memo(function ChatMessage({
   const isAssistant = message.role === "assistant";
   const isEmpty = !message.content || message.content.trim() === "";
 
-  const copyToClipboard = async () => {
+  const copyToClipboard = useCallback(async () => {
     await navigator.clipboard.writeText(message.content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  };
+  }, [message.content]);
 
   // Render markdown-like content with proper formatting
-  const renderContent = (content: string) => {
+  const renderContent = useCallback((content: string) => {
     if (!content) return null;
 
     // Handle code blocks
@@ -70,7 +67,7 @@ export const ChatMessage = memo(function ChatMessage({
     }
 
     return <span className="whitespace-pre-wrap">{content}</span>;
-  };
+  }, []);
 
   // Show AI loading state for empty assistant messages
   if (isAssistant && isEmpty && isStreaming) {
@@ -116,24 +113,12 @@ export const ChatMessage = memo(function ChatMessage({
             )}>
               {renderContent(message.content)}
               
-              {/* Streaming indicator */}
+              {/* Streaming indicator - simple CSS animation, no motion */}
               {isStreaming && !isEmpty && (
                 <span className="inline-flex items-center gap-1 ml-2">
-                  {[0, 1, 2].map((i) => (
-                    <motion.span
-                      key={i}
-                      className="w-1.5 h-1.5 rounded-full bg-primary"
-                      animate={{ 
-                        scale: [1, 1.2, 1], 
-                        opacity: [0.5, 1, 0.5] 
-                      }}
-                      transition={{ 
-                        duration: 0.8, 
-                        repeat: Infinity, 
-                        delay: i * 0.2 
-                      }}
-                    />
-                  ))}
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" style={{ animationDelay: "0.2s" }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" style={{ animationDelay: "0.4s" }} />
                 </span>
               )}
             </div>
@@ -166,6 +151,13 @@ export const ChatMessage = memo(function ChatMessage({
         </div>
       </div>
     </div>
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparison to prevent unnecessary re-renders
+  return (
+    prevProps.message.id === nextProps.message.id &&
+    prevProps.message.content === nextProps.message.content &&
+    prevProps.isStreaming === nextProps.isStreaming
   );
 });
 

@@ -400,20 +400,34 @@
     opacity: 0;
   }
   
-  /* Focus rings for accessibility */
+  /* Focus rings removed for cleaner UI */
   *:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px hsl(var(--accent-blue)), 0 0 0 4px hsl(var(--background));
   }
   
-  /* Large tap targets for mobile */
-  button, a, [role="button"] {
-    min-height: 44px;
-    min-width: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  *:focus {
+    outline: none;
+  }
+  
+  /* Remove all focus highlights */
+  button:focus, 
+  input:focus, 
+  textarea:focus, 
+  select:focus,
+  [role="button"]:focus,
+  [tabindex]:focus {
+    outline: none;
+    box-shadow: none;
+  }
+  
+  /* Large tap targets for mobile - removed min-height/width for inline elements */
+  button, [role="button"] {
     transition: all var(--duration-normal) ease-out;
+  }
+  
+  /* Links don't need tap target sizing */
+  a {
+    transition: color var(--duration-fast) ease-out;
   }
   
   /* Invisible scrollbars */

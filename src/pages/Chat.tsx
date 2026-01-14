@@ -437,16 +437,13 @@ const Chat = () => {
           streamingMessage={streamingMessage}
         />
 
-        {/* Input */}
+        {/* Input - no duplicate model dropdown, it's in the header */}
         <div className="shrink-0 p-4 pb-6 bg-gradient-to-t from-background via-background to-transparent">
           <AdvancedAIInput
             onSend={handleSendMessage}
             isLoading={isStreaming}
             onStop={stopStreaming}
             placeholder={isStreaming ? "Thinking..." : "What's on your mind?"}
-            models={models.map(m => ({ id: m.id, name: m.id, provider: m.owned_by, api_path: m.api_path }))}
-            selectedModel={selectedModel}
-            onModelChange={setSelectedModel}
           />
         </div>
       </main>
