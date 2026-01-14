@@ -15,6 +15,7 @@ import { useChat } from "@/hooks/useChat";
 import { useModels } from "@/hooks/useModels";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useConversations } from "@/hooks/useConversations";
+import { useVirtualKeyInit } from "@/hooks/useVirtualKeyInit";
 import { analyticsService } from "@/services/analyticsService";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,10 @@ import type { Conversation, Message } from "@/types";
 const Chat = () => {
   const user = useCurrentUser();
   const { toast } = useToast();
+  
+  // Auto-initialize virtual API key from employee_keys
+  const { initialized: keyInitialized, loading: keyLoading } = useVirtualKeyInit(user?.email);
+  
   const { models, loading: modelsLoading } = useModels(user?.email);
   const {
     conversations: supabaseConversations,
@@ -308,12 +313,14 @@ const Chat = () => {
     }
   }, [conversationsLoading]);
 
-  if (conversationsLoading || modelsLoading) {
+  if (conversationsLoading || modelsLoading || keyLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
           <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-muted-foreground text-sm">Loading...</p>
+          <p className="text-muted-foreground text-sm">
+            {keyLoading ? 'Initializing API keys...' : 'Loading...'}
+          </p>
         </div>
       </div>
     );
