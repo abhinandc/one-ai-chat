@@ -7,6 +7,20 @@ import supabase from "@/services/supabaseClient";
 import { Key, Copy, Check, Eye, EyeOff, RefreshCw, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+interface ModelData {
+  id: string;
+  name: string;
+  display_name?: string;
+  provider?: string;
+  context_length?: number;
+  max_tokens?: number;
+  cost_per_1k_input?: number;
+  cost_per_1k_output?: number;
+  api_path?: string;
+  kind?: string;
+  mode?: string;
+}
+
 interface VirtualKeyData {
   id: string;
   key_hash?: string;
@@ -15,11 +29,13 @@ interface VirtualKeyData {
   label?: string;
   key_alias?: string;
   key_name?: string;
+  key_prefix?: string;
   user_id?: string;
   email?: string;
   team_id?: string;
-  models?: string[];
+  models?: ModelData[] | string[];
   models_json?: string[];
+  budget?: number;
   budget_usd?: number;
   max_budget?: number;
   expires_at?: string;
@@ -29,6 +45,7 @@ interface VirtualKeyData {
   tpd?: number;
   created_at?: string;
   disabled?: boolean;
+  all_models_allowed?: boolean;
   tags_json?: string[];
   masked_key?: string;
   metadata?: Record<string, unknown>;
@@ -140,16 +157,22 @@ const ModelsHub = () => {
     return key.label || key.key_alias || key.key_name || 'Virtual Key';
   };
 
-  // Helper to get models list (ensure strings only)
+  // Helper to get models list (handles both string[] and ModelData[])
   const getKeyModels = (key: VirtualKeyData): string[] => {
     const modelsList = key.models || key.models_json || [];
     if (!Array.isArray(modelsList)) return [];
-    return modelsList.filter((m): m is string => typeof m === 'string' && m.trim() !== '');
+    return modelsList.map((m) => {
+      if (typeof m === 'string') return m.trim();
+      if (typeof m === 'object' && m !== null && 'name' in m) {
+        return (m as ModelData).name;
+      }
+      return '';
+    }).filter((m): m is string => m !== '');
   };
 
   // Helper to get budget
   const getKeyBudget = (key: VirtualKeyData) => {
-    return key.budget_usd ?? key.max_budget ?? 0;
+    return key.budget_usd ?? key.budget ?? key.max_budget ?? 0;
   };
 
   // Group assigned models by provider (extracted from model ID)
