@@ -57,7 +57,7 @@ function EmptyState() {
   ];
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-hidden">
+    <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-y-auto">
       <div className="max-w-2xl w-full text-center space-y-8">
         {/* Logo/Icon */}
         <div className="flex justify-center">
