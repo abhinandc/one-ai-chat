@@ -24,8 +24,8 @@ export function getStoredCredentials(): StoredCredential | null {
     if (stored) {
       return JSON.parse(stored) as StoredCredential;
     }
-  } catch (error) {
-    console.warn('Unable to read credentials from localStorage:', error);
+  } catch {
+    // Silently fail - don't expose errors
   }
   return null;
 }
@@ -40,8 +40,8 @@ export function getAllStoredCredentials(): StoredCredential[] {
     if (stored) {
       return JSON.parse(stored) as StoredCredential[];
     }
-  } catch (error) {
-    console.warn('Unable to read all credentials from localStorage:', error);
+  } catch {
+    // Silently fail
   }
   return [];
 }
@@ -56,13 +56,12 @@ export function getCredentialForModel(modelName: string): StoredCredential | nul
 
 /**
  * Hook to auto-initialize the virtual API key from employee_keys edge function.
- * This ensures the user's assigned API key is stored in localStorage for API calls.
  */
 export function useVirtualKeyInit(userEmail?: string) {
   const [initialized, setInitialized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [keyData, setKeyData] = useState<any>(null);
+  const [keyData, setKeyData] = useState<{ success?: boolean; credentialsCount?: number } | null>(null);
 
   useEffect(() => {
     const initializeKey = async () => {
@@ -79,7 +78,6 @@ export function useVirtualKeyInit(userEmail?: string) {
       if (existingCredentials?.api_key && 
           existingCredentials.api_key.length > 20 && 
           storedEmail === userEmail) {
-        console.log('Using cached credentials for', userEmail);
         setInitialized(true);
         setLoading(false);
         return;
@@ -94,36 +92,20 @@ export function useVirtualKeyInit(userEmail?: string) {
         setLoading(true);
         setError(null);
 
-        // Call the employee_keys Edge Function to get user's assigned keys
         const { data, error: fetchError } = await supabase.functions.invoke('employee_keys', {
           body: { email: userEmail }
         });
-
-        console.log('useVirtualKeyInit - employee_keys response:', JSON.stringify(data, null, 2));
 
         if (fetchError) {
           throw new Error(fetchError.message || 'Failed to fetch employee keys');
         }
 
-        setKeyData(data);
+        setKeyData({ success: data?.success, credentialsCount: data?.credentials?.length || 0 });
 
-        // Priority 1: Check for credentials array (new response format with decrypted keys)
-        // Response format: { valid: true, credentials: [{ api_key, full_endpoint, model_key, ... }] }
-        console.log('Checking credentials:', { 
-          hasCredentials: !!data?.credentials, 
-          hasKeys: !!data?.keys,
-          keysLength: data?.keys?.length,
-          firstKey: data?.keys?.[0] ? { 
-            hasApiKey: !!data.keys[0].api_key,
-            hasMaskedKey: !!data.keys[0].masked_key,
-            label: data.keys[0].label
-          } : null
-        });
-        
+        // Check for credentials array
         if (data?.credentials && Array.isArray(data.credentials) && data.credentials.length > 0) {
-          // Store ALL credentials for multi-model support
           const allCreds: StoredCredential[] = data.credentials
-            .filter((cred: any) => cred.api_key && cred.api_key.length > 20 && !cred.api_key.includes('***') && !cred.api_key.includes('...'))
+            .filter((cred: any) => cred.api_key && cred.api_key.length > 20 && !cred.api_key.includes('***'))
             .map((cred: any) => ({
               api_key: cred.api_key,
               full_endpoint: cred.full_endpoint || `${cred.endpoint_url}${cred.api_path}`,
@@ -134,38 +116,26 @@ export function useVirtualKeyInit(userEmail?: string) {
             }));
 
           if (allCreds.length > 0) {
-            // Store all credentials
             localStorage.setItem(ALL_CREDENTIALS_KEY, JSON.stringify(allCreds));
-            
-            // Store first as default
             const defaultCred = allCreds[0];
             localStorage.setItem(CREDENTIALS_STORAGE_KEY, JSON.stringify(defaultCred));
             localStorage.setItem(API_KEY_STORAGE_KEY, defaultCred.api_key);
             localStorage.setItem('oneai_credentials_email', userEmail);
-            
-            console.log('Credentials auto-initialized:', { 
-              total: allCreds.length,
-              models: allCreds.map(c => c.model_key),
-              defaultModel: defaultCred.model_key
-            });
             setInitialized(true);
+            setLoading(false);
             return;
           }
         }
 
-        // Priority 2: Check for keys array (current response format)
-        // Response format: { keys: [{ api_key, models: [...], ... }] }
+        // Fallback: Check keys array
         if (data?.keys && Array.isArray(data.keys) && data.keys.length > 0) {
           const key = data.keys.find((k: any) => !k.disabled) || data.keys[0];
-          
-          // Check if the key has an actual api_key (not masked)
           const apiKey = key.api_key || key.key || key.token;
           
-          if (apiKey && apiKey.length > 20 && !apiKey.includes('***') && !apiKey.includes('...')) {
-            // Get the first model's endpoint info
+          if (apiKey && apiKey.length > 20 && !apiKey.includes('***')) {
             const firstModel = key.models?.[0];
             const endpoint = firstModel 
-              ? `https://api.openai.com${firstModel.api_path || '/v1/chat/completions'}`
+              ? `${firstModel.endpoint_url || 'https://api.openai.com'}${firstModel.api_path || '/v1/chat/completions'}`
               : 'https://api.openai.com/v1/chat/completions';
             
             const storedCred: StoredCredential = {
@@ -179,20 +149,15 @@ export function useVirtualKeyInit(userEmail?: string) {
             
             localStorage.setItem(CREDENTIALS_STORAGE_KEY, JSON.stringify(storedCred));
             localStorage.setItem(API_KEY_STORAGE_KEY, apiKey);
-            
-            console.log('Credentials auto-initialized from keys array:', storedCred);
+            localStorage.setItem('oneai_credentials_email', userEmail);
             setInitialized(true);
+            setLoading(false);
             return;
-          } else {
-            console.warn('Key found but no decrypted api_key. Your edge function needs to return the decrypted key, not masked_key.');
           }
         }
 
-        // No valid credentials found
-        console.warn('No valid credentials in employee_keys response. The edge function must return decrypted api_key, not masked_key.');
-        setError('Edge function returns masked key only. Update employee_keys to return decrypted api_key.');
+        setError('No valid API credentials found');
       } catch (err) {
-        console.error('Failed to auto-initialize credentials:', err);
         setError(err instanceof Error ? err.message : 'Failed to initialize credentials');
       } finally {
         setLoading(false);
