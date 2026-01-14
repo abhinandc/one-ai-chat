@@ -80,14 +80,19 @@ export function useChat(options: UseChatOptions = {}) {
       abortControllerRef.current = controller;
 
       try {
+        console.log('[useChat] Starting stream request:', { model: request.model });
         const stream = await apiClient.createChatCompletionStream(request, controller.signal);
+        console.log('[useChat] Stream obtained, starting to read chunks');
         let assistantContent = '';
+        let chunkCount = 0;
 
         for await (const chunk of parseSSEStream(stream)) {
           if (controller.signal.aborted) {
+            console.log('[useChat] Stream aborted by user');
             break;
           }
 
+          chunkCount++;
           const delta = chunk.choices?.[0]?.delta?.content;
           if (delta) {
             assistantContent += delta;
@@ -97,6 +102,8 @@ export function useChat(options: UseChatOptions = {}) {
             }));
           }
         }
+
+        console.log('[useChat] Stream complete:', { chunkCount, contentLength: assistantContent.length });
 
         if (controller.signal.aborted) {
           return;
@@ -115,6 +122,8 @@ export function useChat(options: UseChatOptions = {}) {
           streamingMessage: '',
         }));
       } catch (streamError) {
+        console.error('[useChat] Stream error:', streamError);
+        
         if (streamError instanceof DOMException && streamError.name === 'AbortError') {
           return;
         }
@@ -123,25 +132,30 @@ export function useChat(options: UseChatOptions = {}) {
           return;
         }
 
-        console.warn('Streaming failed, falling back to non-streaming request:', streamError);
+        console.warn('[useChat] Streaming failed, falling back to non-streaming request:', streamError);
 
-        const response = await apiClient.createChatCompletion({
-          ...request,
-          stream: false,
-        });
+        try {
+          const response = await apiClient.createChatCompletion({
+            ...request,
+            stream: false,
+          });
 
-        const assistantMessage: ChatMessage = {
-          role: 'assistant',
-          content: response.choices?.[0]?.message?.content || 'No response generated',
-        };
+          const assistantMessage: ChatMessage = {
+            role: 'assistant',
+            content: response.choices?.[0]?.message?.content || 'No response generated',
+          };
 
-        setState(prev => ({
-          ...prev,
-          messages: [...prev.messages, assistantMessage],
-          isLoading: false,
-          isStreaming: false,
-          streamingMessage: '',
-        }));
+          setState(prev => ({
+            ...prev,
+            messages: [...prev.messages, assistantMessage],
+            isLoading: false,
+            isStreaming: false,
+            streamingMessage: '',
+          }));
+        } catch (fallbackError) {
+          console.error('[useChat] Non-streaming fallback also failed:', fallbackError);
+          throw fallbackError;
+        }
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An error occurred';
