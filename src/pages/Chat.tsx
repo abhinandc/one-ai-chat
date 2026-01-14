@@ -117,15 +117,15 @@ const Chat = () => {
           systemPrompt: chatSettings.systemPrompt,
         },
       });
-    } catch (error) {
-      console.error("Failed to save conversation:", error);
+    } catch {
+      // Silently fail - don't expose conversation errors
     }
   };
 
   const createNewConversation = () => {
     const now = new Date();
     const newConversation: Conversation = {
-      id: `conv_${Date.now()}`,
+      id: crypto.randomUUID(),
       title: "New chat",
       messages: [],
       pinned: false,
@@ -230,7 +230,7 @@ const Chat = () => {
         });
       }
     } catch (error) {
-      console.error("Failed to delete conversation:", error);
+      // Show user-friendly error without exposing details
       toast({
         title: "Failed to delete conversation",
         description: error instanceof Error ? error.message : "Unknown error",
@@ -279,7 +279,7 @@ const Chat = () => {
         setCurrentConversation((prev) => (prev ? { ...prev, title: newTitle } : null));
       }
     } catch (error) {
-      console.error("Failed to send message:", error);
+      // Show user-friendly error without logging sensitive data
       toast({
         title: "Failed to send message",
         description: error instanceof Error ? error.message : "Unknown error",
@@ -408,7 +408,7 @@ const Chat = () => {
                 >
                   <span className="font-medium">{model.id}</span>
                   <span className="text-xs text-muted-foreground">
-                    {model.owned_by}
+                    {model.owned_by} • {model.api_path || '/v1/chat/completions'}
                   </span>
                 </DropdownMenuItem>
               ))}
@@ -445,8 +445,8 @@ const Chat = () => {
             onStop={stopStreaming}
             placeholder={
               isStreaming
-                ? "OneEdge is thinking..."
-                : "Message OneEdge..."
+                ? "Thinking..."
+                : "What's on your mind?"
             }
           />
         </div>

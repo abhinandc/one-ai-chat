@@ -6,6 +6,7 @@ export interface Model {
   object?: string;
   created?: number;
   owned_by?: string;
+  api_path?: string;
 }
 
 export interface UseModelsResult {
@@ -36,13 +37,14 @@ export function useModels(userEmail?: string): UseModelsResult {
               object: 'model',
               created: Date.now() / 1000,
               owned_by: cred.provider || 'unknown',
+              api_path: cred.api_path || '/v1/chat/completions',
             }));
             setModels(transformedModels);
             setLoading(false);
             return;
           }
-        } catch (parseErr) {
-          console.warn('Failed to parse cached credentials:', parseErr);
+        } catch {
+          // Silently continue to fallback
         }
       }
 
@@ -94,7 +96,7 @@ export function useModels(userEmail?: string): UseModelsResult {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch models';
       setError(errorMessage);
-      console.error('Failed to fetch models:', err);
+      // Silently fail - don't expose errors
     } finally {
       setLoading(false);
     }

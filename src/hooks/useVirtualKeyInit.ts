@@ -4,6 +4,7 @@ import supabase from '@/services/supabaseClient';
 export interface StoredCredential {
   api_key: string;
   full_endpoint: string;
+  api_path: string;
   model_key: string;
   provider: string;
   auth_type: string;
@@ -108,7 +109,8 @@ export function useVirtualKeyInit(userEmail?: string) {
             .filter((cred: any) => cred.api_key && cred.api_key.length > 20 && !cred.api_key.includes('***'))
             .map((cred: any) => ({
               api_key: cred.api_key,
-              full_endpoint: cred.full_endpoint || `${cred.endpoint_url}${cred.api_path}`,
+              full_endpoint: cred.full_endpoint || `${cred.endpoint_url}${cred.api_path || '/v1/chat/completions'}`,
+              api_path: cred.api_path || '/v1/chat/completions',
               model_key: cred.model_key || cred.model_name,
               provider: cred.provider,
               auth_type: cred.auth_type || 'bearer',
@@ -141,6 +143,7 @@ export function useVirtualKeyInit(userEmail?: string) {
             const storedCred: StoredCredential = {
               api_key: apiKey,
               full_endpoint: endpoint,
+              api_path: firstModel?.api_path || '/v1/chat/completions',
               model_key: firstModel?.name || 'gpt-4',
               provider: firstModel?.provider || 'openai',
               auth_type: 'bearer',
