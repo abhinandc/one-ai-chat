@@ -53,7 +53,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[llm-proxy] Model: ${model}, Stream: ${stream}`);
+    console.log(`[llm-proxy] Requested Model: ${model}, Stream: ${stream}`);
 
     // Use service role to fetch credentials
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -74,7 +74,9 @@ serve(async (req) => {
     }
 
     const provider = modelData.provider?.toLowerCase() || 'openai';
-    console.log(`[llm-proxy] Provider: ${provider}`);
+    // Use model_key for the actual API call (e.g., "claude-opus-4-20250514" instead of "Claude Opus 4.1")
+    const actualModelId = modelData.model_key || modelData.name;
+    console.log(`[llm-proxy] Provider: ${provider}, Actual model ID: ${actualModelId}`);
 
     // Get LLM credentials for this provider
     const { data: credential, error: credError } = await supabase
@@ -121,9 +123,9 @@ serve(async (req) => {
       'Content-Type': 'application/json',
     };
 
-    // Build request body based on provider
+    // Build request body based on provider - use actualModelId, not the display name
     let requestBody: any = {
-      model: model,
+      model: actualModelId,
       messages: messages,
       stream: stream,
     };
