@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Sparkles, TrendingUp, Clock, MessageSquare, Bot, Zap, Command, ArrowRight, X } from "lucide-react";
+import { Sparkles, TrendingUp, Clock, MessageSquare, Bot, Zap, ArrowRight, X } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { useModels } from "@/hooks/useModels";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useVirtualKeys, useActivityFeed, useUsageSummary } from "@/hooks/useSupabaseData";
 import { ModelComparisonPanel } from "@/components/ModelComparisonPanel";
+import { AIInput } from "@/components/chat/AIInput";
 
 // Helper to convert name to sentence case (capitalize first letter of each word)
 const toSentenceCase = (str: string): string => {
@@ -28,8 +29,6 @@ const Index = () => {
   const { data: usage } = useUsageSummary(user?.email);
   
   const [spotlightQuery, setSpotlightQuery] = useState("");
-  const [spotlightFocused, setSpotlightFocused] = useState(false);
-  const [aiSuggestion, setAiSuggestion] = useState<any>(null);
   const [comparisonQuery, setComparisonQuery] = useState("");
   const [isComparing, setIsComparing] = useState(false);
   const [completedCount, setCompletedCount] = useState(0);
@@ -38,60 +37,6 @@ const Index = () => {
     // Only use real models, no hardcoded fallbacks
     return models.slice(0, 4);
   }, [models]);
-
-  // AI-powered model recommendation
-  const recommendModel = useCallback((query: string) => {
-    if (!query.trim() || models.length === 0) {
-      setAiSuggestion(null);
-      return;
-    }
-
-    const lowerQuery = query.toLowerCase();
-    let recommended = null;
-
-    // Intelligent model selection based on task
-    if (lowerQuery.includes("code") || lowerQuery.includes("program") || lowerQuery.includes("debug")) {
-      recommended = models.find(m => m.id.includes("code") || m.id.includes("deepseek")) || models[0];
-    } else if (lowerQuery.includes("chat") || lowerQuery.includes("talk") || lowerQuery.includes("conversation")) {
-      recommended = models.find(m => m.id.includes("gpt") || m.id.includes("chat")) || models[0];
-    } else if (lowerQuery.includes("analyze") || lowerQuery.includes("data") || lowerQuery.includes("report")) {
-      recommended = models.find(m => m.id.includes("analyst") || m.id.includes("qwen")) || models[0];
-    } else if (lowerQuery.includes("write") || lowerQuery.includes("content") || lowerQuery.includes("article")) {
-      recommended = models.find(m => m.id.includes("writer") || m.id.includes("llama")) || models[0];
-    } else {
-      recommended = models[0];
-    }
-
-    setAiSuggestion({
-      model: recommended,
-      reason: getRecommendationReason(lowerQuery, recommended),
-      action: "/chat?model=" + recommended.id + "&prompt=" + encodeURIComponent(query)
-    });
-  }, [models]);
-
-  const getRecommendationReason = (query: string, model: any) => {
-    if (query.includes("code")) return "Best for coding tasks";
-    if (query.includes("chat")) return "Optimized for conversations";
-    if (query.includes("analyze")) return "Great for data analysis";
-    if (query.includes("write")) return "Perfect for content creation";
-    return "General purpose model";
-  };
-
-  const handleSpotlightSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!spotlightQuery.trim()) return;
-
-    // Don't show comparison if no real models are available
-    if (models.length === 0) {
-      // Navigate to chat instead
-      navigate(`/chat?prompt=${encodeURIComponent(spotlightQuery)}`);
-      return;
-    }
-
-    setComparisonQuery(spotlightQuery);
-    setIsComparing(true);
-    setCompletedCount(0);
-  };
 
   const handleComparisonComplete = useCallback(() => {
     setCompletedCount(prev => prev + 1);
@@ -149,66 +94,21 @@ const Index = () => {
           </p>
         </div>
 
-        {/* Spotlight Search - Mac Style */}
+        {/* AI Chat Input */}
         <div className="max-w-3xl mx-auto">
-          <form onSubmit={handleSpotlightSearch} className="relative">
-            <div
-              className={cn(
-                "relative group transition-all duration-300",
-                spotlightFocused && "scale-105"
-              )}
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-accent-blue/20 to-accent-purple/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              
-              <div className="relative bg-surface-graphite border border-border-primary rounded-2xl shadow-lg overflow-hidden dark:backdrop-blur-none">
-                <div className="flex items-center p-6">
-                  <Search className="h-6 w-6 text-text-secondary shrink-0" />
-                  <input
-                    type="text"
-                    value={spotlightQuery}
-                    onChange={(e) => {
-                      setSpotlightQuery(e.target.value);
-                      recommendModel(e.target.value);
-                    }}
-                    onFocus={() => setSpotlightFocused(true)}
-                    onBlur={() => setTimeout(() => setSpotlightFocused(false), 200)}
-                    placeholder="What's on your mind? Try out the best model."
-                    className="flex-1 bg-transparent border-none outline-none text-lg text-text-primary placeholder:text-text-tertiary text-center focus:ring-0"
-                    data-testid="input-spotlight-search"
-                  />
-                  <kbd className="px-2 py-1 text-xs font-semibold text-text-tertiary bg-surface-graphite border border-border-secondary/50 rounded shrink-0">
-                    <Command className="h-3 w-3 inline" /> K
-                  </kbd>
-                </div>
-
-                {/* AI Suggestion */}
-                {aiSuggestion && spotlightQuery && (
-                  <div className="border-t border-border-primary/30 p-4 bg-gradient-to-r from-accent-blue/5 to-accent-purple/5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-accent-blue/10 rounded-lg">
-                          <Sparkles className="h-4 w-4 text-accent-blue" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-text-primary">
-                            Recommended: {aiSuggestion.model.id}
-                          </p>
-                          <p className="text-xs text-text-secondary">{aiSuggestion.reason}</p>
-                        </div>
-                      </div>
-                      <Button
-                        type="submit"
-                        size="sm"
-                        className="bg-accent-blue hover:bg-accent-blue/90"
-                      >
-                        Start <ArrowRight className="h-4 w-4 ml-1" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </form>
+          <AIInput
+            onSend={(message) => {
+              setSpotlightQuery(message);
+              if (models.length === 0) {
+                navigate(`/chat?prompt=${encodeURIComponent(message)}`);
+                return;
+              }
+              setComparisonQuery(message);
+              setIsComparing(true);
+              setCompletedCount(0);
+            }}
+            placeholder="What's on your mind? Try out the best model."
+          />
         </div>
 
         {/* Model Comparison Grid */}
