@@ -35,7 +35,7 @@ interface AIThinkingDisplayProps {
   className?: string;
 }
 
-const toolIcons: Record<string, React.ElementType> = {
+const toolIcons: Record<string, typeof Circle> = {
   search: Search,
   code: Code,
   analyze: FileText,
