@@ -115,7 +115,7 @@ export function AIInput({
   const canSend = message.trim().length > 0 && !disabled;
 
   return (
-    <div className={cn("w-full", className)}>
+    <div className={cn("w-full relative z-50", className)}>
       <div className="relative mx-auto max-w-3xl">
         {/* Attachments Preview */}
         <AnimatePresence>
@@ -188,7 +188,6 @@ export function AIInput({
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                  disabled={disabled}
                 >
                   <Plus className="h-5 w-5" />
                 </Button>
@@ -223,7 +222,6 @@ export function AIInput({
                   variant="ghost"
                   size="sm"
                   className="h-8 gap-1.5 px-2 text-muted-foreground hover:text-foreground"
-                  disabled={disabled}
                 >
                   <currentMode.icon className="h-4 w-4" />
                   <span className="text-xs font-medium">{currentMode.label}</span>
@@ -291,7 +289,6 @@ export function AIInput({
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-muted-foreground hover:text-foreground"
-              disabled={disabled}
               onClick={() => setVoiceModalOpen(true)}
             >
               <Mic className="h-5 w-5" />
