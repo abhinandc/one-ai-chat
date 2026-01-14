@@ -1,7 +1,9 @@
-import { useEffect, useRef } from "react";
-import { motion } from "motion/react";
+import { useEffect, useRef, memo, useMemo } from "react";
+import { motion } from "framer-motion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChatMessage } from "./ChatMessage";
+import { AITextLoading } from "@/components/ui/ai-text-loading";
+import { ThinkingLine } from "@/components/ui/shimmer-text";
 import type { Message } from "@/types";
 
 interface ChatThreadProps {
@@ -10,13 +12,28 @@ interface ChatThreadProps {
   streamingMessage?: string;
 }
 
-export function ChatThread({ messages, isStreaming, streamingMessage }: ChatThreadProps) {
+export const ChatThread = memo(function ChatThread({ 
+  messages, 
+  isStreaming, 
+  streamingMessage 
+}: ChatThreadProps) {
   const endRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, streamingMessage]);
+  }, [messages.length, streamingMessage]);
+
+  // Memoize rendered messages to prevent flickering
+  const renderedMessages = useMemo(() => {
+    return messages.map((message) => (
+      <ChatMessage
+        key={message.id}
+        message={message}
+        isStreaming={false}
+      />
+    ));
+  }, [messages]);
 
   if (messages.length === 0 && !isStreaming) {
     return <EmptyState />;
@@ -25,65 +42,31 @@ export function ChatThread({ messages, isStreaming, streamingMessage }: ChatThre
   return (
     <ScrollArea className="flex-1">
       <div className="pb-32">
-        {messages.map((message, index) => (
-          <motion.div
-            key={message.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ 
-              duration: 0.4, 
-              delay: index * 0.05,
-              ease: [0.25, 0.46, 0.45, 0.94]
-            }}
-          >
-            <ChatMessage message={message} />
-          </motion.div>
-        ))}
+        {renderedMessages}
         
         {/* Streaming message */}
         {isStreaming && streamingMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <ChatMessage
-              message={{
-                id: "streaming",
-                role: "assistant",
-                content: streamingMessage,
-                timestamp: new Date(),
-              }}
-              isStreaming
-            />
-          </motion.div>
+          <ChatMessage
+            message={{
+              id: "streaming",
+              role: "assistant",
+              content: streamingMessage,
+              timestamp: new Date(),
+            }}
+            isStreaming
+          />
         )}
         
         {/* Loading indicator when waiting for response */}
         {isStreaming && !streamingMessage && (
           <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex items-center gap-3 px-8 py-6"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="w-full py-4"
           >
-            <div className="flex gap-1.5">
-              <motion.div 
-                className="w-2 h-2 rounded-full bg-primary/60"
-                animate={{ scale: [1, 1.3, 1], opacity: [0.4, 1, 0.4] }}
-                transition={{ duration: 1, repeat: Infinity, delay: 0 }}
-              />
-              <motion.div 
-                className="w-2 h-2 rounded-full bg-primary/60"
-                animate={{ scale: [1, 1.3, 1], opacity: [0.4, 1, 0.4] }}
-                transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}
-              />
-              <motion.div 
-                className="w-2 h-2 rounded-full bg-primary/60"
-                animate={{ scale: [1, 1.3, 1], opacity: [0.4, 1, 0.4] }}
-                transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}
-              />
+            <div className="mx-auto max-w-3xl px-4">
+              <ThinkingLine text="AI is thinking" />
             </div>
-            <span className="text-sm text-muted-foreground">Thinking...</span>
           </motion.div>
         )}
         
@@ -91,7 +74,7 @@ export function ChatThread({ messages, isStreaming, streamingMessage }: ChatThre
       </div>
     </ScrollArea>
   );
-}
+});
 
 function EmptyState() {
   const suggestions = [
@@ -116,22 +99,48 @@ function EmptyState() {
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.1 }}
         >
-          <div className="relative h-20 w-20">
-            <motion.div 
-              className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/40 via-primary/20 to-transparent blur-xl"
-              animate={{ 
+          <div className="relative h-24 w-24">
+            {/* Outer glow */}
+            <motion.div
+              className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/30 to-primary/10"
+              animate={{
                 scale: [1, 1.2, 1],
-                opacity: [0.5, 0.8, 0.5]
+                opacity: [0.3, 0.5, 0.3]
               }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
             />
-            <div className="absolute inset-2 rounded-full bg-gradient-to-br from-primary/30 to-primary/5 flex items-center justify-center backdrop-blur-sm">
-              <motion.div 
-                className="w-8 h-8 rounded-full bg-gradient-to-r from-primary to-primary/60"
-                animate={{ rotate: 360 }}
-                transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-              />
-            </div>
+            
+            {/* Middle layer */}
+            <motion.div
+              className="absolute inset-3 rounded-full bg-gradient-to-br from-primary/40 to-primary/20"
+              animate={{
+                scale: [1, 1.1, 1],
+                opacity: [0.4, 0.6, 0.4]
+              }}
+              transition={{
+                duration: 2.5,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: 0.2
+              }}
+            />
+            
+            {/* Core */}
+            <motion.div
+              className="absolute inset-6 rounded-full bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/30"
+              animate={{
+                scale: [0.95, 1.05, 0.95]
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+            />
           </div>
         </motion.div>
 
@@ -143,10 +152,10 @@ function EmptyState() {
           transition={{ duration: 0.4, delay: 0.2 }}
         >
           <h1 className="text-2xl font-semibold text-foreground">
-            What's on your mind?
+            How can I help you today?
           </h1>
           <p className="text-muted-foreground">
-            Start a conversation or try one of these suggestions
+            Ask me anything — I'm here to assist
           </p>
         </motion.div>
 

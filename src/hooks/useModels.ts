@@ -37,7 +37,8 @@ export function useModels(userEmail?: string): UseModelsResult {
               object: 'model',
               created: Date.now() / 1000,
               owned_by: cred.provider || 'unknown',
-              api_path: cred.api_path || '/v1/chat/completions',
+              // Use the api_path from stored credentials - NOT hardcoded
+              api_path: cred.api_path,
             }));
             setModels(transformedModels);
             setLoading(false);

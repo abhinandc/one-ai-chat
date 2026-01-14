@@ -1,20 +1,29 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { CopyIcon, CheckIcon, ReloadIcon } from "@radix-ui/react-icons";
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { AITextLoading } from "@/components/ui/ai-text-loading";
+import { ThinkingLine } from "@/components/ui/shimmer-text";
 import type { Message } from "@/types";
 
 interface ChatMessageProps {
   message: Message;
   isStreaming?: boolean;
+  isFirstMessage?: boolean;
 }
 
-export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
+// Memoize to prevent unnecessary re-renders that cause flickering
+export const ChatMessage = memo(function ChatMessage({ 
+  message, 
+  isStreaming,
+  isFirstMessage 
+}: ChatMessageProps) {
   const [copied, setCopied] = useState(false);
   
   const isUser = message.role === "user";
   const isAssistant = message.role === "assistant";
+  const isEmpty = !message.content || message.content.trim() === "";
 
   const copyToClipboard = async () => {
     await navigator.clipboard.writeText(message.content);
@@ -24,6 +33,8 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
 
   // Render markdown-like content with proper formatting
   const renderContent = (content: string) => {
+    if (!content) return null;
+
     // Handle code blocks
     if (content.includes("```")) {
       const parts = content.split(/(```[\s\S]*?```)/);
@@ -61,51 +72,40 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
     return <span className="whitespace-pre-wrap">{content}</span>;
   };
 
+  // Show AI loading state for empty assistant messages
+  if (isAssistant && isEmpty && isStreaming) {
+    return (
+      <div className="w-full py-4">
+        <div className="mx-auto max-w-3xl px-4">
+          <ThinkingLine text="AI is thinking" />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ 
-        duration: 0.4, 
-        ease: [0.25, 0.46, 0.45, 0.94],
-        opacity: { duration: 0.3 }
-      }}
+    <div 
       className={cn(
         "group w-full py-4",
         isUser ? "bg-transparent" : "bg-gradient-to-r from-muted/20 via-muted/10 to-transparent"
       )}
     >
-      <div className={cn(
-        "mx-auto max-w-3xl px-4",
-        isUser ? "flex justify-start" : "flex justify-start"
-      )}>
+      <div className="mx-auto max-w-3xl px-4 flex justify-start">
         <div className="flex flex-col gap-2 max-w-[85%]">
-          {/* Message content with shader-like gradient border for assistant */}
-          <motion.div 
-            initial={{ opacity: 0, x: isUser ? -10 : 10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
+          {/* Message content */}
+          <div 
             className={cn(
               "relative overflow-hidden",
               isUser && "rounded-2xl rounded-tl-sm bg-primary/10 backdrop-blur-sm",
               isAssistant && "rounded-2xl"
             )}
           >
-            {/* Shader-like animated gradient background for assistant messages */}
+            {/* Subtle gradient background for assistant messages */}
             {isAssistant && (
-              <motion.div 
-                className="absolute inset-0 opacity-30 pointer-events-none"
+              <div 
+                className="absolute inset-0 opacity-20 pointer-events-none"
                 style={{
                   background: "linear-gradient(135deg, hsl(var(--primary)/0.1) 0%, hsl(var(--accent)/0.05) 50%, transparent 100%)"
-                }}
-                animate={{
-                  backgroundPosition: ["0% 0%", "100% 100%"],
-                }}
-                transition={{
-                  duration: 8,
-                  repeat: Infinity,
-                  repeatType: "reverse",
-                  ease: "linear"
                 }}
               />
             )}
@@ -116,39 +116,32 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
             )}>
               {renderContent(message.content)}
               
-              {/* Streaming indicator with pulse animation */}
-              {isStreaming && (
-                <motion.span 
-                  className="inline-flex items-center gap-1 ml-2"
-                >
-                  <motion.span 
-                    className="w-1.5 h-1.5 rounded-full bg-primary"
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 0.8, repeat: Infinity, delay: 0 }}
-                  />
-                  <motion.span 
-                    className="w-1.5 h-1.5 rounded-full bg-primary"
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 0.8, repeat: Infinity, delay: 0.2 }}
-                  />
-                  <motion.span 
-                    className="w-1.5 h-1.5 rounded-full bg-primary"
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 0.8, repeat: Infinity, delay: 0.4 }}
-                  />
-                </motion.span>
+              {/* Streaming indicator */}
+              {isStreaming && !isEmpty && (
+                <span className="inline-flex items-center gap-1 ml-2">
+                  {[0, 1, 2].map((i) => (
+                    <motion.span
+                      key={i}
+                      className="w-1.5 h-1.5 rounded-full bg-primary"
+                      animate={{ 
+                        scale: [1, 1.2, 1], 
+                        opacity: [0.5, 1, 0.5] 
+                      }}
+                      transition={{ 
+                        duration: 0.8, 
+                        repeat: Infinity, 
+                        delay: i * 0.2 
+                      }}
+                    />
+                  ))}
+                </span>
               )}
             </div>
-          </motion.div>
+          </div>
 
-          {/* Actions - only for assistant messages */}
-          {isAssistant && !isStreaming && (
-            <motion.div 
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-            >
+          {/* Actions - only for completed assistant messages */}
+          {isAssistant && !isStreaming && !isEmpty && (
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
               <Button
                 variant="ghost"
                 size="icon"
@@ -168,15 +161,15 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
               >
                 <ReloadIcon className="h-3.5 w-3.5" />
               </Button>
-            </motion.div>
+            </div>
           )}
         </div>
       </div>
-    </motion.div>
+    </div>
   );
-}
+});
 
-function CodeBlock({ code, language }: { code: string; language: string }) {
+const CodeBlock = memo(function CodeBlock({ code, language }: { code: string; language: string }) {
   const [copied, setCopied] = useState(false);
 
   const copyCode = async () => {
@@ -186,12 +179,7 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
   };
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="my-4 rounded-lg overflow-hidden border border-border"
-    >
+    <div className="my-4 rounded-lg overflow-hidden border border-border">
       <div className="flex items-center justify-between bg-muted px-4 py-2">
         <span className="text-xs font-medium text-muted-foreground">
           {language || "code"}
@@ -218,6 +206,6 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
       <pre className="p-4 overflow-x-auto bg-background/50">
         <code className="text-sm font-mono text-foreground">{code}</code>
       </pre>
-    </motion.div>
+    </div>
   );
-}
+});
