@@ -1,5 +1,5 @@
 import React from "react";
-import { Github, Twitter, Linkedin } from "lucide-react";
+import { GitHubLogoIcon, TwitterLogoIcon, LinkedInLogoIcon } from "@radix-ui/react-icons";
 
 export const Footer: React.FC = () => {
   return (
@@ -15,19 +15,19 @@ export const Footer: React.FC = () => {
               href="#" 
               className="p-2 text-text-tertiary hover:text-accent-blue hover:scale-110 transition-all duration-normal rounded-lg hover:bg-surface-graphite-hover"
             >
-              <Github className="h-4 w-4" />
+              <GitHubLogoIcon className="h-4 w-4" />
             </a>
             <a 
               href="#" 
               className="p-2 text-text-tertiary hover:text-accent-blue hover:scale-110 transition-all duration-normal rounded-lg hover:bg-surface-graphite-hover"
             >
-              <Twitter className="h-4 w-4" />
+              <TwitterLogoIcon className="h-4 w-4" />
             </a>
             <a 
               href="#" 
               className="p-2 text-text-tertiary hover:text-accent-blue hover:scale-110 transition-all duration-normal rounded-lg hover:bg-surface-graphite-hover"
             >
-              <Linkedin className="h-4 w-4" />
+              <LinkedInLogoIcon className="h-4 w-4" />
             </a>
           </div>
         </div>

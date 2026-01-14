@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X } from "lucide-react";
+import { Cross2Icon } from "@radix-ui/react-icons";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -133,7 +133,7 @@ export function VoiceInputModal({
           className="absolute top-6 right-6 h-10 w-10 rounded-full text-muted-foreground hover:text-foreground"
           onClick={handleClose}
         >
-          <X className="h-5 w-5" />
+          <Cross2Icon className="h-5 w-5" />
         </Button>
 
         <div className="flex flex-col items-center justify-center gap-12 max-w-2xl px-8">

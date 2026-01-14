@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, Check, User, Bot, RefreshCw } from "lucide-react";
+import { CopyIcon, CheckIcon, PersonIcon, CubeIcon, ReloadIcon } from "@radix-ui/react-icons";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -74,7 +74,7 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
               "text-xs font-medium",
               isUser ? "bg-primary text-primary-foreground" : "bg-accent-green/20 text-accent-green"
             )}>
-              {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+              {isUser ? <PersonIcon className="h-4 w-4" /> : <CubeIcon className="h-4 w-4" />}
             </AvatarFallback>
           </Avatar>
 
@@ -105,9 +105,9 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
                   onClick={copyToClipboard}
                 >
                   {copied ? (
-                    <Check className="h-3.5 w-3.5" />
+                    <CheckIcon className="h-3.5 w-3.5" />
                   ) : (
-                    <Copy className="h-3.5 w-3.5" />
+                    <CopyIcon className="h-3.5 w-3.5" />
                   )}
                 </Button>
                 <Button
@@ -115,7 +115,7 @@ export function ChatMessage({ message, isStreaming }: ChatMessageProps) {
                   size="icon"
                   className="h-7 w-7 text-muted-foreground hover:text-foreground"
                 >
-                  <RefreshCw className="h-3.5 w-3.5" />
+                  <ReloadIcon className="h-3.5 w-3.5" />
                 </Button>
               </div>
             )}
@@ -149,12 +149,12 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
         >
           {copied ? (
             <>
-              <Check className="h-3 w-3 mr-1" />
+              <CheckIcon className="h-3 w-3 mr-1" />
               Copied
             </>
           ) : (
             <>
-              <Copy className="h-3 w-3 mr-1" />
+              <CopyIcon className="h-3 w-3 mr-1" />
               Copy
             </>
           )}

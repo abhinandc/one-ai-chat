@@ -1,32 +1,32 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
-  Home,
-  MessageSquare,
-  Bot,
-  Workflow,
-  HardDrive,
-  FileText,
-  Wrench,
-  Play,
-  HelpCircle,
-  ChevronLeft,
-  ChevronRight
-} from "lucide-react";
+  HomeIcon,
+  ChatBubbleIcon,
+  CubeIcon,
+  LoopIcon,
+  DesktopIcon,
+  FileTextIcon,
+  GearIcon,
+  PlayIcon,
+  QuestionMarkCircledIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon
+} from "@radix-ui/react-icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/GlassCard";
 
 const navigationItems = [
-  { icon: Home, label: "Home", href: "/", shortcut: "g h" },
-  { icon: MessageSquare, label: "Chat", href: "/chat", shortcut: "g c" },
-  { icon: Bot, label: "Agents", href: "/agents", shortcut: "g a" },
-  { icon: Workflow, label: "Automations", href: "/automations", shortcut: "g z" },
-  { icon: HardDrive, label: "Model Hub", href: "/models", shortcut: "g m" },
-  { icon: FileText, label: "Prompts", href: "/prompts", shortcut: "g p" },
-  { icon: Wrench, label: "Tools", href: "/tools", shortcut: "g t" },
-  { icon: Play, label: "Playground", href: "/playground", shortcut: "g y" },
-  { icon: HelpCircle, label: "Help", href: "/help", shortcut: "?" }
+  { icon: HomeIcon, label: "Home", href: "/", shortcut: "g h" },
+  { icon: ChatBubbleIcon, label: "Chat", href: "/chat", shortcut: "g c" },
+  { icon: CubeIcon, label: "Agents", href: "/agents", shortcut: "g a" },
+  { icon: LoopIcon, label: "Automations", href: "/automations", shortcut: "g z" },
+  { icon: DesktopIcon, label: "Model Hub", href: "/models", shortcut: "g m" },
+  { icon: FileTextIcon, label: "Prompts", href: "/prompts", shortcut: "g p" },
+  { icon: GearIcon, label: "Tools", href: "/tools", shortcut: "g t" },
+  { icon: PlayIcon, label: "Playground", href: "/playground", shortcut: "g y" },
+  { icon: QuestionMarkCircledIcon, label: "Help", href: "/help", shortcut: "?" }
 ];
 
 interface SideNavProps {
@@ -83,7 +83,7 @@ export function SideNav({ collapsed = false, onToggleCollapsed }: SideNavProps) 
           onClick={onToggleCollapsed}
           className="w-full h-9 text-text-secondary hover:text-text-primary"
         >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          {collapsed ? <ChevronRightIcon className="h-4 w-4" /> : <ChevronLeftIcon className="h-4 w-4" />}
         </Button>
       </div>
     </aside>

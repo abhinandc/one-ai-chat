@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Plus, Pin, Trash2, MessageSquare, X, MoreHorizontal, FolderOpen } from "lucide-react";
+import { MagnifyingGlassIcon, PlusIcon, DrawingPinIcon, TrashIcon, ChatBubbleIcon, Cross2Icon, DotsHorizontalIcon, FileIcon } from "@radix-ui/react-icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -86,7 +86,7 @@ export function ChatSidebar({
             size="sm"
             className="flex-1 mr-2 justify-start gap-2"
           >
-            <Plus className="h-4 w-4" />
+            <PlusIcon className="h-4 w-4" />
             New chat
           </Button>
           <Button
@@ -95,14 +95,14 @@ export function ChatSidebar({
             size="icon"
             className="h-8 w-8"
           >
-            <X className="h-4 w-4" />
+            <Cross2Icon className="h-4 w-4" />
           </Button>
         </div>
 
         {/* Search */}
         <div className="p-3 border-b border-border">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search conversations..."
               value={searchQuery}
@@ -119,7 +119,7 @@ export function ChatSidebar({
             {pinnedConversations.length > 0 && (
               <div className="mb-4">
                 <div className="flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  <Pin className="h-3 w-3" />
+                  <DrawingPinIcon className="h-3 w-3" />
                   Pinned
                 </div>
                 {pinnedConversations.map((conversation) => (
@@ -160,7 +160,7 @@ export function ChatSidebar({
 
             {filteredConversations.length === 0 && (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <MessageSquare className="h-8 w-8 text-muted-foreground mb-3" />
+                <ChatBubbleIcon className="h-8 w-8 text-muted-foreground mb-3" />
                 <p className="text-sm text-muted-foreground">
                   {searchQuery ? "No conversations found" : "No conversations yet"}
                 </p>
@@ -182,7 +182,7 @@ export function ChatSidebar({
         {/* Footer */}
         <div className="p-3 border-t border-border">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <FolderOpen className="h-3.5 w-3.5" />
+            <FileIcon className="h-3.5 w-3.5" />
             <span>{conversations.length} conversation{conversations.length !== 1 ? 's' : ''}</span>
           </div>
         </div>
@@ -208,7 +208,7 @@ function ConversationItem({ conversation, isActive, onClick, onDelete }: Convers
         isActive && "bg-muted"
       )}
     >
-      <MessageSquare className={cn(
+      <ChatBubbleIcon className={cn(
         "h-4 w-4 shrink-0",
         isActive ? "text-primary" : "text-muted-foreground"
       )} />
@@ -231,7 +231,7 @@ function ConversationItem({ conversation, isActive, onClick, onDelete }: Convers
             className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
             onClick={(e) => e.stopPropagation()}
           >
-            <MoreHorizontal className="h-4 w-4" />
+            <DotsHorizontalIcon className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-40">
@@ -243,7 +243,7 @@ function ConversationItem({ conversation, isActive, onClick, onDelete }: Convers
               }}
               className="text-destructive focus:text-destructive"
             >
-              <Trash2 className="h-4 w-4 mr-2" />
+              <TrashIcon className="h-4 w-4 mr-2" />
               Delete
             </DropdownMenuItem>
           )}
