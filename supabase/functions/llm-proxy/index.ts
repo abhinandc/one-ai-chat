@@ -181,8 +181,12 @@ serve(async (req) => {
       if (systemMsg) {
         requestBody.system = systemMsg.content;
       }
-      if (temperature !== undefined) requestBody.temperature = temperature;
-      if (top_p !== undefined) requestBody.top_p = top_p;
+      // Anthropic doesn't allow both temperature and top_p - use only temperature
+      if (temperature !== undefined) {
+        requestBody.temperature = temperature;
+      } else if (top_p !== undefined) {
+        requestBody.top_p = top_p;
+      }
       
     } else if (provider === 'google' || provider === 'gemini') {
       // Gemini format
