@@ -1,4 +1,4 @@
-import { useEffect, useRef, memo, useMemo } from "react";
+import { useEffect, useRef, memo, useMemo, useLayoutEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChatMessage } from "./ChatMessage";
 import { ThinkingLine } from "@/components/ui/shimmer-text";
@@ -15,21 +15,63 @@ export const ChatThread = memo(function ChatThread({
   isStreaming, 
   streamingMessage 
 }: ChatThreadProps) {
-  const endRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const prevMessageCountRef = useRef(messages.length);
+  const isInitialMount = useRef(true);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Smooth scroll to bottom
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior, block: "end" });
+    }
+  };
+
+  // Scroll on new messages (not on initial load to prevent jump)
+  useLayoutEffect(() => {
+    const isNewMessage = messages.length > prevMessageCountRef.current;
+    prevMessageCountRef.current = messages.length;
+    
+    if (isNewMessage) {
+      // Use RAF to ensure DOM is painted before scrolling
+      requestAnimationFrame(() => {
+        scrollToBottom("smooth");
+      });
+    }
+  }, [messages.length]);
+
+  // Scroll when streaming updates
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length, streamingMessage]);
+    if (isStreaming && streamingMessage) {
+      requestAnimationFrame(() => {
+        scrollToBottom("smooth");
+      });
+    }
+  }, [isStreaming, streamingMessage]);
 
-  // Memoize rendered messages to prevent flickering
+  // Initial scroll to bottom (instant, no animation)
+  useEffect(() => {
+    if (messages.length > 0 && isInitialMount.current) {
+      isInitialMount.current = false;
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollIntoView({ behavior: "instant", block: "end" });
+      });
+    }
+  }, [messages.length]);
+
+  // Memoize rendered messages to prevent re-renders
   const renderedMessages = useMemo(() => {
-    return messages.map((message) => (
-      <ChatMessage
-        key={message.id}
-        message={message}
-        isStreaming={false}
-      />
+    return messages.map((message, index) => (
+      <div 
+        key={message.id || `msg-${index}`}
+        className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 fill-mode-both"
+        style={{ animationDelay: `${Math.min(index * 20, 100)}ms` }}
+      >
+        <ChatMessage
+          message={message}
+          isStreaming={false}
+        />
+      </div>
     ));
   }, [messages]);
 
@@ -38,33 +80,35 @@ export const ChatThread = memo(function ChatThread({
   }
 
   return (
-    <ScrollArea className="flex-1">
+    <ScrollArea className="flex-1" ref={containerRef}>
       <div className="pb-32">
         {renderedMessages}
         
         {/* Streaming message */}
         {isStreaming && streamingMessage && (
-          <ChatMessage
-            message={{
-              id: "streaming",
-              role: "assistant",
-              content: streamingMessage,
-              timestamp: new Date(),
-            }}
-            isStreaming
-          />
+          <div className="animate-in fade-in-0 duration-200">
+            <ChatMessage
+              message={{
+                id: "streaming",
+                role: "assistant",
+                content: streamingMessage,
+                timestamp: new Date(),
+              }}
+              isStreaming
+            />
+          </div>
         )}
         
         {/* Loading indicator when waiting for response */}
         {isStreaming && !streamingMessage && (
-          <div className="w-full py-4">
+          <div className="w-full py-4 animate-in fade-in-0 duration-200">
             <div className="mx-auto max-w-3xl px-4">
               <ThinkingLine text="AI is thinking" />
             </div>
           </div>
         )}
         
-        <div ref={endRef} />
+        <div ref={scrollRef} className="h-px" />
       </div>
     </ScrollArea>
   );
@@ -80,24 +124,13 @@ function EmptyState() {
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-y-auto">
-      <div className="max-w-2xl w-full text-center space-y-8 animate-fade-in">
-        {/* Animated gradient orb - CSS only, no motion */}
+      <div className="max-w-2xl w-full text-center space-y-8 animate-in fade-in-0 duration-500">
+        {/* Animated gradient orb */}
         <div className="flex justify-center">
           <div className="relative h-24 w-24">
-            {/* Outer glow */}
-            <div
-              className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 animate-pulse"
-            />
-            
-            {/* Middle layer */}
-            <div
-              className="absolute inset-3 rounded-full bg-gradient-to-br from-primary/40 to-primary/20"
-            />
-            
-            {/* Core */}
-            <div
-              className="absolute inset-6 rounded-full bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/30"
-            />
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 animate-pulse" />
+            <div className="absolute inset-3 rounded-full bg-gradient-to-br from-primary/40 to-primary/20" />
+            <div className="absolute inset-6 rounded-full bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/30" />
           </div>
         </div>
 
