@@ -400,7 +400,7 @@ const Chat = () => {
       </header>
 
       {/* Main Chat Area */}
-      <main className="flex-1 flex flex-col min-h-0">
+      <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Messages */}
         <ChatThread
           messages={threadMessages}
@@ -409,7 +409,7 @@ const Chat = () => {
         />
 
         {/* Input */}
-        <div className="p-4 pb-6 bg-gradient-to-t from-background via-background to-transparent relative z-10">
+        <div className="shrink-0 p-4 pb-6 bg-gradient-to-t from-background via-background to-transparent relative z-50">
           <AIInput
             onSend={handleSendMessage}
             isLoading={isStreaming}
