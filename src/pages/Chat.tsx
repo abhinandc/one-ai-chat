@@ -400,7 +400,7 @@ const Chat = () => {
       </header>
 
       {/* Main Chat Area */}
-      <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
+      <main className="flex-1 flex flex-col min-h-0">
         {/* Messages */}
         <ChatThread
           messages={threadMessages}
@@ -409,12 +409,11 @@ const Chat = () => {
         />
 
         {/* Input */}
-        <div className="shrink-0 p-4 pb-6 bg-gradient-to-t from-background via-background to-transparent relative z-50">
+        <div className="shrink-0 p-4 pb-6 bg-gradient-to-t from-background via-background to-transparent">
           <AIInput
             onSend={handleSendMessage}
             isLoading={isStreaming}
             onStop={stopStreaming}
-            disabled={!selectedModel}
             placeholder={
               isStreaming
                 ? "OneEdge is thinking..."
