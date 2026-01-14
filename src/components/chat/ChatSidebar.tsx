@@ -83,11 +83,11 @@ export function ChatSidebar({
           <Button
             onClick={onNewConversation}
             variant="outline"
-            size="sm"
-            className="flex-1 mr-2 justify-start gap-2"
+            size="icon"
+            className="h-8 w-8"
+            title="New chat"
           >
             <PlusIcon className="h-4 w-4" />
-            New chat
           </Button>
           <Button
             onClick={onClose}
