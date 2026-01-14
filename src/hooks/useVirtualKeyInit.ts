@@ -71,18 +71,23 @@ export function useVirtualKeyInit(userEmail?: string) {
 
         setKeyData(data);
 
-        // Check for credentials array (new response format)
+        // Priority 1: Check for credentials array (new response format with decrypted keys)
         // Response format: { valid: true, credentials: [{ api_key, full_endpoint, model_key, ... }] }
         console.log('Checking credentials:', { 
           hasCredentials: !!data?.credentials, 
-          isArray: Array.isArray(data?.credentials),
-          length: data?.credentials?.length,
-          firstCred: data?.credentials?.[0]
+          hasKeys: !!data?.keys,
+          keysLength: data?.keys?.length,
+          firstKey: data?.keys?.[0] ? { 
+            hasApiKey: !!data.keys[0].api_key,
+            hasMaskedKey: !!data.keys[0].masked_key,
+            label: data.keys[0].label
+          } : null
         });
+        
         if (data?.credentials && Array.isArray(data.credentials) && data.credentials.length > 0) {
           const cred = data.credentials[0];
           
-          if (cred.api_key && cred.api_key.length > 20 && !cred.api_key.includes('***')) {
+          if (cred.api_key && cred.api_key.length > 20 && !cred.api_key.includes('***') && !cred.api_key.includes('...')) {
             // Store full credential info for dynamic endpoint usage
             const storedCred: StoredCredential = {
               api_key: cred.api_key,
@@ -94,10 +99,9 @@ export function useVirtualKeyInit(userEmail?: string) {
             };
             
             localStorage.setItem(CREDENTIALS_STORAGE_KEY, JSON.stringify(storedCred));
-            // Also store just the API key for backward compatibility
             localStorage.setItem(API_KEY_STORAGE_KEY, cred.api_key);
             
-            console.log('Credentials auto-initialized:', { 
+            console.log('Credentials auto-initialized from credentials array:', { 
               endpoint: storedCred.full_endpoint, 
               model: storedCred.model_key,
               provider: storedCred.provider 
@@ -107,9 +111,44 @@ export function useVirtualKeyInit(userEmail?: string) {
           }
         }
 
+        // Priority 2: Check for keys array (current response format)
+        // Response format: { keys: [{ api_key, models: [...], ... }] }
+        if (data?.keys && Array.isArray(data.keys) && data.keys.length > 0) {
+          const key = data.keys.find((k: any) => !k.disabled) || data.keys[0];
+          
+          // Check if the key has an actual api_key (not masked)
+          const apiKey = key.api_key || key.key || key.token;
+          
+          if (apiKey && apiKey.length > 20 && !apiKey.includes('***') && !apiKey.includes('...')) {
+            // Get the first model's endpoint info
+            const firstModel = key.models?.[0];
+            const endpoint = firstModel 
+              ? `https://api.openai.com${firstModel.api_path || '/v1/chat/completions'}`
+              : 'https://api.openai.com/v1/chat/completions';
+            
+            const storedCred: StoredCredential = {
+              api_key: apiKey,
+              full_endpoint: endpoint,
+              model_key: firstModel?.name || 'gpt-4',
+              provider: firstModel?.provider || 'openai',
+              auth_type: 'bearer',
+              auth_header: 'Authorization',
+            };
+            
+            localStorage.setItem(CREDENTIALS_STORAGE_KEY, JSON.stringify(storedCred));
+            localStorage.setItem(API_KEY_STORAGE_KEY, apiKey);
+            
+            console.log('Credentials auto-initialized from keys array:', storedCred);
+            setInitialized(true);
+            return;
+          } else {
+            console.warn('Key found but no decrypted api_key. Your edge function needs to return the decrypted key, not masked_key.');
+          }
+        }
+
         // No valid credentials found
-        console.warn('No valid credentials in employee_keys response:', data);
-        setError('No valid API credentials found. Please configure in ModelsHub.');
+        console.warn('No valid credentials in employee_keys response. The edge function must return decrypted api_key, not masked_key.');
+        setError('Edge function returns masked key only. Update employee_keys to return decrypted api_key.');
       } catch (err) {
         console.error('Failed to auto-initialize credentials:', err);
         setError(err instanceof Error ? err.message : 'Failed to initialize credentials');
