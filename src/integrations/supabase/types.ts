@@ -747,6 +747,7 @@ export type Database = {
       llm_credentials: {
         Row: {
           api_key_encrypted: string | null
+          base_url: string | null
           created_at: string | null
           created_by: string | null
           endpoint_url: string | null
@@ -762,6 +763,7 @@ export type Database = {
         }
         Insert: {
           api_key_encrypted?: string | null
+          base_url?: string | null
           created_at?: string | null
           created_by?: string | null
           endpoint_url?: string | null
@@ -777,6 +779,7 @@ export type Database = {
         }
         Update: {
           api_key_encrypted?: string | null
+          base_url?: string | null
           created_at?: string | null
           created_by?: string | null
           endpoint_url?: string | null
@@ -1607,6 +1610,45 @@ export type Database = {
           metadata?: Json | null
           payment_method?: string | null
           previous_month_spend?: number | null
+          provider?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      provider_config: {
+        Row: {
+          api_version: string | null
+          auth_header: string
+          auth_prefix: string
+          base_url: string
+          created_at: string | null
+          default_api_path: string
+          extra_headers: Json | null
+          id: string
+          provider: string
+          updated_at: string | null
+        }
+        Insert: {
+          api_version?: string | null
+          auth_header?: string
+          auth_prefix?: string
+          base_url: string
+          created_at?: string | null
+          default_api_path?: string
+          extra_headers?: Json | null
+          id?: string
+          provider: string
+          updated_at?: string | null
+        }
+        Update: {
+          api_version?: string | null
+          auth_header?: string
+          auth_prefix?: string
+          base_url?: string
+          created_at?: string | null
+          default_api_path?: string
+          extra_headers?: Json | null
+          id?: string
           provider?: string
           updated_at?: string | null
         }
