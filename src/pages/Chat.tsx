@@ -254,8 +254,16 @@ const Chat = () => {
 
     setCurrentConversation(conversation);
 
+    // Load saved settings from conversation
     if (conversation.settings) {
       setSelectedModel(conversation.settings.model || selectedModel);
+      setChatSettings({
+        systemPrompt: conversation.settings.systemPrompt || "You are a helpful AI assistant.",
+        temperature: conversation.settings.temperature ?? 0.7,
+        maxTokens: conversation.settings.maxTokens ?? 4000,
+        topP: conversation.settings.topP ?? 0.9,
+        streamResponse: true,
+      });
     }
 
     if (user?.email) {
@@ -445,7 +453,7 @@ const Chat = () => {
       />
 
       {/* Header */}
-      <header className="flex items-center justify-between px-4 h-14 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="flex items-center justify-between px-4 h-14 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
@@ -523,7 +531,38 @@ const Chat = () => {
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         settings={chatSettings}
-        onSettingsChange={setChatSettings}
+        onSettingsChange={(newSettings) => {
+          setChatSettings(newSettings);
+          // Auto-save settings to current conversation
+          if (currentConversation && user?.email) {
+            saveConversation({
+              id: currentConversation.id,
+              user_email: user.email,
+              title: currentConversation.title,
+              messages: messages.map((msg, index) => ({
+                id: `msg_${index}`,
+                role: msg.role,
+                content: msg.content,
+                timestamp: new Date().toISOString(),
+                metadata: {},
+              })),
+              folder_id: currentConversation.folderId,
+              pinned: currentConversation.pinned,
+              shared: currentConversation.shared,
+              unread: currentConversation.unread,
+              tags: currentConversation.tags,
+              settings: {
+                model: selectedModel,
+                provider: "litellm" as const,
+                temperature: newSettings.temperature,
+                topP: newSettings.topP,
+                maxTokens: newSettings.maxTokens,
+                stopSequences: [],
+                systemPrompt: newSettings.systemPrompt,
+              },
+            });
+          }
+        }}
       />
     </div>
   );
