@@ -29,6 +29,26 @@ export interface N8NWorkflowsResponse {
   nextCursor?: string;
 }
 
+export interface N8NExecution {
+  id: string;
+  workflowId: string;
+  finished: boolean;
+  mode: string;
+  startedAt: string;
+  stoppedAt?: string;
+  status: 'success' | 'error' | 'waiting' | 'running' | 'canceled';
+  data?: {
+    resultData?: {
+      error?: { message: string };
+    };
+  };
+}
+
+export interface N8NExecutionsResponse {
+  data: N8NExecution[];
+  nextCursor?: string;
+}
+
 class N8NService {
   getCredentials(): N8NCredentials | null {
     try {
@@ -188,6 +208,21 @@ class N8NService {
     }
 
     return response.json();
+  }
+
+  async getExecutions(workflowId?: string, limit: number = 20): Promise<N8NExecution[]> {
+    const path = workflowId 
+      ? `/executions?workflowId=${workflowId}&limit=${limit}`
+      : `/executions?limit=${limit}`;
+    
+    const response = await this.proxyRequest(path);
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch executions: ${response.statusText}`);
+    }
+
+    const data: N8NExecutionsResponse = await response.json();
+    return data.data || [];
   }
 
   getN8NEditorUrl(workflowId: string): string | null {
