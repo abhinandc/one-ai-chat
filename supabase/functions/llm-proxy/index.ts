@@ -125,26 +125,32 @@ serve(async (req) => {
 
     const apiKey = modelData.api_key_encrypted || credential.api_key_encrypted;
     
-    // Determine endpoint URL
+    // Determine endpoint URL and API path based on provider
     let endpointUrl = modelData.endpoint_url || credential.endpoint_url;
-    if (!endpointUrl) {
+    let apiPath = modelData.api_path;
+    
+    // Set defaults based on provider
+    if (!endpointUrl || !apiPath) {
       switch (provider) {
         case 'openai':
-          endpointUrl = 'https://api.openai.com';
+          endpointUrl = endpointUrl || 'https://api.openai.com';
+          apiPath = apiPath || '/v1/chat/completions';
           break;
         case 'anthropic':
-          endpointUrl = 'https://api.anthropic.com';
+          endpointUrl = endpointUrl || 'https://api.anthropic.com';
+          apiPath = apiPath || '/v1/messages'; // Anthropic uses /v1/messages, NOT /v1/chat/completions
           break;
         case 'google':
         case 'gemini':
-          endpointUrl = 'https://generativelanguage.googleapis.com';
+          endpointUrl = endpointUrl || 'https://generativelanguage.googleapis.com';
+          apiPath = apiPath || '/v1beta/models/' + actualModelId + ':generateContent';
           break;
         default:
-          endpointUrl = 'https://api.openai.com';
+          endpointUrl = endpointUrl || 'https://api.openai.com';
+          apiPath = apiPath || '/v1/chat/completions';
       }
     }
 
-    const apiPath = modelData.api_path || '/v1/chat/completions';
     const fullEndpoint = `${endpointUrl}${apiPath}`;
     console.log(`[llm-proxy] Endpoint: ${fullEndpoint}`);
 
