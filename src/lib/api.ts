@@ -409,41 +409,83 @@ export class OneEdgeClient {
 
   async createChatCompletion(request: ChatCompletionRequest): Promise<ChatCompletionResponse> {
     // Get credential for the specific model being requested
-    const creds = this.getCredentialForModel(request.model);
-    const endpoint = creds?.full_endpoint || this.getChatEndpoint();
-    const modelKey = request.model; // Always use the requested model name
+    const allCreds = this.getAllStoredCredentials();
     
-    const payload = { ...request, model: modelKey, stream: false };
+    // Find credential that matches the requested model
+    type CredType = { api_key: string; full_endpoint: string; api_path?: string; model_key: string; auth_header: string; provider?: string };
+    let creds: CredType | null = allCreds.find(c => c.model_key === request.model) || null;
+    
+    // If no exact match, try to find by checking if model name is contained
+    if (!creds && allCreds.length > 0) {
+      creds = allCreds.find(c => 
+        request.model.includes(c.model_key) || c.model_key.includes(request.model)
+      ) || null;
+    }
+    
+    // Fallback to default credentials
+    if (!creds) {
+      creds = this.getStoredCredentials();
+    }
+    
+    console.log('[API] createChatCompletion:', {
+      requestedModel: request.model,
+      credentialFound: !!creds,
+      credentialModel: creds?.model_key,
+      endpoint: creds?.full_endpoint,
+      apiKeyLength: creds?.api_key?.length || 0,
+    });
     
     // If we have credentials with an endpoint, call it directly
-    if (creds?.full_endpoint && creds?.api_key) {
+    if (creds?.full_endpoint && creds?.api_key && creds.api_key.length > 20) {
       const headers = new Headers();
       headers.set(creds.auth_header || 'Authorization', `Bearer ${creds.api_key}`);
       headers.set('Content-Type', 'application/json');
       
-      const response = await fetch(endpoint, {
+      // Use the model_key from credentials
+      const modelToUse = creds.model_key || request.model;
+      const payload = { ...request, model: modelToUse, stream: false };
+      
+      const response = await fetch(creds.full_endpoint, {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),
       });
       
       if (!response.ok) {
-        await this.raiseDetailedError(response);
+        const errorText = await response.text().catch(() => 'Unknown error');
+        console.error('[API] Response not ok:', response.status, errorText);
+        throw new Error(`API error ${response.status}: ${errorText}`);
       }
       
       return (await response.json()) as ChatCompletionResponse;
     }
     
+    console.log('[API] No valid credentials, falling back to admin endpoint');
     return this.requestAdmin<ChatCompletionResponse>('/v1/chat/completions', {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...request, stream: false }),
     });
   }
 
   async createChatCompletionStream(request: ChatCompletionRequest, signal?: AbortSignal): Promise<ReadableStream<Uint8Array>> {
     // Get credential for the specific model being requested
-    const creds = this.getCredentialForModel(request.model);
     const allCreds = this.getAllStoredCredentials();
+    
+    // Find credential that matches the requested model
+    type CredType = { api_key: string; full_endpoint: string; api_path?: string; model_key: string; auth_header: string; provider?: string };
+    let creds: CredType | null = allCreds.find(c => c.model_key === request.model) || null;
+    
+    // If no exact match, try to find by checking if model name is contained
+    if (!creds && allCreds.length > 0) {
+      creds = allCreds.find(c => 
+        request.model.includes(c.model_key) || c.model_key.includes(request.model)
+      ) || null;
+    }
+    
+    // Fallback to default credentials
+    if (!creds) {
+      creds = this.getStoredCredentials();
+    }
     
     console.log('[API] createChatCompletionStream:', {
       requestedModel: request.model,
@@ -451,23 +493,23 @@ export class OneEdgeClient {
       credentialModel: creds?.model_key,
       allCredModels: allCreds.map(c => c.model_key),
       endpoint: creds?.full_endpoint,
+      apiKeyLength: creds?.api_key?.length || 0,
     });
     
-    const endpoint = creds?.full_endpoint || this.getChatEndpoint();
-    const modelKey = request.model; // Always use the requested model name
-    
-    const payload = { ...request, model: modelKey, stream: true };
-    
     // If we have credentials with an endpoint, call it directly
-    if (creds?.full_endpoint && creds?.api_key) {
+    if (creds?.full_endpoint && creds?.api_key && creds.api_key.length > 20) {
       const headers = new Headers();
       headers.set(creds.auth_header || 'Authorization', `Bearer ${creds.api_key}`);
       headers.set('Content-Type', 'application/json');
       headers.set('Accept', 'text/event-stream');
       
-      console.log('[API] Calling endpoint:', endpoint, 'with model:', modelKey);
+      // Use the model_key from credentials if different from request model
+      const modelToUse = creds.model_key || request.model;
+      const payload = { ...request, model: modelToUse, stream: true };
       
-      const response = await fetch(endpoint, {
+      console.log('[API] Calling endpoint:', creds.full_endpoint, 'with model:', modelToUse);
+      
+      const response = await fetch(creds.full_endpoint, {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),
@@ -475,8 +517,9 @@ export class OneEdgeClient {
       });
       
       if (!response.ok) {
-        console.error('[API] Response not ok:', response.status, response.statusText);
-        await this.raiseDetailedError(response);
+        const errorText = await response.text().catch(() => 'Unknown error');
+        console.error('[API] Response not ok:', response.status, response.statusText, errorText);
+        throw new Error(`API error ${response.status}: ${errorText}`);
       }
       
       if (!response.body) {
@@ -486,7 +529,8 @@ export class OneEdgeClient {
       return response.body;
     }
     
-    console.log('[API] Falling back to admin endpoint');
+    console.log('[API] No valid credentials found, falling back to admin endpoint');
+    const payload = { ...request, stream: true };
     return this.streamAdmin('/v1/chat/completions', {
       method: 'POST',
       body: JSON.stringify(payload),
