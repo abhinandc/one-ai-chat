@@ -301,7 +301,7 @@ const Chat = () => {
     }
   };
 
-  const handleSendMessage = async (content: string) => {
+  const handleSendMessage = async (content: string, attachments?: { name: string; type: string; size: number; data?: string }[]) => {
     if (!selectedModel) {
       toast({
         title: "No model selected",
@@ -329,6 +329,14 @@ const Chat = () => {
     }
 
     try {
+      // TODO: Process attachments - for now just send the message
+      // In a full implementation, attachments would be sent to the API
+      // For images, they could be sent as base64 in a vision model request
+      if (attachments && attachments.length > 0) {
+        console.log("Attachments received:", attachments.map(a => ({ name: a.name, type: a.type, hasData: !!a.data })));
+        // Future: integrate with vision models
+      }
+      
       await sendMessage(content);
 
       // Update conversation title if it's the first message

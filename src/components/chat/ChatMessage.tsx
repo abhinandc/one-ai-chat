@@ -1,26 +1,33 @@
 import { useState, memo, useCallback, useMemo } from "react";
 import { CopyIcon, CheckIcon, ReloadIcon } from "@radix-ui/react-icons";
+import { Paperclip, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { StreamingText } from "@/components/ui/typing-animation";
 import { ThinkingLine } from "@/components/ui/shimmer-text";
+import { AIThinkingDisplay, type ToolStep } from "./AIThinkingDisplay";
 import type { Message } from "@/types";
 
 interface ChatMessageProps {
   message: Message;
   isStreaming?: boolean;
+  thinkingSteps?: ToolStep[];
+  isDeepThinking?: boolean;
 }
 
 // Memoize to prevent unnecessary re-renders that cause flickering
 export const ChatMessage = memo(function ChatMessage({ 
   message, 
   isStreaming,
+  thinkingSteps = [],
+  isDeepThinking = false,
 }: ChatMessageProps) {
   const [copied, setCopied] = useState(false);
   
   const isUser = message.role === "user";
   const isAssistant = message.role === "assistant";
   const isEmpty = !message.content || message.content.trim() === "";
+  const hasAttachments = message.metadata?.attachments && message.metadata.attachments.length > 0;
 
   const copyToClipboard = useCallback(async () => {
     await navigator.clipboard.writeText(message.content);
@@ -142,8 +149,18 @@ export const ChatMessage = memo(function ChatMessage({
   if (isAssistant && isEmpty && isStreaming) {
     return (
       <div className="w-full py-4">
-        <div className="mx-auto max-w-3xl px-4">
-          <ThinkingLine text="AI is thinking" />
+        <div className="mx-auto max-w-3xl px-4 space-y-3">
+          {/* Deep thinking display */}
+          {(isDeepThinking || thinkingSteps.length > 0) && (
+            <AIThinkingDisplay
+              steps={thinkingSteps}
+              isThinking={isDeepThinking}
+              thinkingText="Deep thinking"
+            />
+          )}
+          {!isDeepThinking && thinkingSteps.length === 0 && (
+            <ThinkingLine text="AI is thinking" />
+          )}
         </div>
       </div>
     );
@@ -157,7 +174,35 @@ export const ChatMessage = memo(function ChatMessage({
       )}
     >
       <div className="mx-auto max-w-3xl px-4 flex justify-start">
-        <div className="flex flex-col gap-2 max-w-[85%]">
+        <div className="flex flex-col gap-2 max-w-[85%] w-full">
+          {/* User attachments preview */}
+          {isUser && hasAttachments && (
+            <div className="flex flex-wrap gap-2 mb-2">
+              {message.metadata?.attachments?.map((attachment, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-lg text-xs border border-border/50"
+                >
+                  {attachment.type?.startsWith("image/") ? (
+                    <ImageIcon className="h-3 w-3 text-muted-foreground" />
+                  ) : (
+                    <Paperclip className="h-3 w-3 text-muted-foreground" />
+                  )}
+                  <span className="truncate max-w-[120px]">{attachment.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Deep thinking display for assistant */}
+          {isAssistant && (isDeepThinking || thinkingSteps.length > 0) && (
+            <AIThinkingDisplay
+              steps={thinkingSteps}
+              isThinking={isDeepThinking && isStreaming}
+              thinkingText="Processing your request"
+              className="mb-2"
+            />
+          )}
           {/* Message content */}
           <div 
             className={cn(

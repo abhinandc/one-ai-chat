@@ -31,8 +31,15 @@ import { cn } from "@/lib/utils";
 import { AnimatedBadge } from "@/components/ui/animated-badge";
 import { SiaConversation } from "./SiaConversation";
 
+export interface AttachmentData {
+  name: string;
+  type: string;
+  size: number;
+  data?: string; // base64 for images
+}
+
 interface AdvancedAIInputProps {
-  onSend: (message: string) => void;
+  onSend: (message: string, attachments?: AttachmentData[]) => void;
   isLoading?: boolean;
   onStop?: () => void;
   placeholder?: string;
@@ -124,9 +131,33 @@ export function AdvancedAIInput({
     onModeChange?.(modeId);
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!message.trim() || disabled || isLoading) return;
-    onSend(message.trim());
+    
+    // Process attachments to get base64 data for images
+    const processedAttachments: AttachmentData[] = await Promise.all(
+      attachments.map(async (file) => {
+        const attachmentData: AttachmentData = {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+        };
+        
+        // Convert images to base64
+        if (file.type.startsWith("image/")) {
+          try {
+            const base64 = await fileToBase64(file);
+            attachmentData.data = base64;
+          } catch (err) {
+            console.error("Failed to convert image to base64:", err);
+          }
+        }
+        
+        return attachmentData;
+      })
+    );
+    
+    onSend(message.trim(), processedAttachments.length > 0 ? processedAttachments : undefined);
     setMessage("");
     setAttachments([]);
     setSelectedTool(null);
@@ -134,6 +165,15 @@ export function AdvancedAIInput({
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (error) => reject(error);
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
