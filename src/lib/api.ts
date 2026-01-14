@@ -193,7 +193,28 @@ export class OneEdgeClient {
     return `${base}${normalizedPath}`;
   }
 
+  private getStoredCredentials(): { api_key: string; full_endpoint: string; model_key: string; auth_header: string } | null {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const stored = window.localStorage.getItem('oneai_credentials');
+        if (stored) {
+          return JSON.parse(stored);
+        }
+      } catch (error) {
+        console.warn('Unable to read credentials from localStorage:', error);
+      }
+    }
+    return null;
+  }
+
   private getVirtualKey(): string {
+    // First try to get from full credentials
+    const creds = this.getStoredCredentials();
+    if (creds?.api_key) {
+      return creds.api_key;
+    }
+
+    // Fall back to legacy storage
     if (typeof window !== 'undefined' && window.localStorage) {
       try {
         const stored = window.localStorage.getItem('oneai_api_key');
@@ -208,16 +229,39 @@ export class OneEdgeClient {
     return FALLBACK_VIRTUAL_KEY;
   }
 
+  /**
+   * Get the chat completion endpoint from stored credentials
+   */
+  getChatEndpoint(): string {
+    const creds = this.getStoredCredentials();
+    if (creds?.full_endpoint) {
+      return creds.full_endpoint;
+    }
+    // Fall back to default endpoint
+    return `${this.baseURL}/v1/chat/completions`;
+  }
+
+  /**
+   * Get the model key from stored credentials
+   */
+  getModelKey(): string | null {
+    const creds = this.getStoredCredentials();
+    return creds?.model_key || null;
+  }
+
   private buildHeaders(init?: HeadersInit, accept?: string): Headers {
     const headers = new Headers(init);
     const key = this.getVirtualKey();
+    const creds = this.getStoredCredentials();
 
     if (!key) {
       throw new Error('No virtual key configured. Open the API Keys modal and paste a Virtual Key from OneEdge Admin.');
     }
 
-    if (!headers.has('Authorization')) {
-      headers.set('Authorization', `Bearer ${key}`);
+    // Use the auth header from credentials (default to Authorization)
+    const authHeader = creds?.auth_header || 'Authorization';
+    if (!headers.has(authHeader)) {
+      headers.set(authHeader, `Bearer ${key}`);
     }
 
     if (!headers.has('Content-Type')) {
@@ -340,7 +384,28 @@ export class OneEdgeClient {
   }
 
   async createChatCompletion(request: ChatCompletionRequest): Promise<ChatCompletionResponse> {
-    const payload = { ...request, stream: false };
+    const creds = this.getStoredCredentials();
+    const endpoint = creds?.full_endpoint || this.getChatEndpoint();
+    const modelKey = creds?.model_key || request.model;
+    
+    const payload = { ...request, model: modelKey, stream: false };
+    
+    // If we have dynamic credentials, call the endpoint directly
+    if (creds?.full_endpoint) {
+      const headers = this.buildHeaders();
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      });
+      
+      if (!response.ok) {
+        await this.raiseDetailedError(response);
+      }
+      
+      return (await response.json()) as ChatCompletionResponse;
+    }
+    
     return this.requestAdmin<ChatCompletionResponse>('/v1/chat/completions', {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -348,7 +413,33 @@ export class OneEdgeClient {
   }
 
   async createChatCompletionStream(request: ChatCompletionRequest, signal?: AbortSignal): Promise<ReadableStream<Uint8Array>> {
-    const payload = { ...request, stream: true };
+    const creds = this.getStoredCredentials();
+    const endpoint = creds?.full_endpoint || this.getChatEndpoint();
+    const modelKey = creds?.model_key || request.model;
+    
+    const payload = { ...request, model: modelKey, stream: true };
+    
+    // If we have dynamic credentials, call the endpoint directly
+    if (creds?.full_endpoint) {
+      const headers = this.buildHeaders(undefined, 'text/event-stream');
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+        signal,
+      });
+      
+      if (!response.ok) {
+        await this.raiseDetailedError(response);
+      }
+      
+      if (!response.body) {
+        throw new Error('No response body for streaming request');
+      }
+      
+      return response.body;
+    }
+    
     return this.streamAdmin('/v1/chat/completions', {
       method: 'POST',
       body: JSON.stringify(payload),
