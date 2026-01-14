@@ -129,27 +129,27 @@ const ModelsHub = () => {
     }
   }, [user?.email]);
 
-  // Get all unique model IDs assigned to the user via virtual keys
-  const assignedModelIds = useMemo(() => {
-    const ids = new Set<string>();
+  // Get all unique models assigned to the user via virtual keys (preserving full model data)
+  const assignedModels = useMemo(() => {
+    const modelsMap = new Map<string, ModelData>();
     virtualKeys.forEach(key => {
-      // Handle different field names for models
-      const modelsList = key.models || key.models_json || [];
+      const modelsList = key.models || [];
       if (Array.isArray(modelsList)) {
         modelsList.forEach((modelItem) => {
-          // Handle both string IDs and model objects
-          if (typeof modelItem === 'string' && modelItem.trim()) {
-            ids.add(modelItem);
-          } else if (typeof modelItem === 'object' && modelItem !== null && 'name' in modelItem) {
-            const modelName = (modelItem as ModelData).name;
-            if (modelName && modelName.trim()) {
-              ids.add(modelName);
+          if (typeof modelItem === 'object' && modelItem !== null && 'name' in modelItem) {
+            const model = modelItem as ModelData;
+            if (model.name && !modelsMap.has(model.name)) {
+              modelsMap.set(model.name, model);
+            }
+          } else if (typeof modelItem === 'string' && modelItem.trim()) {
+            if (!modelsMap.has(modelItem)) {
+              modelsMap.set(modelItem, { id: modelItem, name: modelItem, provider: 'other' });
             }
           }
         });
       }
     });
-    return ids;
+    return Array.from(modelsMap.values());
   }, [virtualKeys]);
 
   // Helper to get key display value
@@ -180,20 +180,18 @@ const ModelsHub = () => {
     return key.budget_usd ?? key.budget ?? key.max_budget ?? 0;
   };
 
-  // Group assigned models by provider (extracted from model ID)
+  // Group assigned models by provider (using actual provider field from model data)
   const groupedByProvider = useMemo(() => {
-    const groups = new Map<string, string[]>();
-    assignedModelIds.forEach((modelId) => {
-      if (typeof modelId !== 'string') return;
-      // Extract provider from model ID (e.g., "openai/gpt-4" -> "openai")
-      const provider = modelId.includes('/') ? modelId.split('/')[0] : 'other';
+    const groups = new Map<string, ModelData[]>();
+    assignedModels.forEach((model) => {
+      const provider = model.provider || 'other';
       if (!groups.has(provider)) {
         groups.set(provider, []);
       }
-      groups.get(provider)?.push(modelId);
+      groups.get(provider)?.push(model);
     });
     return Array.from(groups.entries());
-  }, [assignedModelIds]);
+  }, [assignedModels]);
 
   const copyToClipboard = async (text: string, keyId: string) => {
     try {
@@ -393,7 +391,7 @@ const ModelsHub = () => {
               <h2 className="text-xl font-semibold text-text-primary">Your Assigned Models</h2>
             </div>
             <span className="text-xs text-text-tertiary">
-              {assignedModelIds.size} model(s) available
+              {assignedModels.length} model(s) available
             </span>
           </div>
 
@@ -404,7 +402,7 @@ const ModelsHub = () => {
                 <span className="text-sm text-text-secondary">Loading models...</span>
               </div>
             </GlassCard>
-          ) : assignedModelIds.size === 0 ? (
+          ) : assignedModels.length === 0 ? (
             <GlassCard className="p-lg">
               <div className="text-center py-4">
                 <Zap className="h-10 w-10 text-text-tertiary mx-auto mb-3" />
@@ -423,14 +421,14 @@ const ModelsHub = () => {
                     <span className="text-xs text-text-tertiary">{providerModels.length} model(s)</span>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-md">
-                    {providerModels.map((modelId) => (
-                      <GlassCard key={modelId} className="p-md hover:border-accent-blue/30 transition-colors">
+                    {providerModels.map((model) => (
+                      <GlassCard key={model.id || model.name} className="p-md hover:border-accent-blue/30 transition-colors">
                         <div className="flex items-center justify-between gap-md">
                           <div>
                             <h4 className="font-medium text-text-primary text-sm">
-                              {modelId.includes('/') ? modelId.split('/').slice(1).join('/') : modelId}
+                              {model.display_name || model.name}
                             </h4>
-                            <p className="text-xs text-text-tertiary capitalize">{provider}</p>
+                            <p className="text-xs text-text-tertiary capitalize">{model.provider || provider}</p>
                           </div>
                           <Badge variant="secondary" className="text-xs">
                             Available
