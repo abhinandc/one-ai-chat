@@ -161,12 +161,12 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
       </Button>
 
-      <div className="w-full max-w-md space-y-xl flex flex-col items-center">
-        <div className="flex flex-col items-center space-y-md w-full">
+      <div className="w-full max-w-md space-y-xl">
+        <div className="flex flex-col items-center justify-center space-y-md mx-auto">
           <img
             src={darkMode ? "/logo-dark.svg" : "/logo-light.svg"}
             alt="OneEdge"
-            className="h-32 w-auto"
+            className="h-32 w-auto mx-auto"
           />
           <p className="text-lg text-text-secondary text-center">OneOrigin's Unified AI Platform</p>
         </div>
