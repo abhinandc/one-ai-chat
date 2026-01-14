@@ -140,10 +140,12 @@ const Agents = () => {
       await agentWorkflowService.saveWorkflow({
         user_email: user.email,
         name: agentName,
-        nodes: nodes as any,
-        edges: edges as any,
-        model_id: selectedModel,
-        is_active: false,
+        agent_id: '',
+        description: '',
+        workflow_data: {
+          nodes: nodes as any,
+          edges: edges as any,
+        },
       });
 
       toast({

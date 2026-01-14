@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConversationList } from "@/components/chat/ConversationList";
@@ -6,15 +6,14 @@ import { Thread } from "@/components/chat/Thread";
 import { Composer } from "@/components/chat/Composer";
 import { InspectorPanel, type ContextFile, type ContextLink } from "@/components/chat/InspectorPanel";
 import { useChat } from "@/hooks/useChat";
-import { useModels } from "@/services/api";
+import { useModels } from "@/hooks/useModels";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useConversations } from "@/hooks/useConversations";
-import { conversationService } from "@/services/conversationService";
 import { analyticsService } from "@/services/analyticsService";
 import { useToast } from "@/hooks/use-toast";
 import { PanelLeftClose, PanelLeft, Paperclip } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Conversation, ConversationFolder, Message, Citation } from "@/types";
+import type { Conversation, Message } from "@/types";
 
 const Chat = () => {
   const user = useCurrentUser();
@@ -67,33 +66,14 @@ const Chat = () => {
     isLoading,
     sendMessage,
     clearMessages,
-    regenerateLastMessage,
-    stopGeneration,
-    isStreaming
+    stopStreaming,
+    isStreaming,
+    streamingMessage
   } = useChat({
     model: selectedModel,
     systemPrompt: buildContextPrompt,
     temperature,
     maxTokens,
-    onMessage: (message) => {
-      // Track API usage
-      if (user?.email && message.role === 'assistant') {
-        analyticsService.recordAPICall(
-          user.email,
-          selectedModel,
-          message.metadata?.tokens || 0,
-          message.metadata?.cost || 0
-        );
-        
-        analyticsService.trackEvent(
-          user.email,
-          'message_sent',
-          'chat',
-          currentConversation?.id || 'new',
-          { model: selectedModel, tokens: message.metadata?.tokens }
-        );
-      }
-    }
   });
 
   // Initialize with first available model
@@ -118,12 +98,12 @@ const Chat = () => {
         id: currentConversation.id,
         user_email: user.email,
         title: currentConversation.title,
-        messages: messages.map(msg => ({
-          id: msg.id,
+        messages: messages.map((msg, index) => ({
+          id: `msg_${index}`,
           role: msg.role,
           content: msg.content,
-          timestamp: msg.timestamp.toISOString(),
-          metadata: msg.metadata
+          timestamp: new Date().toISOString(),
+          metadata: {}
         })),
         folder_id: currentConversation.folderId,
         pinned: currentConversation.pinned,
@@ -132,9 +112,12 @@ const Chat = () => {
         tags: currentConversation.tags,
         settings: {
           model: selectedModel,
-          systemPrompt,
+          provider: 'litellm' as const,
           temperature,
-          maxTokens
+          topP: 0.9,
+          maxTokens,
+          stopSequences: [],
+          systemPrompt
         }
       });
     } catch (error) {
@@ -143,6 +126,7 @@ const Chat = () => {
   };
 
   const createNewConversation = () => {
+    const now = new Date();
     const newConversation: Conversation = {
       id: `conv_${Date.now()}`,
       title: "New Conversation",
@@ -151,12 +135,16 @@ const Chat = () => {
       shared: false,
       unread: false,
       tags: [],
-      lastActivity: new Date(),
+      createdAt: now,
+      updatedAt: now,
       settings: {
         model: selectedModel,
-        systemPrompt,
+        provider: 'litellm',
         temperature,
-        maxTokens
+        topP: 0.9,
+        maxTokens,
+        stopSequences: [],
+        systemPrompt
       }
     };
     
@@ -164,12 +152,13 @@ const Chat = () => {
     clearMessages();
     
     if (user?.email) {
-      analyticsService.trackEvent(
-        user.email,
-        'conversation_created',
-        'chat',
-        newConversation.id
-      );
+      analyticsService.trackEvent({
+        user_email: user.email,
+        action: 'conversation_created',
+        resource_type: 'chat',
+        resource_id: newConversation.id,
+        metadata: {}
+      });
     }
   };
 
@@ -180,11 +169,11 @@ const Chat = () => {
     const conversation: Conversation = {
       id: supabaseConv.id,
       title: supabaseConv.title,
-      messages: supabaseConv.messages.map(msg => ({
-        id: msg.id,
+      messages: supabaseConv.messages.map((msg: any, index: number) => ({
+        id: msg.id || `msg_${index}`,
         role: msg.role as Message['role'],
         content: msg.content,
-        timestamp: new Date(msg.timestamp),
+        timestamp: new Date(msg.timestamp || Date.now()),
         metadata: msg.metadata
       })),
       folderId: supabaseConv.folder_id,
@@ -192,8 +181,16 @@ const Chat = () => {
       shared: supabaseConv.shared,
       unread: supabaseConv.unread,
       tags: supabaseConv.tags,
-      lastActivity: new Date(supabaseConv.updated_at),
-      settings: supabaseConv.settings
+      createdAt: new Date(supabaseConv.created_at || Date.now()),
+      updatedAt: new Date(supabaseConv.updated_at),
+      settings: supabaseConv.settings || {
+        model: selectedModel,
+        provider: 'litellm' as const,
+        temperature: 0.7,
+        topP: 0.9,
+        maxTokens: 4000,
+        stopSequences: []
+      }
     };
 
     setCurrentConversation(conversation);
@@ -207,12 +204,13 @@ const Chat = () => {
     }
 
     if (user?.email) {
-      analyticsService.trackEvent(
-        user.email,
-        'conversation_loaded',
-        'chat',
-        conversationId
-      );
+      analyticsService.trackEvent({
+        user_email: user.email,
+        action: 'conversation_loaded',
+        resource_type: 'chat',
+        resource_id: conversationId,
+        metadata: {}
+      });
     }
   };
 
@@ -230,12 +228,13 @@ const Chat = () => {
       });
 
       if (user?.email) {
-        analyticsService.trackEvent(
-          user.email,
-          'conversation_deleted',
-          'chat',
-          conversationId
-        );
+        analyticsService.trackEvent({
+          user_email: user.email,
+          action: 'conversation_deleted',
+          resource_type: 'chat',
+          resource_id: conversationId,
+          metadata: {}
+        });
       }
     } catch (error) {
       console.error('Failed to delete conversation:', error);
@@ -247,7 +246,7 @@ const Chat = () => {
     }
   };
 
-  const handleSendMessage = async (content: string, attachments?: File[]) => {
+  const handleSendMessage = async (content: string) => {
     if (!selectedModel) {
       toast({
         title: "No model selected",
@@ -262,7 +261,7 @@ const Chat = () => {
     }
 
     try {
-      await sendMessage(content, attachments);
+      await sendMessage(content);
       
       // Update conversation title if it's the first message
       if (currentConversation && currentConversation.title === "New Conversation" && content.length > 0) {
@@ -281,14 +280,14 @@ const Chat = () => {
 
   // Convert Supabase conversations to UI format
   const uiConversations: Conversation[] = useMemo(() => {
-    return supabaseConversations.map(conv => ({
+    return supabaseConversations.map((conv: any) => ({
       id: conv.id,
       title: conv.title,
-      messages: conv.messages.map(msg => ({
-        id: msg.id,
+      messages: (conv.messages || []).map((msg: any, index: number) => ({
+        id: msg.id || `msg_${index}`,
         role: msg.role as Message['role'],
         content: msg.content,
-        timestamp: new Date(msg.timestamp),
+        timestamp: new Date(msg.timestamp || Date.now()),
         metadata: msg.metadata
       })),
       folderId: conv.folder_id,
@@ -296,10 +295,29 @@ const Chat = () => {
       shared: conv.shared,
       unread: conv.unread,
       tags: conv.tags,
-      lastActivity: new Date(conv.updated_at),
-      settings: conv.settings
+      createdAt: new Date(conv.created_at || Date.now()),
+      updatedAt: new Date(conv.updated_at),
+      settings: conv.settings || {
+        model: '',
+        provider: 'litellm' as const,
+        temperature: 0.7,
+        topP: 0.9,
+        maxTokens: 4000,
+        stopSequences: []
+      }
     }));
   }, [supabaseConversations]);
+
+  // Convert ChatMessage[] to Message[] for Thread component
+  const threadMessages: Message[] = useMemo(() => {
+    return messages.map((msg, index) => ({
+      id: `msg_${index}`,
+      role: msg.role as Message['role'],
+      content: msg.content,
+      timestamp: new Date(),
+      metadata: {}
+    }));
+  }, [messages]);
 
   // Initialize with new conversation if none exists
   useEffect(() => {
@@ -343,11 +361,9 @@ const Chat = () => {
           <ConversationList
             conversations={uiConversations}
             folders={[]}
-            currentConversationId={currentConversation?.id}
+            activeId={currentConversation?.id}
             onSelectConversation={loadConversation}
-            onDeleteConversation={handleDeleteConversation}
-            onCreateNew={createNewConversation}
-            loading={conversationsLoading}
+            onNewConversation={createNewConversation}
           />
         </div>
       </div>
@@ -422,21 +438,20 @@ const Chat = () => {
         {/* Messages Thread */}
         <div className="flex-1 min-h-0">
           <Thread
-            messages={messages}
-            isLoading={isLoading}
+            messages={threadMessages}
             isStreaming={isStreaming}
-            onRegenerateMessage={regenerateLastMessage}
-            onStopGeneration={stopGeneration}
+            streamingMessage={streamingMessage}
           />
         </div>
 
         {/* Message Composer */}
         <div className="border-t border-border-primary bg-background">
           <Composer
+            conversation={currentConversation || undefined}
             onSendMessage={handleSendMessage}
-            disabled={isLoading || !selectedModel}
-            model={selectedModel}
-            placeholder={!selectedModel ? "Select a model to start chatting..." : undefined}
+            isStreaming={isStreaming}
+            onStopStreaming={stopStreaming}
+            availableModels={models}
           />
         </div>
       </div>
