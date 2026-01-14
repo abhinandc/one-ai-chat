@@ -1,7 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ArrowUp, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface HomeAIInputProps {
@@ -71,30 +69,14 @@ export function HomeAIInput({
           }}
           transition={{ duration: 0.2 }}
           className={cn(
-            "relative flex items-end rounded-2xl border bg-card/80 backdrop-blur-sm transition-colors duration-200",
+            "relative flex items-center rounded-2xl border bg-card/80 backdrop-blur-sm transition-colors duration-200",
             isFocused 
               ? "border-primary/40" 
               : "border-border/60",
             isLoading && "opacity-80"
           )}
         >
-          {/* Sparkle Icon */}
-          <div className="flex items-center pl-4 pb-3.5">
-            <motion.div
-              animate={{ 
-                rotate: isFocused ? [0, 15, -15, 0] : 0,
-                scale: isFocused ? 1.1 : 1
-              }}
-              transition={{ duration: 0.4 }}
-            >
-              <Sparkles className={cn(
-                "h-5 w-5 transition-colors duration-200",
-                isFocused ? "text-primary" : "text-muted-foreground/50"
-              )} />
-            </motion.div>
-          </div>
-
-          {/* Textarea */}
+          {/* Textarea - centered, no icons */}
           <div className="flex-1 relative">
             <textarea
               ref={textareaRef}
@@ -107,36 +89,13 @@ export function HomeAIInput({
               disabled={disabled || isLoading}
               rows={1}
               className={cn(
-                "w-full resize-none bg-transparent py-4 px-3 text-base",
-                "placeholder:text-muted-foreground/60",
+                "w-full resize-none bg-transparent py-5 px-6 text-lg text-center",
+                "placeholder:text-muted-foreground/40 placeholder:font-light placeholder:text-lg",
                 "disabled:opacity-50 disabled:cursor-not-allowed",
-                "min-h-[56px] max-h-[160px]",
+                "min-h-[64px] max-h-[160px]",
                 "focus:outline-none"
               )}
             />
-          </div>
-
-          {/* Send Button */}
-          <div className="flex items-center pr-3 pb-3">
-            <motion.div
-              whileHover={{ scale: canSend ? 1.05 : 1 }}
-              whileTap={{ scale: canSend ? 0.95 : 1 }}
-            >
-              <Button
-                type="button"
-                size="icon"
-                className={cn(
-                  "h-10 w-10 rounded-xl transition-all duration-200",
-                  canSend 
-                    ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25" 
-                    : "bg-muted text-muted-foreground"
-                )}
-                disabled={!canSend}
-                onClick={handleSend}
-              >
-                <ArrowUp className="h-5 w-5" />
-              </Button>
-            </motion.div>
           </div>
         </motion.div>
 
@@ -145,9 +104,9 @@ export function HomeAIInput({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="text-center text-xs text-muted-foreground/70 mt-4"
+          className="text-center text-xs text-muted-foreground/50 mt-4"
         >
-          Your query will be sent to multiple AI models for comparison
+          Press Enter to compare responses from multiple AI models
         </motion.p>
       </div>
     </motion.div>

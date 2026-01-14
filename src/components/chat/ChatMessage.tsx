@@ -32,42 +32,111 @@ export const ChatMessage = memo(function ChatMessage({
   const renderContent = useCallback((content: string) => {
     if (!content) return null;
 
-    // Handle code blocks
-    if (content.includes("```")) {
-      const parts = content.split(/(```[\s\S]*?```)/);
-      return parts.map((part, index) => {
-        if (part.startsWith("```")) {
-          const match = part.match(/```(\w+)?\n?([\s\S]*?)```/);
-          if (match) {
-            const [, language, code] = match;
-            return (
-              <CodeBlock key={index} code={code.trim()} language={language || ""} />
-            );
-          }
-        }
-        return <span key={index} className="whitespace-pre-wrap">{part}</span>;
-      });
-    }
+    // Split content into paragraphs first
+    const paragraphs = content.split(/\n\n+/);
+    
+    return paragraphs.map((paragraph, pIndex) => {
+      // Handle code blocks
+      if (paragraph.includes("```")) {
+        const parts = paragraph.split(/(```[\s\S]*?```)/);
+        return (
+          <div key={pIndex} className="my-2">
+            {parts.map((part, index) => {
+              if (part.startsWith("```")) {
+                const match = part.match(/```(\w+)?\n?([\s\S]*?)```/);
+                if (match) {
+                  const [, language, code] = match;
+                  return (
+                    <CodeBlock key={index} code={code.trim()} language={language || ""} />
+                  );
+                }
+              }
+              return part ? <span key={index} className="whitespace-pre-wrap">{part}</span> : null;
+            })}
+          </div>
+        );
+      }
 
-    // Handle inline code
-    if (content.includes("`")) {
-      return content.split(/(`[^`]+`)/).map((part, index) => {
-        if (part.startsWith("`") && part.endsWith("`")) {
-          return (
-            <code
-              key={index}
-              className="px-1.5 py-0.5 bg-muted rounded text-sm font-mono"
-            >
-              {part.slice(1, -1)}
-            </code>
-          );
-        }
-        return <span key={index} className="whitespace-pre-wrap">{part}</span>;
-      });
-    }
+      // Handle headers (## and ###)
+      if (paragraph.startsWith("### ")) {
+        return (
+          <h3 key={pIndex} className="text-base font-semibold text-foreground mt-4 mb-2">
+            {paragraph.slice(4)}
+          </h3>
+        );
+      }
+      if (paragraph.startsWith("## ")) {
+        return (
+          <h2 key={pIndex} className="text-lg font-semibold text-foreground mt-4 mb-2">
+            {paragraph.slice(3)}
+          </h2>
+        );
+      }
 
-    return <span className="whitespace-pre-wrap">{content}</span>;
+      // Handle bullet points
+      if (paragraph.includes("\n- ") || paragraph.startsWith("- ")) {
+        const items = paragraph.split(/\n/).filter(Boolean);
+        return (
+          <ul key={pIndex} className="list-disc list-inside space-y-1 my-2 text-foreground/90">
+            {items.map((item, i) => (
+              <li key={i} className="leading-relaxed">
+                {renderInlineFormatting(item.replace(/^-\s*/, ""))}
+              </li>
+            ))}
+          </ul>
+        );
+      }
+
+      // Handle numbered lists
+      if (/^\d+\.\s/.test(paragraph)) {
+        const items = paragraph.split(/\n/).filter(Boolean);
+        return (
+          <ol key={pIndex} className="list-decimal list-inside space-y-1 my-2 text-foreground/90">
+            {items.map((item, i) => (
+              <li key={i} className="leading-relaxed">
+                {renderInlineFormatting(item.replace(/^\d+\.\s*/, ""))}
+              </li>
+            ))}
+          </ol>
+        );
+      }
+
+      // Regular paragraph with inline formatting
+      return (
+        <p key={pIndex} className="my-2 leading-relaxed text-foreground/90">
+          {renderInlineFormatting(paragraph)}
+        </p>
+      );
+    });
   }, []);
+
+  // Handle inline formatting (bold, italic, inline code)
+  const renderInlineFormatting = (text: string) => {
+    // Handle inline code first
+    const parts = text.split(/(`[^`]+`)/);
+    return parts.map((part, index) => {
+      if (part.startsWith("`") && part.endsWith("`")) {
+        return (
+          <code
+            key={index}
+            className="px-1.5 py-0.5 bg-muted/80 rounded text-sm font-mono text-primary"
+          >
+            {part.slice(1, -1)}
+          </code>
+        );
+      }
+      // Handle bold
+      if (part.includes("**")) {
+        return part.split(/(\*\*[^*]+\*\*)/).map((subpart, i) => {
+          if (subpart.startsWith("**") && subpart.endsWith("**")) {
+            return <strong key={i} className="font-semibold text-foreground">{subpart.slice(2, -2)}</strong>;
+          }
+          return subpart;
+        });
+      }
+      return part;
+    });
+  };
 
   // Show AI loading state for empty assistant messages
   if (isAssistant && isEmpty && isStreaming) {
