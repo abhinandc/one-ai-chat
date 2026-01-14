@@ -281,7 +281,7 @@ export function AIInput({
             style={{ outline: 'none', boxShadow: 'none' }}
             rows={1}
             className={cn(
-              "flex-1 resize-none bg-transparent py-3 px-2 text-sm outline-none",
+              "flex-1 resize-none bg-transparent py-3 px-2 text-xs outline-none",
               "placeholder:text-muted-foreground",
               "disabled:opacity-50 disabled:cursor-not-allowed",
               "min-h-[48px] max-h-[200px]"
