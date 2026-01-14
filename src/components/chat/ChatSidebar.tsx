@@ -65,7 +65,7 @@ export function ChatSidebar({
       {/* Overlay backdrop */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/40 z-40 md:hidden"
+          className="absolute inset-0 bg-black/40 z-40"
           onClick={onClose}
         />
       )}
@@ -73,7 +73,7 @@ export function ChatSidebar({
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed left-0 top-0 z-50 h-full w-72 bg-background border-r border-border transform transition-transform duration-300 ease-in-out flex flex-col",
+          "absolute left-0 top-0 z-50 h-full w-72 bg-background border-r border-border transform transition-transform duration-300 ease-in-out flex flex-col",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
