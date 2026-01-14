@@ -1,3 +1,5 @@
+import { supabase } from '@/integrations/supabase/client';
+
 const N8N_CREDENTIALS_KEY = 'oneedge_n8n_credentials';
 
 export interface N8NCredentials {
@@ -51,15 +53,34 @@ class N8NService {
     return !!(credentials?.url && credentials?.apiKey);
   }
 
-  private getApiUrl(credentials: N8NCredentials): string {
-    let url = credentials.url.trim();
-    if (url.endsWith('/')) {
-      url = url.slice(0, -1);
+  private async proxyRequest(path: string, method: string = 'GET', body?: unknown): Promise<Response> {
+    const credentials = this.getCredentials();
+    if (!credentials) {
+      throw new Error('N8N credentials not configured');
     }
-    if (!url.includes('/api/v1')) {
-      url = `${url}/api/v1`;
+
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'x-n8n-url': credentials.url,
+      'x-n8n-api-key': credentials.apiKey,
+    };
+
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
     }
-    return url;
+
+    const url = new URL(`${import.meta.env.VITE_SUPABASE_URL || 'https://wvxocxaywjqujhxfpnwn.supabase.co'}/functions/v1/n8n-proxy`);
+    url.searchParams.set('path', path);
+
+    const response = await fetch(url.toString(), {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    return response;
   }
 
   async testConnection(credentials?: N8NCredentials): Promise<{ success: boolean; error?: string }> {
@@ -68,60 +89,61 @@ class N8NService {
       return { success: false, error: 'No credentials configured' };
     }
 
+    // Temporarily save credentials for the test
+    const hadCredentials = this.hasCredentials();
+    const oldCredentials = this.getCredentials();
+    
+    if (credentials) {
+      this.saveCredentials(credentials);
+    }
+
     try {
-      const apiUrl = this.getApiUrl(creds);
-      const response = await fetch(`${apiUrl}/workflows?limit=1`, {
-        method: 'GET',
-        headers: {
-          'X-N8N-API-KEY': creds.apiKey,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await this.proxyRequest('/workflows?limit=1');
+      
+      // Restore old credentials if this was just a test
+      if (credentials && !hadCredentials) {
+        this.removeCredentials();
+      } else if (credentials && oldCredentials) {
+        this.saveCredentials(oldCredentials);
+      }
 
       if (response.ok) {
+        // Re-save the new credentials on success
+        if (credentials) {
+          this.saveCredentials(credentials);
+        }
         return { success: true };
       }
+
+      const errorData = await response.json().catch(() => ({}));
 
       if (response.status === 401) {
         return { success: false, error: 'Invalid API key' };
       }
 
-      return { success: false, error: `Connection failed: ${response.statusText}` };
+      return { success: false, error: errorData.error || `Connection failed: ${response.statusText}` };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to connect to N8N';
-      if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError') || errorMessage.includes('CORS')) {
-        return { 
-          success: false, 
-          error: 'Could not reach N8N server. This may be due to CORS restrictions. Ensure your N8N instance allows requests from this domain, or check that the URL is correct.' 
-        };
+      // Restore old credentials on error
+      if (credentials && oldCredentials) {
+        this.saveCredentials(oldCredentials);
+      } else if (credentials && !hadCredentials) {
+        this.removeCredentials();
       }
-      return { 
-        success: false, 
-        error: errorMessage 
-      };
+
+      const errorMessage = error instanceof Error ? error.message : 'Failed to connect to N8N';
+      return { success: false, error: errorMessage };
     }
   }
 
   async getWorkflows(): Promise<N8NWorkflow[]> {
-    const credentials = this.getCredentials();
-    if (!credentials) {
-      throw new Error('N8N credentials not configured');
-    }
-
-    const apiUrl = this.getApiUrl(credentials);
-    const response = await fetch(`${apiUrl}/workflows`, {
-      method: 'GET',
-      headers: {
-        'X-N8N-API-KEY': credentials.apiKey,
-        'Content-Type': 'application/json',
-      },
-    });
+    const response = await this.proxyRequest('/workflows');
 
     if (!response.ok) {
       if (response.status === 401) {
         throw new Error('Invalid N8N API key');
       }
-      throw new Error(`Failed to fetch workflows: ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Failed to fetch workflows: ${response.statusText}`);
     }
 
     const data: N8NWorkflowsResponse = await response.json();
@@ -129,19 +151,7 @@ class N8NService {
   }
 
   async getWorkflow(id: string): Promise<N8NWorkflow> {
-    const credentials = this.getCredentials();
-    if (!credentials) {
-      throw new Error('N8N credentials not configured');
-    }
-
-    const apiUrl = this.getApiUrl(credentials);
-    const response = await fetch(`${apiUrl}/workflows/${id}`, {
-      method: 'GET',
-      headers: {
-        'X-N8N-API-KEY': credentials.apiKey,
-        'Content-Type': 'application/json',
-      },
-    });
+    const response = await this.proxyRequest(`/workflows/${id}`);
 
     if (!response.ok) {
       throw new Error(`Failed to fetch workflow: ${response.statusText}`);
@@ -151,20 +161,7 @@ class N8NService {
   }
 
   async updateWorkflow(id: string, data: Partial<N8NWorkflow>): Promise<N8NWorkflow> {
-    const credentials = this.getCredentials();
-    if (!credentials) {
-      throw new Error('N8N credentials not configured');
-    }
-
-    const apiUrl = this.getApiUrl(credentials);
-    const response = await fetch(`${apiUrl}/workflows/${id}`, {
-      method: 'PATCH',
-      headers: {
-        'X-N8N-API-KEY': credentials.apiKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
+    const response = await this.proxyRequest(`/workflows/${id}`, 'PATCH', data);
 
     if (!response.ok) {
       throw new Error(`Failed to update workflow: ${response.statusText}`);
@@ -174,19 +171,7 @@ class N8NService {
   }
 
   async activateWorkflow(id: string): Promise<N8NWorkflow> {
-    const credentials = this.getCredentials();
-    if (!credentials) {
-      throw new Error('N8N credentials not configured');
-    }
-
-    const apiUrl = this.getApiUrl(credentials);
-    const response = await fetch(`${apiUrl}/workflows/${id}/activate`, {
-      method: 'POST',
-      headers: {
-        'X-N8N-API-KEY': credentials.apiKey,
-        'Content-Type': 'application/json',
-      },
-    });
+    const response = await this.proxyRequest(`/workflows/${id}/activate`, 'POST');
 
     if (!response.ok) {
       throw new Error(`Failed to activate workflow: ${response.statusText}`);
@@ -196,19 +181,7 @@ class N8NService {
   }
 
   async deactivateWorkflow(id: string): Promise<N8NWorkflow> {
-    const credentials = this.getCredentials();
-    if (!credentials) {
-      throw new Error('N8N credentials not configured');
-    }
-
-    const apiUrl = this.getApiUrl(credentials);
-    const response = await fetch(`${apiUrl}/workflows/${id}/deactivate`, {
-      method: 'POST',
-      headers: {
-        'X-N8N-API-KEY': credentials.apiKey,
-        'Content-Type': 'application/json',
-      },
-    });
+    const response = await this.proxyRequest(`/workflows/${id}/deactivate`, 'POST');
 
     if (!response.ok) {
       throw new Error(`Failed to deactivate workflow: ${response.statusText}`);
