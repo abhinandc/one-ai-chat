@@ -42,37 +42,40 @@ export function useVirtualKeyInit(userEmail?: string) {
           throw new Error(fetchError.message || 'Failed to fetch employee keys');
         }
 
-        // Extract keys from response
+        setKeyData(data);
+
+        // Priority 1: Check for credentials array (new response format)
+        // Response format: { valid: true, credentials: [{ api_key: "sk-..." }] }
+        if (data?.credentials && Array.isArray(data.credentials) && data.credentials.length > 0) {
+          const firstCredential = data.credentials[0];
+          const apiKey = firstCredential.api_key;
+          
+          if (apiKey && apiKey.length > 20 && !apiKey.includes('***')) {
+            localStorage.setItem('oneai_api_key', apiKey);
+            console.log('Virtual API key auto-initialized from credentials');
+            setInitialized(true);
+            return;
+          }
+        }
+
+        // Priority 2: Check for keys array (legacy format)
         const keys = data?.keys || data?.data || (Array.isArray(data) ? data : []);
-        setKeyData(keys);
 
         if (keys.length > 0) {
-          // Get the first active key
           const activeKey = keys.find((k: any) => !k.disabled) || keys[0];
-          
-          // Try to get the actual API key - check multiple fields
-          // Priority: key > token > api_key > virtual_key
           const keyValue = activeKey.key || activeKey.token || activeKey.api_key || activeKey.virtual_key;
           
           if (keyValue && keyValue.length > 20 && !keyValue.includes('***')) {
             localStorage.setItem('oneai_api_key', keyValue);
-            console.log('Virtual API key auto-initialized from employee_keys');
+            console.log('Virtual API key auto-initialized from keys array');
             setInitialized(true);
-          } else {
-            // If no valid key in response, check if there's a stored user-provided key
-            console.warn('No valid API key in employee_keys response. Keys returned:', 
-              keys.map((k: any) => ({ 
-                hasKey: !!k.key, 
-                hasToken: !!k.token,
-                hasMasked: !!k.masked_key,
-                label: k.label || k.key_alias 
-              }))
-            );
-            setError('No valid API key found. Please set your key in ModelsHub.');
+            return;
           }
-        } else {
-          setError('No API keys assigned to your account');
         }
+
+        // No valid key found
+        console.warn('No valid API key in employee_keys response:', data);
+        setError('No valid API key found. Please set your key in ModelsHub.');
       } catch (err) {
         console.error('Failed to auto-initialize virtual key:', err);
         setError(err instanceof Error ? err.message : 'Failed to initialize API key');
