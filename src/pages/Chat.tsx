@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ChatSidebar } from "@/components/chat/ChatSidebar";
 import { ChatThread } from "@/components/chat/ChatThread";
-import { AIInput } from "@/components/chat/AIInput";
+import { AdvancedAIInput } from "@/components/chat/AdvancedAIInput";
 import { ChatSettingsDrawer } from "@/components/chat/ChatSettingsDrawer";
 import { useChat } from "@/hooks/useChat";
 import { useModels } from "@/hooks/useModels";
@@ -439,15 +439,14 @@ const Chat = () => {
 
         {/* Input */}
         <div className="shrink-0 p-4 pb-6 bg-gradient-to-t from-background via-background to-transparent">
-          <AIInput
+          <AdvancedAIInput
             onSend={handleSendMessage}
             isLoading={isStreaming}
             onStop={stopStreaming}
-            placeholder={
-              isStreaming
-                ? "Thinking..."
-                : "What's on your mind?"
-            }
+            placeholder={isStreaming ? "Thinking..." : "What's on your mind?"}
+            models={models.map(m => ({ id: m.id, name: m.id, provider: m.owned_by, api_path: m.api_path }))}
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
           />
         </div>
       </main>
