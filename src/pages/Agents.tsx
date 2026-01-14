@@ -1,190 +1,105 @@
-import { useState, useCallback, useEffect } from "react";
-import {
-  ReactFlow,
-  addEdge,
-  MiniMap,
-  Controls,
-  Background,
-  useNodesState,
-  useEdgesState,
-  Connection,
-  Node,
-} from "@xyflow/react";
-import "@xyflow/react/dist/style.css";
-import { Plus, Play, Save, Settings, Brain, Trash2, Edit, ExternalLink, Link2, Power, PowerOff, RefreshCw, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { 
+  Link2, 
+  Power, 
+  PowerOff, 
+  RefreshCw, 
+  Loader2, 
+  ExternalLink,
+  Workflow,
+  CheckCircle2,
+  XCircle,
+  Eye,
+  EyeOff
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { GlassCard, GlassCardHeader, GlassCardTitle, GlassCardContent } from "@/components/ui/GlassCard";
+import { GlassCard, GlassCardContent } from "@/components/ui/GlassCard";
 import { GlassInput } from "@/components/ui/GlassInput";
 import { cn } from "@/lib/utils";
-import { useAgents } from "@/hooks/useAgents";
-import { useModels } from "@/hooks/useModels";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { agentWorkflowService } from "@/services/agentWorkflowService";
 import { useToast } from "@/hooks/use-toast";
 import { useN8NWorkflows } from "@/hooks/useN8NWorkflows";
 import { n8nService } from "@/services/n8nService";
 import { Badge } from "@/components/ui/badge";
 
-import { SystemNode } from "@/components/agents/nodes/SystemNode";
-import { ToolNode } from "@/components/agents/nodes/ToolNode";
-import { RouterNode } from "@/components/agents/nodes/RouterNode";
-import { MemoryNode } from "@/components/agents/nodes/MemoryNode";
-import { RetrievalNode } from "@/components/agents/nodes/RetrievalNode";
-import { DecisionNode } from "@/components/agents/nodes/DecisionNode";
-import { CodeNode } from "@/components/agents/nodes/CodeNode";
-import { HumanNode } from "@/components/agents/nodes/HumanNode";
-import { WebhookNode } from "@/components/agents/nodes/WebhookNode";
-import { DelayNode } from "@/components/agents/nodes/DelayNode";
-import { OutputNode } from "@/components/agents/nodes/OutputNode";
-
-const nodeTypes = {
-  system: SystemNode,
-  tool: ToolNode,
-  router: RouterNode,
-  memory: MemoryNode,
-  retrieval: RetrievalNode,
-  decision: DecisionNode,
-  code: CodeNode,
-  human: HumanNode,
-  webhook: WebhookNode,
-  delay: DelayNode,
-  output: OutputNode,
-};
-
-interface Agent {
-  id: string;
-  name: string;
-  owner: string;
-  version: string;
-  modelRouting: {
-    primary: string;
-    fallbacks?: string[];
-  };
-  tools: Array<{
-    slug: string;
-    scopes: string[];
-  }>;
-  datasets: Array<{
-    id: string;
-    access: 'read' | 'write';
-  }>;
-  published?: {
-    env: string;
-    at: string;
-  };
-}
-
 const Agents = () => {
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
-  const [agentName, setAgentName] = useState("");
-  const [selectedModel, setSelectedModel] = useState("");
-  const [isCreatingAgent, setIsCreatingAgent] = useState(false);
-  const [isExecuting, setIsExecuting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'n8n' | 'custom'>('n8n');
+  const [n8nUrl, setN8nUrl] = useState("");
+  const [n8nApiKey, setN8nApiKey] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [togglingWorkflow, setTogglingWorkflow] = useState<string | null>(null);
   
-  const user = useCurrentUser();
-  const { agents, loading: agentsLoading, createAgent, deleteAgent, refetch } = useAgents({ env: 'all' });
-  const { models, loading: modelsLoading } = useModels(user?.email);
   const { toast } = useToast();
-  const { workflows: n8nWorkflows, loading: n8nLoading, error: n8nError, hasCredentials, refetch: refetchN8N, toggleActive } = useN8NWorkflows();
+  const { 
+    workflows: n8nWorkflows, 
+    loading: n8nLoading, 
+    error: n8nError, 
+    hasCredentials, 
+    refetch: refetchN8N, 
+    toggleActive 
+  } = useN8NWorkflows();
 
-  useEffect(() => {
-    if (models.length > 0 && !selectedModel) {
-      setSelectedModel(models[0].id);
-    }
-  }, [models, selectedModel]);
-
-  const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges]
-  );
-
-  const addNode = useCallback((type: string) => {
-    const newNode: Node = {
-      id: `${type}-${Date.now()}`,
-      type,
-      position: { x: Math.random() * 500, y: Math.random() * 500 },
-      data: {
-        label: type.charAt(0).toUpperCase() + type.slice(1),
-        ...(type === 'system' && { content: '' }),
-        ...(type === 'tool' && { toolName: 'http', scopes: ['read'] }),
-        ...(type === 'router' && { model: selectedModel }),
-      },
-    };
-    setNodes((nds) => nds.concat(newNode));
-  }, [setNodes, selectedModel]);
-
-  const saveAgent = async () => {
-    if (!agentName.trim()) {
+  const handleConnect = async () => {
+    if (!n8nUrl.trim() || !n8nApiKey.trim()) {
       toast({
-        title: "Agent name required",
-        description: "Please enter a name for your agent",
+        title: "Missing credentials",
+        description: "Please enter both URL and API key",
         variant: "destructive"
       });
       return;
     }
 
-    if (!user?.email) {
-      toast({
-        title: "Not authenticated",
-        description: "Please sign in to save agents",
-        variant: "destructive"
-      });
-      return;
-    }
-
+    setIsConnecting(true);
+    
     try {
-      await agentWorkflowService.saveWorkflow({
-        user_email: user.email,
-        name: agentName,
-        agent_id: '',
-        description: '',
-        workflow_data: {
-          nodes: nodes as any,
-          edges: edges as any,
-        },
-      });
-
-      toast({
-        title: "Agent saved",
-        description: "Your agent workflow has been saved successfully"
-      });
+      const result = await n8nService.testConnection({ url: n8nUrl, apiKey: n8nApiKey });
       
-      setAgentName("");
-      setNodes([]);
-      setEdges([]);
-      refetch();
+      if (result.success) {
+        n8nService.saveCredentials({ url: n8nUrl, apiKey: n8nApiKey });
+        toast({
+          title: "Connected",
+          description: "Successfully connected to your n8n instance"
+        });
+        setN8nUrl("");
+        setN8nApiKey("");
+        refetchN8N();
+      } else {
+        toast({
+          title: "Connection failed",
+          description: result.error || "Could not connect to n8n",
+          variant: "destructive"
+        });
+      }
     } catch (error) {
-      console.error('Failed to save agent:', error);
       toast({
-        title: "Failed to save",
-        description: error instanceof Error ? error.message : "Could not save agent",
+        title: "Connection failed",
+        description: error instanceof Error ? error.message : "Could not connect",
         variant: "destructive"
       });
+    } finally {
+      setIsConnecting(false);
     }
   };
 
-  const handleOpenN8NEditor = (workflowId: string) => {
-    const url = n8nService.getN8NEditorUrl(workflowId);
-    if (url) {
-      window.open(url, '_blank');
-    }
+  const handleDisconnect = () => {
+    n8nService.removeCredentials();
+    toast({
+      title: "Disconnected",
+      description: "n8n connection removed"
+    });
+    refetchN8N();
   };
 
-  const handleToggleN8NWorkflow = async (workflowId: string, currentActive: boolean) => {
+  const handleToggleWorkflow = async (workflowId: string, currentActive: boolean) => {
     setTogglingWorkflow(workflowId);
     try {
       await toggleActive(workflowId, !currentActive);
       toast({
-        title: currentActive ? "Workflow deactivated" : "Workflow activated",
-        description: `The workflow has been ${currentActive ? 'deactivated' : 'activated'}`,
+        title: currentActive ? "Workflow paused" : "Workflow activated",
+        description: `Workflow is now ${currentActive ? 'inactive' : 'active'}`,
       });
     } catch (error) {
       toast({
-        title: "Failed to toggle workflow",
+        title: "Failed",
         description: error instanceof Error ? error.message : "Could not toggle workflow",
         variant: "destructive"
       });
@@ -193,315 +108,202 @@ const Agents = () => {
     }
   };
 
-  const openIntegrationsModal = () => {
-    window.dispatchEvent(new CustomEvent('open-integrations'));
+  const handleOpenInN8N = (workflowId: string) => {
+    const url = n8nService.getN8NEditorUrl(workflowId);
+    if (url) window.open(url, '_blank');
   };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
-      day: 'numeric',
-      year: 'numeric'
+      day: 'numeric'
     });
   };
 
-  return (
-    <div className="h-full flex flex-col bg-background">
-      <div className="flex items-center justify-between p-4 border-b border-border-primary">
-        <div>
-          <h1 className="text-xl font-semibold text-text-primary">Agents</h1>
-          <p className="text-sm text-text-secondary">Manage your AI agent workflows</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-lg border border-border-primary overflow-hidden">
-            <button
-              onClick={() => setActiveTab('n8n')}
-              className={cn(
-                "px-4 py-2 text-sm font-medium transition-colors",
-                activeTab === 'n8n' 
-                  ? "bg-accent-blue text-white"
-                  : "bg-surface-graphite text-text-secondary hover:text-text-primary"
-              )}
-              data-testid="tab-n8n"
-            >
-              N8N Workflows
-            </button>
-            <button
-              onClick={() => setActiveTab('custom')}
-              className={cn(
-                "px-4 py-2 text-sm font-medium transition-colors",
-                activeTab === 'custom' 
-                  ? "bg-accent-blue text-white"
-                  : "bg-surface-graphite text-text-secondary hover:text-text-primary"
-              )}
-              data-testid="tab-custom"
-            >
-              Custom Builder
-            </button>
-          </div>
-        </div>
-      </div>
+  // Not connected state
+  if (!hasCredentials) {
+    return (
+      <div className="h-full flex items-center justify-center p-6 bg-background">
+        <GlassCard className="w-full max-w-md">
+          <GlassCardContent className="p-6">
+            <div className="text-center mb-6">
+              <div className="w-12 h-12 rounded-full bg-accent-blue/10 flex items-center justify-center mx-auto mb-4">
+                <Link2 className="h-6 w-6 text-accent-blue" />
+              </div>
+              <h1 className="text-lg font-semibold text-text-primary mb-1">
+                Connect n8n
+              </h1>
+              <p className="text-sm text-text-secondary">
+                Enter your n8n instance URL and API key
+              </p>
+            </div>
 
-      {activeTab === 'n8n' ? (
-        <div className="flex-1 overflow-auto p-6">
-          {!hasCredentials ? (
-            <div className="flex flex-col items-center justify-center h-full">
-              <div className="text-center max-w-md">
-                <Link2 className="h-16 w-16 text-text-quaternary mx-auto mb-4" />
-                <h2 className="text-xl font-semibold text-text-primary mb-2">
-                  Connect to N8N
-                </h2>
-                <p className="text-text-secondary mb-6">
-                  Connect your N8N instance to sync and manage your automation workflows directly from OneEdge.
-                </p>
-                <Button onClick={openIntegrationsModal} data-testid="button-connect-n8n">
-                  <Link2 className="h-4 w-4 mr-2" />
-                  Connect N8N
-                </Button>
-              </div>
-            </div>
-          ) : n8nLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="h-8 w-8 animate-spin text-text-tertiary" />
-            </div>
-          ) : n8nError ? (
-            <div className="flex flex-col items-center justify-center h-full">
-              <div className="text-center max-w-md">
-                <div className="text-red-500 mb-4">Failed to load workflows: {n8nError}</div>
-                <div className="flex gap-2 justify-center">
-                  <Button variant="outline" onClick={refetchN8N}>
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Retry
-                  </Button>
-                  <Button variant="outline" onClick={openIntegrationsModal}>
-                    <Settings className="h-4 w-4 mr-2" />
-                    Check Settings
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ) : n8nWorkflows.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full">
-              <div className="text-center max-w-md">
-                <Brain className="h-16 w-16 text-text-quaternary mx-auto mb-4" />
-                <h2 className="text-xl font-semibold text-text-primary mb-2">
-                  No Workflows Found
-                </h2>
-                <p className="text-text-secondary mb-6">
-                  No workflows found in your N8N instance. Create workflows in N8N and they will appear here.
-                </p>
-                <div className="flex gap-2 justify-center">
-                  <Button variant="outline" onClick={refetchN8N}>
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Refresh
-                  </Button>
-                  <Button onClick={() => {
-                    const url = n8nService.getCredentials()?.url;
-                    if (url) window.open(url, '_blank');
-                  }}>
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Open N8N
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ) : (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-medium text-text-primary">
-                  Your N8N Workflows ({n8nWorkflows.length})
-                </h2>
-                <Button variant="outline" size="sm" onClick={refetchN8N}>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh
-                </Button>
+              <div>
+                <label className="text-xs text-text-tertiary mb-1.5 block">Instance URL</label>
+                <GlassInput
+                  type="url"
+                  placeholder="https://your-n8n.example.com"
+                  value={n8nUrl}
+                  onChange={(e) => setN8nUrl(e.target.value)}
+                  variant="minimal"
+                  className="w-full"
+                />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {n8nWorkflows.map((workflow) => (
-                  <GlassCard 
-                    key={workflow.id} 
-                    className="overflow-visible"
-                    data-testid={`card-workflow-${workflow.id}`}
+              
+              <div>
+                <label className="text-xs text-text-tertiary mb-1.5 block">API Key</label>
+                <div className="relative">
+                  <GlassInput
+                    type={showApiKey ? "text" : "password"}
+                    placeholder="n8n_api_..."
+                    value={n8nApiKey}
+                    onChange={(e) => setN8nApiKey(e.target.value)}
+                    variant="minimal"
+                    className="w-full pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary"
                   >
-                    <GlassCardContent className="p-4">
-                      <div className="flex items-start justify-between gap-2 mb-3">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-text-primary truncate">{workflow.name}</h3>
-                          <p className="text-xs text-text-tertiary mt-1">
-                            Updated {formatDate(workflow.updatedAt)}
-                          </p>
-                        </div>
-                        <Badge 
-                          variant={workflow.active ? "default" : "secondary"}
-                          className={cn(
-                            "shrink-0",
-                            workflow.active ? "bg-green-500/10 text-green-500" : ""
-                          )}
-                        >
-                          {workflow.active ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </div>
-                      
-                      {workflow.tags && workflow.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mb-3">
-                          {workflow.tags.slice(0, 3).map((tag) => (
-                            <Badge key={tag.id} variant="outline" className="text-xs">
-                              {tag.name}
-                            </Badge>
-                          ))}
-                          {workflow.tags.length > 3 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{workflow.tags.length - 3}
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => handleOpenN8NEditor(workflow.id)}
-                          data-testid={`button-edit-workflow-${workflow.id}`}
-                        >
-                          <Edit className="h-3 w-3 mr-1" />
-                          Edit in N8N
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleToggleN8NWorkflow(workflow.id, workflow.active)}
-                          disabled={togglingWorkflow === workflow.id}
-                          data-testid={`button-toggle-workflow-${workflow.id}`}
-                        >
-                          {togglingWorkflow === workflow.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : workflow.active ? (
-                            <PowerOff className="h-4 w-4 text-red-500" />
-                          ) : (
-                            <Power className="h-4 w-4 text-green-500" />
-                          )}
-                        </Button>
-                      </div>
-                    </GlassCardContent>
-                  </GlassCard>
-                ))}
+                    {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="flex flex-1 overflow-hidden">
-          <div className="w-64 border-r border-border-primary flex flex-col">
-            <div className="p-4 border-b border-border-primary">
-              <h3 className="font-medium text-text-primary mb-3">Add Nodes</h3>
-              <div className="grid grid-cols-2 gap-2">
-                {Object.keys(nodeTypes).map((type) => (
-                  <Button
-                    key={type}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => addNode(type)}
-                    className="text-xs justify-start"
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    {type.charAt(0).toUpperCase() + type.slice(1)}
-                  </Button>
-                ))}
-              </div>
-            </div>
 
-            <div className="p-4 border-b border-border-primary">
-              <h3 className="font-medium text-text-primary mb-3">Save Agent</h3>
-              <GlassInput
-                type="text"
-                placeholder="Agent name..."
-                value={agentName}
-                onChange={(e) => setAgentName(e.target.value)}
-                variant="minimal"
-                className="w-full mb-2"
-                data-testid="input-agent-name"
-              />
-              <Button
-                size="sm"
+              <Button 
+                onClick={handleConnect} 
+                disabled={isConnecting || !n8nUrl.trim() || !n8nApiKey.trim()}
                 className="w-full"
-                onClick={saveAgent}
-                disabled={!agentName.trim() || nodes.length === 0}
-                data-testid="button-save-agent"
               >
-                <Save className="h-3 w-3 mr-1" />
-                Save Agent
+                {isConnecting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    Connect
+                  </>
+                )}
               </Button>
             </div>
 
-            <div className="flex-1 overflow-auto p-4">
-              <h3 className="font-medium text-text-primary mb-3">Saved Agents</h3>
-              {agentsLoading ? (
-                <div className="text-sm text-text-tertiary">Loading...</div>
-              ) : agents.length === 0 ? (
-                <div className="text-sm text-text-tertiary">No agents yet</div>
-              ) : (
-                <div className="space-y-2">
-                  {agents.map((agent: Agent) => (
-                    <div
-                      key={agent.id}
-                      className={cn(
-                        "p-3 rounded-lg border cursor-pointer transition-colors",
-                        selectedAgent?.id === agent.id
-                          ? "border-accent-blue bg-accent-blue/10"
-                          : "border-border-primary hover:bg-surface-graphite"
-                      )}
-                      onClick={() => setSelectedAgent(agent)}
-                      data-testid={`agent-item-${agent.id}`}
-                    >
-                      <div className="font-medium text-text-primary text-sm">{agent.name}</div>
-                      <div className="text-xs text-text-tertiary mt-1">
-                        Model: {agent.modelRouting.primary}
-                      </div>
-                      <div className="text-xs text-text-tertiary">
-                        {agent.published ? "Published" : "Draft"} - {agent.tools?.length || 0} tools
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <p className="text-xs text-text-quaternary text-center mt-4">
+              Generate an API key in n8n under Settings → API
+            </p>
+          </GlassCardContent>
+        </GlassCard>
+      </div>
+    );
+  }
+
+  // Connected state
+  return (
+    <div className="h-full flex flex-col bg-background">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-border-primary">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-accent-blue/10 flex items-center justify-center">
+            <Workflow className="h-4 w-4 text-accent-blue" />
           </div>
-
-          <div className="flex-1 relative">
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              nodeTypes={nodeTypes}
-              fitView
-              className="bg-background"
-            >
-              <Controls className="bg-surface-graphite border-border-primary" />
-              <MiniMap className="bg-surface-graphite border-border-primary" />
-              <Background gap={20} size={1} className="opacity-20" />
-            </ReactFlow>
-
-            {nodes.length === 0 && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="text-center">
-                  <Brain className="h-16 w-16 text-text-quaternary mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-text-secondary mb-2">
-                    Start Building Your Agent
-                  </h3>
-                  <p className="text-text-tertiary max-w-md">
-                    Add nodes from the sidebar to create your agent workflow. 
-                    Connect them to define the agent's behavior and capabilities.
-                  </p>
-                </div>
-              </div>
-            )}
+          <div>
+            <h1 className="text-base font-medium text-text-primary">Workflows</h1>
+            <p className="text-xs text-text-tertiary">{n8nWorkflows.length} connected</p>
           </div>
         </div>
-      )}
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={refetchN8N} disabled={n8nLoading}>
+            <RefreshCw className={cn("h-4 w-4", n8nLoading && "animate-spin")} />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleDisconnect}>
+            <XCircle className="h-4 w-4 text-red-400" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-auto p-4">
+        {n8nLoading ? (
+          <div className="flex items-center justify-center h-40">
+            <Loader2 className="h-6 w-6 animate-spin text-text-tertiary" />
+          </div>
+        ) : n8nError ? (
+          <div className="text-center py-8">
+            <p className="text-sm text-red-400 mb-3">{n8nError}</p>
+            <Button variant="outline" size="sm" onClick={refetchN8N}>
+              Retry
+            </Button>
+          </div>
+        ) : n8nWorkflows.length === 0 ? (
+          <div className="text-center py-12">
+            <Workflow className="h-10 w-10 text-text-quaternary mx-auto mb-3" />
+            <p className="text-sm text-text-secondary mb-1">No workflows found</p>
+            <p className="text-xs text-text-tertiary">Create workflows in n8n to see them here</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {n8nWorkflows.map((workflow) => (
+              <div
+                key={workflow.id}
+                className="flex items-center justify-between p-3 rounded-lg border border-border-primary bg-surface-graphite/30 hover:bg-surface-graphite/50 transition-colors"
+              >
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className={cn(
+                    "w-2 h-2 rounded-full shrink-0",
+                    workflow.active ? "bg-green-500" : "bg-text-quaternary"
+                  )} />
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-medium text-text-primary truncate">
+                      {workflow.name}
+                    </h3>
+                    <p className="text-xs text-text-tertiary">
+                      Updated {formatDate(workflow.updatedAt)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 shrink-0">
+                  {workflow.tags && workflow.tags.length > 0 && (
+                    <Badge variant="outline" className="text-xs hidden sm:inline-flex">
+                      {workflow.tags[0].name}
+                    </Badge>
+                  )}
+                  
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleOpenInN8N(workflow.id)}
+                    className="text-text-tertiary hover:text-text-primary"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                  
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleToggleWorkflow(workflow.id, workflow.active)}
+                    disabled={togglingWorkflow === workflow.id}
+                    className={cn(
+                      workflow.active ? "text-green-500 hover:text-red-400" : "text-text-tertiary hover:text-green-500"
+                    )}
+                  >
+                    {togglingWorkflow === workflow.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : workflow.active ? (
+                      <Power className="h-4 w-4" />
+                    ) : (
+                      <PowerOff className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
