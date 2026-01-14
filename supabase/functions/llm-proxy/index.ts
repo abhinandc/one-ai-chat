@@ -6,6 +6,36 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Model name to actual API model ID mapping
+const MODEL_ID_MAP: Record<string, string> = {
+  // Anthropic models
+  'Claude Opus 4.5': 'claude-opus-4-20250514',
+  'Claude Opus 4.1': 'claude-opus-4-20250514',
+  'Claude Opus 4': 'claude-opus-4-20250514',
+  'Claude Sonnet 4.5': 'claude-sonnet-4-20250514',
+  'Claude Sonnet 4': 'claude-sonnet-4-20250514',
+  'Claude Sonnet 3.7': 'claude-3-7-sonnet-20250219',
+  'Claude Haiku 4.5': 'claude-haiku-4-20250514',
+  'Claude Haiku 3.5': 'claude-3-5-haiku-20241022',
+  'Claude Haiku 3': 'claude-3-haiku-20240307',
+  // OpenAI models
+  'GPT-4o': 'gpt-4o',
+  'GPT-4o Mini': 'gpt-4o-mini',
+  'GPT-4 Turbo': 'gpt-4-turbo',
+  'GPT-4': 'gpt-4',
+  'GPT-3.5 Turbo': 'gpt-3.5-turbo',
+  'o1': 'o1',
+  'o1-mini': 'o1-mini',
+  'o1-preview': 'o1-preview',
+  'o3-mini': 'o3-mini',
+  'chatgpt-4o-latest': 'chatgpt-4o-latest',
+  'codex-mini-latest': 'codex-mini-latest',
+  // Google/Gemini models
+  'Gemini 2.0 Flash': 'gemini-2.0-flash',
+  'Gemini 1.5 Pro': 'gemini-1.5-pro',
+  'Gemini 1.5 Flash': 'gemini-1.5-flash',
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -74,8 +104,8 @@ serve(async (req) => {
     }
 
     const provider = modelData.provider?.toLowerCase() || 'openai';
-    // Use model_key for the actual API call (e.g., "claude-opus-4-20250514" instead of "Claude Opus 4.1")
-    const actualModelId = modelData.model_key || modelData.name;
+    // Use model_key from DB, or fall back to mapping, or use the name as-is
+    const actualModelId = modelData.model_key || MODEL_ID_MAP[modelData.name] || MODEL_ID_MAP[model] || model;
     console.log(`[llm-proxy] Provider: ${provider}, Actual model ID: ${actualModelId}`);
 
     // Get LLM credentials for this provider
