@@ -351,7 +351,6 @@ const Chat = () => {
     );
   }
 
-  const currentModel = models.find((m) => m.id === selectedModel);
 
   return (
     <div className="h-[calc(100vh-4rem-60px)] flex flex-col bg-background overflow-hidden relative">
@@ -383,7 +382,7 @@ const Chat = () => {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="gap-1.5 font-medium">
                 <span className="max-w-[200px] truncate">
-                  {currentModel?.id || "Select model"}
+                  {selectedModel || "Select model"}
                 </span>
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
               </Button>

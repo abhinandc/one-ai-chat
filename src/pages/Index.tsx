@@ -107,7 +107,8 @@ const Index = () => {
               setIsComparing(true);
               setCompletedCount(0);
             }}
-            placeholder="What's on your mind? Try out the best model."
+            placeholder="What's on your mind?"
+            className="[&_textarea]:text-lg [&_textarea]:placeholder:text-lg"
           />
         </div>
 

@@ -80,37 +80,58 @@ export function useModels(userEmail?: string) {
       }
 
       // Extract models from the employee_keys response
-      // Response could be: { models: [...] } or { keys: [{ models: [...] }] } or { data: { models: [...] } }
-      let modelsList: string[] = [];
+      // New format: { credentials: [...], keys: [{ models: [{id, name, provider, ...}] }] }
+      const modelObjects: any[] = [];
 
-      if (data?.models && Array.isArray(data.models)) {
-        // Direct models array in response
-        modelsList = data.models;
-      } else if (data?.keys && Array.isArray(data.keys)) {
-        // Models from keys array
-        data.keys.forEach((key: any) => {
-          const keyModels = key.models || key.models_json || [];
-          modelsList.push(...keyModels);
-        });
-      } else if (Array.isArray(data)) {
-        // Response is array of keys
-        data.forEach((key: any) => {
-          const keyModels = key.models || key.models_json || [];
-          modelsList.push(...keyModels);
+      // First check credentials array (has full model info)
+      if (data?.credentials && Array.isArray(data.credentials)) {
+        data.credentials.forEach((cred: any) => {
+          if (cred.model_key && !modelObjects.find(m => m.name === cred.model_key)) {
+            modelObjects.push({
+              id: cred.model_id || cred.model_key,
+              name: cred.model_key,
+              display_name: cred.model_name || cred.model_key,
+              provider: cred.provider,
+              kind: cred.kind || 'chat',
+              mode: cred.mode || 'chat',
+              endpoint: cred.full_endpoint,
+              api_path: cred.api_path,
+            });
+          }
         });
       }
 
-      // Dedupe models
-      const uniqueModels = [...new Set(modelsList)];
+      // Then check keys array (also has model info)
+      if (data?.keys && Array.isArray(data.keys)) {
+        data.keys.forEach((key: any) => {
+          const keyModels = key.models || [];
+          keyModels.forEach((m: any) => {
+            // m can be an object or a string
+            if (typeof m === 'object' && m.name) {
+              if (!modelObjects.find(existing => existing.name === m.name)) {
+                modelObjects.push(m);
+              }
+            } else if (typeof m === 'string') {
+              if (!modelObjects.find(existing => existing.name === m)) {
+                modelObjects.push({ id: m, name: m });
+              }
+            }
+          });
+        });
+      }
 
       // Transform to the expected format
-      const enriched = uniqueModels.map<ModelWithMetadata>((modelId: string) => ({
-        id: modelId,
+      const enriched = modelObjects.map<ModelWithMetadata>((model: any) => ({
+        id: model.name || model.id, // Use name as ID for API calls
         object: 'model',
         created: Date.now() / 1000,
-        owned_by: modelId.split('/')[0] || 'unknown',
+        owned_by: model.provider || 'unknown',
         metadata: {
-          provider: modelId.split('/')[0] || undefined,
+          provider: model.provider,
+          description: model.display_name,
+          endpoint: model.endpoint || model.full_endpoint,
+          maxTokens: model.max_tokens,
+          raw: model,
         },
       }));
 

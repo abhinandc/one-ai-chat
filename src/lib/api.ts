@@ -207,6 +207,30 @@ export class OneEdgeClient {
     return null;
   }
 
+  private getAllStoredCredentials(): { api_key: string; full_endpoint: string; model_key: string; auth_header: string; provider: string }[] {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const stored = window.localStorage.getItem('oneai_all_credentials');
+        if (stored) {
+          return JSON.parse(stored);
+        }
+      } catch (error) {
+        console.warn('Unable to read all credentials from localStorage:', error);
+      }
+    }
+    return [];
+  }
+
+  private getCredentialForModel(modelName: string): { api_key: string; full_endpoint: string; model_key: string; auth_header: string; provider?: string } | null {
+    const allCreds = this.getAllStoredCredentials();
+    const modelCred = allCreds.find(c => c.model_key === modelName);
+    if (modelCred) {
+      return modelCred;
+    }
+    // Fall back to default credentials
+    return this.getStoredCredentials();
+  }
+
   private getVirtualKey(): string {
     // First try to get from full credentials
     const creds = this.getStoredCredentials();
@@ -384,15 +408,21 @@ export class OneEdgeClient {
   }
 
   async createChatCompletion(request: ChatCompletionRequest): Promise<ChatCompletionResponse> {
-    const creds = this.getStoredCredentials();
+    // Get credential for the specific model being requested
+    const creds = this.getCredentialForModel(request.model);
     const endpoint = creds?.full_endpoint || this.getChatEndpoint();
-    const modelKey = creds?.model_key || request.model;
+    const modelKey = request.model; // Always use the requested model name
     
     const payload = { ...request, model: modelKey, stream: false };
     
-    // If we have dynamic credentials, call the endpoint directly
-    if (creds?.full_endpoint) {
-      const headers = this.buildHeaders();
+    // If we have credentials with an endpoint, call it directly
+    if (creds?.full_endpoint && creds?.api_key) {
+      const headers = new Headers();
+      headers.set(creds.auth_header || 'Authorization', `Bearer ${creds.api_key}`);
+      headers.set('Content-Type', 'application/json');
+      
+      console.log('Making chat completion request:', { endpoint, model: modelKey });
+      
       const response = await fetch(endpoint, {
         method: 'POST',
         headers,
@@ -413,15 +443,22 @@ export class OneEdgeClient {
   }
 
   async createChatCompletionStream(request: ChatCompletionRequest, signal?: AbortSignal): Promise<ReadableStream<Uint8Array>> {
-    const creds = this.getStoredCredentials();
+    // Get credential for the specific model being requested
+    const creds = this.getCredentialForModel(request.model);
     const endpoint = creds?.full_endpoint || this.getChatEndpoint();
-    const modelKey = creds?.model_key || request.model;
+    const modelKey = request.model; // Always use the requested model name
     
     const payload = { ...request, model: modelKey, stream: true };
     
-    // If we have dynamic credentials, call the endpoint directly
-    if (creds?.full_endpoint) {
-      const headers = this.buildHeaders(undefined, 'text/event-stream');
+    // If we have credentials with an endpoint, call it directly
+    if (creds?.full_endpoint && creds?.api_key) {
+      const headers = new Headers();
+      headers.set(creds.auth_header || 'Authorization', `Bearer ${creds.api_key}`);
+      headers.set('Content-Type', 'application/json');
+      headers.set('Accept', 'text/event-stream');
+      
+      console.log('Making streaming chat request:', { endpoint, model: modelKey });
+      
       const response = await fetch(endpoint, {
         method: 'POST',
         headers,
