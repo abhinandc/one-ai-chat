@@ -443,6 +443,16 @@ export class OneEdgeClient {
   async createChatCompletionStream(request: ChatCompletionRequest, signal?: AbortSignal): Promise<ReadableStream<Uint8Array>> {
     // Get credential for the specific model being requested
     const creds = this.getCredentialForModel(request.model);
+    const allCreds = this.getAllStoredCredentials();
+    
+    console.log('[API] createChatCompletionStream:', {
+      requestedModel: request.model,
+      credentialFound: !!creds,
+      credentialModel: creds?.model_key,
+      allCredModels: allCreds.map(c => c.model_key),
+      endpoint: creds?.full_endpoint,
+    });
+    
     const endpoint = creds?.full_endpoint || this.getChatEndpoint();
     const modelKey = request.model; // Always use the requested model name
     
@@ -455,6 +465,8 @@ export class OneEdgeClient {
       headers.set('Content-Type', 'application/json');
       headers.set('Accept', 'text/event-stream');
       
+      console.log('[API] Calling endpoint:', endpoint, 'with model:', modelKey);
+      
       const response = await fetch(endpoint, {
         method: 'POST',
         headers,
@@ -463,6 +475,7 @@ export class OneEdgeClient {
       });
       
       if (!response.ok) {
+        console.error('[API] Response not ok:', response.status, response.statusText);
         await this.raiseDetailedError(response);
       }
       
@@ -473,6 +486,7 @@ export class OneEdgeClient {
       return response.body;
     }
     
+    console.log('[API] Falling back to admin endpoint');
     return this.streamAdmin('/v1/chat/completions', {
       method: 'POST',
       body: JSON.stringify(payload),

@@ -89,9 +89,18 @@ const Chat = () => {
     if (locationState?.selectedModelId) {
       setSelectedModel(locationState.selectedModelId);
     } else if (models.length > 0 && !selectedModel) {
+      console.log('[Chat] Setting initial model:', models[0].id);
       setSelectedModel(models[0].id);
     }
   }, [models, selectedModel, locationState?.selectedModelId]);
+
+  // Reset model selection when models list changes and current model isn't in list
+  useEffect(() => {
+    if (models.length > 0 && selectedModel && !models.find(m => m.id === selectedModel)) {
+      console.log('[Chat] Model not in list, resetting to:', models[0].id);
+      setSelectedModel(models[0].id);
+    }
+  }, [models, selectedModel]);
 
   // Handle incoming selection from homepage comparison
   useEffect(() => {
