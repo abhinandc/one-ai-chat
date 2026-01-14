@@ -77,10 +77,12 @@ export const StreamingText = memo(function StreamingText({
   showCursor = true,
 }: StreamingTextProps) {
   return (
-    <span className={cn("", className)}>
+    <span className={cn("whitespace-pre-wrap", className)}>
       {content}
       {showCursor && (
-        <span className="inline-block w-0.5 h-4 ml-0.5 bg-primary animate-pulse" />
+        <span className="inline-block w-0.5 h-4 ml-0.5 bg-primary/70" 
+          style={{ animation: 'pulse 1s ease-in-out infinite' }} 
+        />
       )}
     </span>
   );

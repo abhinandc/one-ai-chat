@@ -169,7 +169,7 @@ export const ChatMessage = memo(function ChatMessage({
   return (
     <div 
       className={cn(
-        "group w-full py-4 transition-colors duration-200",
+        "group w-full py-4",
         isUser ? "bg-transparent" : "bg-muted/5"
       )}
     >
@@ -235,7 +235,7 @@ export const ChatMessage = memo(function ChatMessage({
 
           {/* Actions - only for completed assistant messages */}
           {isAssistant && !isStreaming && !isEmpty && (
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
               <Button
                 variant="ghost"
                 size="icon"

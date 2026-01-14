@@ -48,11 +48,11 @@ export const ChatThread = memo(function ChatThread({
     }
   }, [isStreaming, streamingMessage, scrollToBottom]);
 
-  // Stable message keys to prevent re-renders
+  // Stable message keys to prevent re-renders - use stable IDs only
   const renderedMessages = useMemo(() => {
-    return messages.map((message, index) => (
+    return messages.map((message) => (
       <ChatMessage
-        key={message.id || `msg-${index}-${message.role}`}
+        key={message.id}
         message={message}
         isStreaming={false}
       />
