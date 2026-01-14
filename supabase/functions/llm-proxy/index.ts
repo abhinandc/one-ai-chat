@@ -125,40 +125,30 @@ serve(async (req) => {
 
     const apiKey = modelData.api_key_encrypted || credential.api_key_encrypted;
     
-    // Determine endpoint URL and API path based on provider
-    // IMPORTANT: Override incorrect api_path values in DB for providers that use different endpoints
+    // ============================================
+    // PROVIDER ENDPOINT CONFIGURATION
+    // Based on official API documentation:
+    // - OpenAI: https://api.openai.com/v1/chat/completions
+    // - Anthropic: https://api.anthropic.com/v1/messages (NOT /chat/completions!)
+    // - Google Gemini: https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent
+    // - Groq: https://api.groq.com/openai/v1/chat/completions
+    // - Mistral: https://api.mistral.ai/v1/chat/completions
+    // - Cohere: https://api.cohere.com/v2/chat
+    // - Azure OpenAI: https://{resource}.openai.azure.com/openai/deployments/{deployment}/chat/completions?api-version={version}
+    // - Perplexity: https://api.perplexity.ai/chat/completions
+    // - Together AI: https://api.together.xyz/v1/chat/completions
+    // - Fireworks: https://api.fireworks.ai/inference/v1/chat/completions
+    // - DeepSeek: https://api.deepseek.com/chat/completions
+    // - xAI/Grok: https://api.x.ai/v1/chat/completions
+    // ============================================
+    
     let endpointUrl = modelData.endpoint_url || credential.endpoint_url;
     let apiPath: string;
-    
-    switch (provider) {
-      case 'openai':
-        endpointUrl = endpointUrl || 'https://api.openai.com';
-        apiPath = '/v1/chat/completions';
-        break;
-      case 'anthropic':
-        // Anthropic uses /v1/messages, NOT /v1/chat/completions - always override
-        endpointUrl = endpointUrl || 'https://api.anthropic.com';
-        apiPath = '/v1/messages';
-        break;
-      case 'google':
-      case 'gemini':
-        endpointUrl = endpointUrl || 'https://generativelanguage.googleapis.com';
-        apiPath = '/v1beta/models/' + actualModelId + ':generateContent';
-        break;
-      default:
-        endpointUrl = endpointUrl || 'https://api.openai.com';
-        apiPath = modelData.api_path || '/v1/chat/completions';
-    }
-
-    const fullEndpoint = `${endpointUrl}${apiPath}`;
-    console.log(`[llm-proxy] Endpoint: ${fullEndpoint}`);
-
-    // Build request headers based on provider
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
-
-    // Build request body based on provider - use actualModelId, not the display name
+    
+    // Build request body - start with OpenAI-compatible format
     let requestBody: any = {
       model: actualModelId,
       messages: messages,
@@ -167,29 +157,125 @@ serve(async (req) => {
 
     if (temperature !== undefined) requestBody.temperature = temperature;
     if (top_p !== undefined) requestBody.top_p = top_p;
-
-    // Provider-specific adjustments
-    if (provider === 'anthropic') {
-      headers['x-api-key'] = apiKey;
-      headers['anthropic-version'] = '2023-06-01';
-      
-      // Anthropic uses max_tokens differently
-      requestBody.max_tokens = max_tokens || 4096;
-      
-      // Extract system message for Anthropic
-      const systemMsg = messages.find((m: any) => m.role === 'system');
-      const nonSystemMsgs = messages.filter((m: any) => m.role !== 'system');
-      
-      if (systemMsg) {
-        requestBody.system = systemMsg.content;
-      }
-      requestBody.messages = nonSystemMsgs;
-    } else {
-      // OpenAI-compatible providers
-      headers['Authorization'] = `Bearer ${apiKey}`;
-      if (max_tokens) requestBody.max_tokens = max_tokens;
+    
+    switch (provider) {
+      case 'openai':
+        endpointUrl = endpointUrl || 'https://api.openai.com';
+        apiPath = '/v1/chat/completions';
+        headers['Authorization'] = `Bearer ${apiKey}`;
+        if (max_tokens) requestBody.max_tokens = max_tokens;
+        break;
+        
+      case 'anthropic':
+        // CRITICAL: Anthropic uses /v1/messages, NOT /v1/chat/completions
+        endpointUrl = endpointUrl || 'https://api.anthropic.com';
+        apiPath = '/v1/messages';
+        headers['x-api-key'] = apiKey;
+        headers['anthropic-version'] = '2023-06-01';
+        // Anthropic requires max_tokens
+        requestBody.max_tokens = max_tokens || 4096;
+        // Extract system message for Anthropic (they use a separate 'system' field)
+        const systemMsg = messages.find((m: any) => m.role === 'system');
+        const nonSystemMsgs = messages.filter((m: any) => m.role !== 'system');
+        if (systemMsg) {
+          requestBody.system = systemMsg.content;
+        }
+        requestBody.messages = nonSystemMsgs;
+        break;
+        
+      case 'google':
+      case 'gemini':
+        // Google Gemini uses a different format entirely
+        endpointUrl = endpointUrl || 'https://generativelanguage.googleapis.com';
+        apiPath = `/v1beta/models/${actualModelId}:${stream ? 'streamGenerateContent' : 'generateContent'}?key=${apiKey}`;
+        // Transform to Gemini format
+        requestBody = {
+          contents: messages.filter((m: any) => m.role !== 'system').map((m: any) => ({
+            role: m.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: m.content }]
+          })),
+          generationConfig: {
+            temperature: temperature,
+            topP: top_p,
+            maxOutputTokens: max_tokens || 4096,
+          }
+        };
+        const geminiSystemMsg = messages.find((m: any) => m.role === 'system');
+        if (geminiSystemMsg) {
+          requestBody.systemInstruction = { parts: [{ text: geminiSystemMsg.content }] };
+        }
+        break;
+        
+      case 'groq':
+        // Groq uses OpenAI-compatible format at /openai/v1/chat/completions
+        endpointUrl = endpointUrl || 'https://api.groq.com';
+        apiPath = '/openai/v1/chat/completions';
+        headers['Authorization'] = `Bearer ${apiKey}`;
+        if (max_tokens) requestBody.max_tokens = max_tokens;
+        break;
+        
+      case 'mistral':
+        endpointUrl = endpointUrl || 'https://api.mistral.ai';
+        apiPath = '/v1/chat/completions';
+        headers['Authorization'] = `Bearer ${apiKey}`;
+        if (max_tokens) requestBody.max_tokens = max_tokens;
+        break;
+        
+      case 'cohere':
+        // Cohere v2 API
+        endpointUrl = endpointUrl || 'https://api.cohere.com';
+        apiPath = '/v2/chat';
+        headers['Authorization'] = `Bearer ${apiKey}`;
+        // Cohere has a slightly different format but mostly compatible
+        if (max_tokens) requestBody.max_tokens = max_tokens;
+        break;
+        
+      case 'perplexity':
+        endpointUrl = endpointUrl || 'https://api.perplexity.ai';
+        apiPath = '/chat/completions';
+        headers['Authorization'] = `Bearer ${apiKey}`;
+        if (max_tokens) requestBody.max_tokens = max_tokens;
+        break;
+        
+      case 'together':
+        endpointUrl = endpointUrl || 'https://api.together.xyz';
+        apiPath = '/v1/chat/completions';
+        headers['Authorization'] = `Bearer ${apiKey}`;
+        if (max_tokens) requestBody.max_tokens = max_tokens;
+        break;
+        
+      case 'fireworks':
+        endpointUrl = endpointUrl || 'https://api.fireworks.ai';
+        apiPath = '/inference/v1/chat/completions';
+        headers['Authorization'] = `Bearer ${apiKey}`;
+        if (max_tokens) requestBody.max_tokens = max_tokens;
+        break;
+        
+      case 'deepseek':
+        endpointUrl = endpointUrl || 'https://api.deepseek.com';
+        apiPath = '/chat/completions';
+        headers['Authorization'] = `Bearer ${apiKey}`;
+        if (max_tokens) requestBody.max_tokens = max_tokens;
+        break;
+        
+      case 'xai':
+      case 'grok':
+        endpointUrl = endpointUrl || 'https://api.x.ai';
+        apiPath = '/v1/chat/completions';
+        headers['Authorization'] = `Bearer ${apiKey}`;
+        if (max_tokens) requestBody.max_tokens = max_tokens;
+        break;
+        
+      default:
+        // Default to OpenAI-compatible format
+        endpointUrl = endpointUrl || 'https://api.openai.com';
+        apiPath = modelData.api_path || '/v1/chat/completions';
+        headers['Authorization'] = `Bearer ${apiKey}`;
+        if (max_tokens) requestBody.max_tokens = max_tokens;
     }
 
+    const fullEndpoint = `${endpointUrl}${apiPath}`;
+    console.log(`[llm-proxy] Endpoint: ${fullEndpoint}`);
     console.log(`[llm-proxy] Making request to ${fullEndpoint}`);
 
     // Make the API call
