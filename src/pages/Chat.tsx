@@ -59,6 +59,7 @@ const Chat = () => {
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [pendingMessage, setPendingMessage] = useState<string>("");
   const [chatSettings, setChatSettings] = useState({
     systemPrompt: "You are a helpful AI assistant.",
     temperature: 0.7,
@@ -513,6 +514,7 @@ const Chat = () => {
           messages={threadMessages}
           isStreaming={isStreaming}
           streamingMessage={streamingMessage}
+          onSuggestionClick={(suggestion) => setPendingMessage(suggestion)}
         />
 
         {/* Input - no duplicate model dropdown, it's in the header */}
@@ -522,6 +524,8 @@ const Chat = () => {
             isLoading={isStreaming}
             onStop={stopStreaming}
             placeholder={isStreaming ? "Thinking..." : "What's on your mind?"}
+            initialMessage={pendingMessage}
+            onInitialMessageConsumed={() => setPendingMessage("")}
           />
         </div>
       </main>
