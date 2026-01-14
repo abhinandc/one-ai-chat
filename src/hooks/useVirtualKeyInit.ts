@@ -63,7 +63,7 @@ export function useVirtualKeyInit(userEmail?: string) {
           body: { email: userEmail }
         });
 
-        console.log('useVirtualKeyInit - employee_keys response:', data);
+        console.log('useVirtualKeyInit - employee_keys response:', JSON.stringify(data, null, 2));
 
         if (fetchError) {
           throw new Error(fetchError.message || 'Failed to fetch employee keys');
@@ -73,6 +73,12 @@ export function useVirtualKeyInit(userEmail?: string) {
 
         // Check for credentials array (new response format)
         // Response format: { valid: true, credentials: [{ api_key, full_endpoint, model_key, ... }] }
+        console.log('Checking credentials:', { 
+          hasCredentials: !!data?.credentials, 
+          isArray: Array.isArray(data?.credentials),
+          length: data?.credentials?.length,
+          firstCred: data?.credentials?.[0]
+        });
         if (data?.credentials && Array.isArray(data.credentials) && data.credentials.length > 0) {
           const cred = data.credentials[0];
           
