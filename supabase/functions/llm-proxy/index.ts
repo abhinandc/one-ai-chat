@@ -6,36 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Model name to actual API model ID mapping
-const MODEL_ID_MAP: Record<string, string> = {
-  // Anthropic models
-  'Claude Opus 4.5': 'claude-opus-4-20250514',
-  'Claude Opus 4.1': 'claude-opus-4-20250514',
-  'Claude Opus 4': 'claude-opus-4-20250514',
-  'Claude Sonnet 4.5': 'claude-sonnet-4-20250514',
-  'Claude Sonnet 4': 'claude-sonnet-4-20250514',
-  'Claude Sonnet 3.7': 'claude-3-7-sonnet-20250219',
-  'Claude Haiku 4.5': 'claude-haiku-4-20250514',
-  'Claude Haiku 3.5': 'claude-3-5-haiku-20241022',
-  'Claude Haiku 3': 'claude-3-haiku-20240307',
-  // OpenAI models
-  'GPT-4o': 'gpt-4o',
-  'GPT-4o Mini': 'gpt-4o-mini',
-  'GPT-4 Turbo': 'gpt-4-turbo',
-  'GPT-4': 'gpt-4',
-  'GPT-3.5 Turbo': 'gpt-3.5-turbo',
-  'o1': 'o1',
-  'o1-mini': 'o1-mini',
-  'o1-preview': 'o1-preview',
-  'o3-mini': 'o3-mini',
-  'chatgpt-4o-latest': 'chatgpt-4o-latest',
-  'codex-mini-latest': 'codex-mini-latest',
-  // Google/Gemini models
-  'Gemini 2.0 Flash': 'gemini-2.0-flash',
-  'Gemini 1.5 Pro': 'gemini-1.5-pro',
-  'Gemini 1.5 Flash': 'gemini-1.5-flash',
-};
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -85,7 +55,7 @@ serve(async (req) => {
 
     console.log(`[llm-proxy] Requested Model: ${model}, Stream: ${stream}`);
 
-    // Use service role to fetch credentials
+    // Use service role to fetch credentials and config
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get the model details
@@ -104,9 +74,19 @@ serve(async (req) => {
     }
 
     const provider = modelData.provider?.toLowerCase() || 'openai';
-    // Use model_key from DB, or fall back to mapping, or use the name as-is
-    const actualModelId = modelData.model_key || MODEL_ID_MAP[modelData.name] || MODEL_ID_MAP[model] || model;
+    const actualModelId = modelData.model_key || modelData.name;
     console.log(`[llm-proxy] Provider: ${provider}, Actual model ID: ${actualModelId}`);
+
+    // Get provider configuration from database
+    const { data: providerConfig, error: providerConfigError } = await supabase
+      .from('provider_config')
+      .select('*')
+      .eq('provider', provider)
+      .single();
+
+    if (providerConfigError) {
+      console.warn(`[llm-proxy] No provider_config for ${provider}, using defaults`);
+    }
 
     // Get LLM credentials for this provider
     const { data: credential, error: credError } = await supabase
@@ -125,157 +105,162 @@ serve(async (req) => {
 
     const apiKey = modelData.api_key_encrypted || credential.api_key_encrypted;
     
-    // ============================================
-    // PROVIDER ENDPOINT CONFIGURATION
-    // Based on official API documentation:
-    // - OpenAI: https://api.openai.com/v1/chat/completions
-    // - Anthropic: https://api.anthropic.com/v1/messages (NOT /chat/completions!)
-    // - Google Gemini: https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent
-    // - Groq: https://api.groq.com/openai/v1/chat/completions
-    // - Mistral: https://api.mistral.ai/v1/chat/completions
-    // - Cohere: https://api.cohere.com/v2/chat
-    // - Azure OpenAI: https://{resource}.openai.azure.com/openai/deployments/{deployment}/chat/completions?api-version={version}
-    // - Perplexity: https://api.perplexity.ai/chat/completions
-    // - Together AI: https://api.together.xyz/v1/chat/completions
-    // - Fireworks: https://api.fireworks.ai/inference/v1/chat/completions
-    // - DeepSeek: https://api.deepseek.com/chat/completions
-    // - xAI/Grok: https://api.x.ai/v1/chat/completions
-    // ============================================
+    // Build endpoint URL from database config
+    // Priority: model.endpoint_url > credential.base_url > credential.endpoint_url > provider_config.base_url
+    const baseUrl = modelData.endpoint_url || credential.base_url || credential.endpoint_url || providerConfig?.base_url;
     
-    let endpointUrl = modelData.endpoint_url || credential.endpoint_url;
-    let apiPath: string;
+    if (!baseUrl) {
+      console.error('[llm-proxy] No base URL configured for provider:', provider);
+      return new Response(
+        JSON.stringify({ error: `No base URL configured for provider: ${provider}` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get API path from model or provider config
+    let apiPath = modelData.api_path || providerConfig?.default_api_path;
+    
+    if (!apiPath) {
+      console.error('[llm-proxy] No API path configured for model:', model);
+      return new Response(
+        JSON.stringify({ error: `No API path configured for model: ${model}` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Replace {model} placeholder in API path (for Gemini-style endpoints)
+    apiPath = apiPath.replace('{model}', actualModelId);
+    
+    // For streaming Gemini, use streamGenerateContent
+    if ((provider === 'google' || provider === 'gemini') && stream && apiPath.includes(':generateContent')) {
+      apiPath = apiPath.replace(':generateContent', ':streamGenerateContent');
+    }
+
+    const fullEndpoint = `${baseUrl}${apiPath}`;
+    console.log(`[llm-proxy] Endpoint: ${fullEndpoint}`);
+
+    // Build request headers from provider config
+    const authHeader2 = providerConfig?.auth_header || 'Authorization';
+    const authPrefix = providerConfig?.auth_prefix ?? 'Bearer ';
+    const extraHeaders = providerConfig?.extra_headers || {};
+    
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
-    
-    // Build request body - start with OpenAI-compatible format
-    let requestBody: any = {
-      model: actualModelId,
-      messages: messages,
-      stream: stream,
-    };
 
-    if (temperature !== undefined) requestBody.temperature = temperature;
-    if (top_p !== undefined) requestBody.top_p = top_p;
-    
-    switch (provider) {
-      case 'openai':
-        endpointUrl = endpointUrl || 'https://api.openai.com';
-        apiPath = '/v1/chat/completions';
-        headers['Authorization'] = `Bearer ${apiKey}`;
-        if (max_tokens) requestBody.max_tokens = max_tokens;
-        break;
-        
-      case 'anthropic':
-        // CRITICAL: Anthropic uses /v1/messages, NOT /v1/chat/completions
-        endpointUrl = endpointUrl || 'https://api.anthropic.com';
-        apiPath = '/v1/messages';
-        headers['x-api-key'] = apiKey;
-        headers['anthropic-version'] = '2023-06-01';
-        // Anthropic requires max_tokens
-        requestBody.max_tokens = max_tokens || 4096;
-        // Extract system message for Anthropic (they use a separate 'system' field)
-        const systemMsg = messages.find((m: any) => m.role === 'system');
-        const nonSystemMsgs = messages.filter((m: any) => m.role !== 'system');
-        if (systemMsg) {
-          requestBody.system = systemMsg.content;
-        }
-        requestBody.messages = nonSystemMsgs;
-        break;
-        
-      case 'google':
-      case 'gemini':
-        // Google Gemini uses a different format entirely
-        endpointUrl = endpointUrl || 'https://generativelanguage.googleapis.com';
-        apiPath = `/v1beta/models/${actualModelId}:${stream ? 'streamGenerateContent' : 'generateContent'}?key=${apiKey}`;
-        // Transform to Gemini format
-        requestBody = {
-          contents: messages.filter((m: any) => m.role !== 'system').map((m: any) => ({
-            role: m.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: m.content }]
-          })),
-          generationConfig: {
-            temperature: temperature,
-            topP: top_p,
-            maxOutputTokens: max_tokens || 4096,
-          }
-        };
-        const geminiSystemMsg = messages.find((m: any) => m.role === 'system');
-        if (geminiSystemMsg) {
-          requestBody.systemInstruction = { parts: [{ text: geminiSystemMsg.content }] };
-        }
-        break;
-        
-      case 'groq':
-        // Groq uses OpenAI-compatible format at /openai/v1/chat/completions
-        endpointUrl = endpointUrl || 'https://api.groq.com';
-        apiPath = '/openai/v1/chat/completions';
-        headers['Authorization'] = `Bearer ${apiKey}`;
-        if (max_tokens) requestBody.max_tokens = max_tokens;
-        break;
-        
-      case 'mistral':
-        endpointUrl = endpointUrl || 'https://api.mistral.ai';
-        apiPath = '/v1/chat/completions';
-        headers['Authorization'] = `Bearer ${apiKey}`;
-        if (max_tokens) requestBody.max_tokens = max_tokens;
-        break;
-        
-      case 'cohere':
-        // Cohere v2 API
-        endpointUrl = endpointUrl || 'https://api.cohere.com';
-        apiPath = '/v2/chat';
-        headers['Authorization'] = `Bearer ${apiKey}`;
-        // Cohere has a slightly different format but mostly compatible
-        if (max_tokens) requestBody.max_tokens = max_tokens;
-        break;
-        
-      case 'perplexity':
-        endpointUrl = endpointUrl || 'https://api.perplexity.ai';
-        apiPath = '/chat/completions';
-        headers['Authorization'] = `Bearer ${apiKey}`;
-        if (max_tokens) requestBody.max_tokens = max_tokens;
-        break;
-        
-      case 'together':
-        endpointUrl = endpointUrl || 'https://api.together.xyz';
-        apiPath = '/v1/chat/completions';
-        headers['Authorization'] = `Bearer ${apiKey}`;
-        if (max_tokens) requestBody.max_tokens = max_tokens;
-        break;
-        
-      case 'fireworks':
-        endpointUrl = endpointUrl || 'https://api.fireworks.ai';
-        apiPath = '/inference/v1/chat/completions';
-        headers['Authorization'] = `Bearer ${apiKey}`;
-        if (max_tokens) requestBody.max_tokens = max_tokens;
-        break;
-        
-      case 'deepseek':
-        endpointUrl = endpointUrl || 'https://api.deepseek.com';
-        apiPath = '/chat/completions';
-        headers['Authorization'] = `Bearer ${apiKey}`;
-        if (max_tokens) requestBody.max_tokens = max_tokens;
-        break;
-        
-      case 'xai':
-      case 'grok':
-        endpointUrl = endpointUrl || 'https://api.x.ai';
-        apiPath = '/v1/chat/completions';
-        headers['Authorization'] = `Bearer ${apiKey}`;
-        if (max_tokens) requestBody.max_tokens = max_tokens;
-        break;
-        
-      default:
-        // Default to OpenAI-compatible format
-        endpointUrl = endpointUrl || 'https://api.openai.com';
-        apiPath = modelData.api_path || '/v1/chat/completions';
-        headers['Authorization'] = `Bearer ${apiKey}`;
-        if (max_tokens) requestBody.max_tokens = max_tokens;
+    // Add authentication header based on provider config
+    if (provider === 'google' || provider === 'gemini') {
+      // For Google/Gemini, the API key is passed as a query parameter, not a header
+      // Already handled in the endpoint URL
+    } else {
+      headers[authHeader2] = `${authPrefix}${apiKey}`;
     }
 
-    const fullEndpoint = `${endpointUrl}${apiPath}`;
-    console.log(`[llm-proxy] Endpoint: ${fullEndpoint}`);
+    // Add any extra headers from provider config
+    for (const [key, value] of Object.entries(extraHeaders)) {
+      if (typeof value === 'string') {
+        headers[key] = value;
+      }
+    }
+
+    // Build request body based on provider
+    let requestBody: any;
+
+    if (provider === 'anthropic') {
+      // Anthropic format
+      const systemMsg = messages.find((m: any) => m.role === 'system');
+      const nonSystemMsgs = messages.filter((m: any) => m.role !== 'system');
+      
+      requestBody = {
+        model: actualModelId,
+        messages: nonSystemMsgs,
+        stream: stream,
+        max_tokens: max_tokens || 4096,
+      };
+      
+      if (systemMsg) {
+        requestBody.system = systemMsg.content;
+      }
+      if (temperature !== undefined) requestBody.temperature = temperature;
+      if (top_p !== undefined) requestBody.top_p = top_p;
+      
+    } else if (provider === 'google' || provider === 'gemini') {
+      // Gemini format
+      requestBody = {
+        contents: messages.filter((m: any) => m.role !== 'system').map((m: any) => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content }]
+        })),
+        generationConfig: {
+          maxOutputTokens: max_tokens || 4096,
+        }
+      };
+      
+      if (temperature !== undefined) requestBody.generationConfig.temperature = temperature;
+      if (top_p !== undefined) requestBody.generationConfig.topP = top_p;
+      
+      const geminiSystemMsg = messages.find((m: any) => m.role === 'system');
+      if (geminiSystemMsg) {
+        requestBody.systemInstruction = { parts: [{ text: geminiSystemMsg.content }] };
+      }
+      
+      // Add API key to URL for Gemini
+      const separator = fullEndpoint.includes('?') ? '&' : '?';
+      const geminiEndpoint = `${fullEndpoint}${separator}key=${apiKey}`;
+      
+      console.log(`[llm-proxy] Making request to Gemini API`);
+      
+      const response = await fetch(geminiEndpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[llm-proxy] API error ${response.status}:`, errorText);
+        return new Response(
+          JSON.stringify({ error: `API error: ${response.status}`, details: errorText }),
+          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Transform Gemini response to OpenAI format
+      if (stream && response.body) {
+        console.log('[llm-proxy] Streaming Gemini response');
+        return transformGeminiStream(response.body, model, corsHeaders);
+      } else {
+        const data = await response.json();
+        const openAIResponse = transformGeminiResponse(data, model);
+        return new Response(
+          JSON.stringify(openAIResponse),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+    } else if (provider === 'cohere') {
+      // Cohere v2 format
+      requestBody = {
+        model: actualModelId,
+        messages: messages,
+        stream: stream,
+      };
+      if (max_tokens) requestBody.max_tokens = max_tokens;
+      if (temperature !== undefined) requestBody.temperature = temperature;
+      if (top_p !== undefined) requestBody.p = top_p;
+      
+    } else {
+      // OpenAI-compatible format (default for most providers)
+      requestBody = {
+        model: actualModelId,
+        messages: messages,
+        stream: stream,
+      };
+      if (max_tokens) requestBody.max_tokens = max_tokens;
+      if (temperature !== undefined) requestBody.temperature = temperature;
+      if (top_p !== undefined) requestBody.top_p = top_p;
+    }
+
     console.log(`[llm-proxy] Making request to ${fullEndpoint}`);
 
     // Make the API call
@@ -298,78 +283,9 @@ serve(async (req) => {
     if (stream && response.body) {
       console.log('[llm-proxy] Streaming response');
       
-      // For Anthropic, we need to transform the SSE format to OpenAI format
+      // For Anthropic, transform SSE format to OpenAI format
       if (provider === 'anthropic') {
-        const reader = response.body.getReader();
-        const encoder = new TextEncoder();
-        const decoder = new TextDecoder();
-        
-        const transformStream = new ReadableStream({
-          async start(controller) {
-            let buffer = '';
-            
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              
-              buffer += decoder.decode(value, { stream: true });
-              const lines = buffer.split('\n');
-              buffer = lines.pop() || '';
-              
-              for (const line of lines) {
-                if (!line.trim() || !line.startsWith('data:')) continue;
-                
-                const data = line.slice(5).trim();
-                if (data === '[DONE]') {
-                  controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-                  continue;
-                }
-                
-                try {
-                  const parsed = JSON.parse(data);
-                  
-                  // Transform Anthropic format to OpenAI format
-                  if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
-                    const openAIChunk = {
-                      id: parsed.message?.id || 'msg',
-                      object: 'chat.completion.chunk',
-                      created: Math.floor(Date.now() / 1000),
-                      model: model,
-                      choices: [{
-                        index: 0,
-                        delta: { content: parsed.delta.text },
-                        finish_reason: null
-                      }]
-                    };
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify(openAIChunk)}\n\n`));
-                  } else if (parsed.type === 'message_stop') {
-                    const openAIChunk = {
-                      id: 'msg',
-                      object: 'chat.completion.chunk',
-                      created: Math.floor(Date.now() / 1000),
-                      model: model,
-                      choices: [{
-                        index: 0,
-                        delta: {},
-                        finish_reason: 'stop'
-                      }]
-                    };
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify(openAIChunk)}\n\n`));
-                    controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-                  }
-                } catch (e) {
-                  // Skip unparseable lines
-                }
-              }
-            }
-            
-            controller.close();
-          }
-        });
-        
-        return new Response(transformStream, {
-          headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
-        });
+        return transformAnthropicStream(response.body, model, corsHeaders);
       }
       
       // For OpenAI-compatible providers, pass through directly
@@ -421,3 +337,171 @@ serve(async (req) => {
     );
   }
 });
+
+// Transform Anthropic streaming response to OpenAI format
+function transformAnthropicStream(body: ReadableStream, model: string, corsHeaders: Record<string, string>): Response {
+  const reader = body.getReader();
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  
+  const transformStream = new ReadableStream({
+    async start(controller) {
+      let buffer = '';
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        
+        for (const line of lines) {
+          if (!line.trim() || !line.startsWith('data:')) continue;
+          
+          const data = line.slice(5).trim();
+          if (data === '[DONE]') {
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+            continue;
+          }
+          
+          try {
+            const parsed = JSON.parse(data);
+            
+            if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
+              const openAIChunk = {
+                id: parsed.message?.id || 'msg',
+                object: 'chat.completion.chunk',
+                created: Math.floor(Date.now() / 1000),
+                model: model,
+                choices: [{
+                  index: 0,
+                  delta: { content: parsed.delta.text },
+                  finish_reason: null
+                }]
+              };
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(openAIChunk)}\n\n`));
+            } else if (parsed.type === 'message_stop') {
+              const openAIChunk = {
+                id: 'msg',
+                object: 'chat.completion.chunk',
+                created: Math.floor(Date.now() / 1000),
+                model: model,
+                choices: [{
+                  index: 0,
+                  delta: {},
+                  finish_reason: 'stop'
+                }]
+              };
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(openAIChunk)}\n\n`));
+              controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+            }
+          } catch (e) {
+            // Skip unparseable lines
+          }
+        }
+      }
+      
+      controller.close();
+    }
+  });
+  
+  return new Response(transformStream, {
+    headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
+  });
+}
+
+// Transform Gemini streaming response to OpenAI format
+function transformGeminiStream(body: ReadableStream, model: string, corsHeaders: Record<string, string>): Response {
+  const reader = body.getReader();
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  
+  const transformStream = new ReadableStream({
+    async start(controller) {
+      let buffer = '';
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        
+        // Gemini streams JSON objects separated by newlines
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          
+          try {
+            const parsed = JSON.parse(line);
+            const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+            
+            if (text) {
+              const openAIChunk = {
+                id: 'msg',
+                object: 'chat.completion.chunk',
+                created: Math.floor(Date.now() / 1000),
+                model: model,
+                choices: [{
+                  index: 0,
+                  delta: { content: text },
+                  finish_reason: null
+                }]
+              };
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(openAIChunk)}\n\n`));
+            }
+            
+            if (parsed.candidates?.[0]?.finishReason) {
+              const openAIChunk = {
+                id: 'msg',
+                object: 'chat.completion.chunk',
+                created: Math.floor(Date.now() / 1000),
+                model: model,
+                choices: [{
+                  index: 0,
+                  delta: {},
+                  finish_reason: 'stop'
+                }]
+              };
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(openAIChunk)}\n\n`));
+              controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+            }
+          } catch (e) {
+            // Skip unparseable lines
+          }
+        }
+      }
+      
+      controller.close();
+    }
+  });
+  
+  return new Response(transformStream, {
+    headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
+  });
+}
+
+// Transform Gemini non-streaming response to OpenAI format
+function transformGeminiResponse(data: any, model: string): any {
+  return {
+    id: 'msg',
+    object: 'chat.completion',
+    created: Math.floor(Date.now() / 1000),
+    model: model,
+    choices: [{
+      index: 0,
+      message: {
+        role: 'assistant',
+        content: data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+      },
+      finish_reason: data.candidates?.[0]?.finishReason === 'STOP' ? 'stop' : 'stop'
+    }],
+    usage: {
+      prompt_tokens: data.usageMetadata?.promptTokenCount || 0,
+      completion_tokens: data.usageMetadata?.candidatesTokenCount || 0,
+      total_tokens: data.usageMetadata?.totalTokenCount || 0
+    }
+  };
+}
