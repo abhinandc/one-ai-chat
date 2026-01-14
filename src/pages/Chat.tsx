@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Menu, Settings, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,8 +22,16 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { Conversation, Message } from "@/types";
 
+interface LocationState {
+  selectedModelId?: string;
+  selectedResponse?: string;
+  originalQuery?: string;
+}
+
 const Chat = () => {
   const user = useCurrentUser();
+  const location = useLocation();
+  const locationState = location.state as LocationState | null;
   const { toast } = useToast();
   
   // Auto-initialize virtual API key from employee_keys
@@ -63,6 +72,7 @@ const Chat = () => {
     messages,
     sendMessage,
     clearMessages,
+    setMessages,
     stopStreaming,
     isStreaming,
     streamingMessage,
@@ -73,12 +83,64 @@ const Chat = () => {
     maxTokens: chatSettings.maxTokens,
   });
 
-  // Initialize with first available model
+  // Initialize with first available model or from location state
   useEffect(() => {
-    if (models.length > 0 && !selectedModel) {
+    if (locationState?.selectedModelId) {
+      setSelectedModel(locationState.selectedModelId);
+    } else if (models.length > 0 && !selectedModel) {
       setSelectedModel(models[0].id);
     }
-  }, [models, selectedModel]);
+  }, [models, selectedModel, locationState?.selectedModelId]);
+
+  // Handle incoming selection from homepage comparison
+  useEffect(() => {
+    if (locationState?.originalQuery && locationState?.selectedResponse) {
+      // Create a new conversation with the selected response pre-loaded
+      const now = new Date();
+      const newConversation: Conversation = {
+        id: crypto.randomUUID(),
+        title: locationState.originalQuery.slice(0, 50) + (locationState.originalQuery.length > 50 ? "..." : ""),
+        messages: [],
+        pinned: false,
+        shared: false,
+        unread: false,
+        tags: [],
+        createdAt: now,
+        updatedAt: now,
+        settings: {
+          model: locationState.selectedModelId || selectedModel,
+          provider: "litellm",
+          temperature: chatSettings.temperature,
+          topP: chatSettings.topP,
+          maxTokens: chatSettings.maxTokens,
+          stopSequences: [],
+          systemPrompt: chatSettings.systemPrompt,
+        },
+      };
+
+      setCurrentConversation(newConversation);
+      
+      // Pre-populate with the user query and selected AI response
+      setMessages([
+        { role: 'user', content: locationState.originalQuery },
+        { role: 'assistant', content: locationState.selectedResponse }
+      ]);
+      
+      // Clear location state to prevent re-triggering
+      window.history.replaceState({}, document.title);
+      
+      // Track the event
+      if (user?.email) {
+        analyticsService.trackEvent({
+          user_email: user.email,
+          action: "comparison_response_selected",
+          resource_type: "chat",
+          resource_id: newConversation.id,
+          metadata: { model: locationState.selectedModelId },
+        });
+      }
+    }
+  }, [locationState]);
 
   // Auto-save conversation when messages change
   useEffect(() => {
