@@ -148,7 +148,7 @@ export function AutomationsDashboard({ onCreateClick, onIntegrationClick, onCard
 interface MetricItemProps {
   label: string;
   value: string;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string }>;
   trend: string;
 }
 

@@ -1,15 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Cross2Icon } from "@radix-ui/react-icons";
-import { Mic, MicOff, Volume2, VolumeX } from "lucide-react";
+import { Volume2, VolumeX } from "lucide-react";
 import { useConversation } from "@elevenlabs/react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
+import { Orb, type AgentState } from "@/components/ui/orb";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/services/supabaseClient";
 
-// Sia Voice ID from ElevenLabs
-const SIA_AGENT_ID = "sia_voice_agent"; // Replace with actual agent ID if available
+// Sia Agent ID
+const SIA_AGENT_ID = "agent_8701keg7xdvgfx89gk8fspx7jk5x";
+
+// Design system colors for the orb (accent-blue)
+const ORB_COLORS: [string, string] = ["#0080ff", "#4da6ff"];
 
 interface SiaConversationProps {
   open: boolean;
@@ -26,17 +29,18 @@ export function SiaConversation({
   const [transcript, setTranscript] = useState("");
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [visualizerBars, setVisualizerBars] = useState<number[]>(Array(20).fill(0.2));
-  const animationFrameRef = useRef<number>();
+  const [agentState, setAgentState] = useState<AgentState>(null);
 
   // ElevenLabs Conversational AI
   const conversation = useConversation({
     onConnect: () => {
       setIsConnecting(false);
       setError(null);
+      setAgentState("listening");
     },
     onDisconnect: () => {
       setIsConnecting(false);
+      setAgentState(null);
     },
     onMessage: (message) => {
       // Handle user transcript from the message
@@ -49,10 +53,24 @@ export function SiaConversation({
       console.error("ElevenLabs error:", err);
       setError("Voice connection failed. Using browser speech recognition.");
       setIsConnecting(false);
+      setAgentState(null);
       // Fallback to browser speech recognition
       startBrowserSpeechRecognition();
     },
   });
+
+  // Update agent state based on conversation
+  useEffect(() => {
+    if (conversation.status === "connected") {
+      if (conversation.isSpeaking) {
+        setAgentState("talking");
+      } else {
+        setAgentState("listening");
+      }
+    } else {
+      setAgentState(null);
+    }
+  }, [conversation.status, conversation.isSpeaking]);
 
   const isListening = conversation.status === "connected";
   const isSpeaking = conversation.isSpeaking;
@@ -79,8 +97,14 @@ export function SiaConversation({
     recognition.interimResults = true;
     recognition.lang = "en-US";
 
-    recognition.onstart = () => setBrowserListening(true);
-    recognition.onend = () => setBrowserListening(false);
+    recognition.onstart = () => {
+      setBrowserListening(true);
+      setAgentState("listening");
+    };
+    recognition.onend = () => {
+      setBrowserListening(false);
+      setAgentState(null);
+    };
 
     recognition.onresult = (event: any) => {
       let finalTranscript = "";
@@ -112,6 +136,7 @@ export function SiaConversation({
   const startConversation = useCallback(async () => {
     setIsConnecting(true);
     setError(null);
+    setAgentState("thinking");
 
     try {
       // Request microphone permission
@@ -165,6 +190,7 @@ export function SiaConversation({
       setTranscript("");
       setError(null);
       setUseBrowserSpeech(false);
+      setAgentState(null);
       if (isListening) {
         conversation.endSession();
       }
@@ -173,30 +199,6 @@ export function SiaConversation({
       }
     }
   }, [open]);
-
-  // Animate visualizer bars
-  useEffect(() => {
-    const animate = () => {
-      const active = isListening || isSpeaking || browserListening;
-      if (active) {
-        setVisualizerBars((prev) =>
-          prev.map(() => 0.2 + Math.random() * 0.8)
-        );
-      } else {
-        setVisualizerBars((prev) =>
-          prev.map((v) => Math.max(0.2, v * 0.95))
-        );
-      }
-      animationFrameRef.current = requestAnimationFrame(animate);
-    };
-
-    animationFrameRef.current = requestAnimationFrame(animate);
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, [isListening, isSpeaking, browserListening]);
 
   const toggleListening = () => {
     if (isListening || browserListening) {
@@ -254,7 +256,7 @@ export function SiaConversation({
         </Button>
 
         {/* Main Content */}
-        <div className="relative z-10 flex flex-col items-center justify-center gap-16 w-full max-w-3xl px-8">
+        <div className="relative z-10 flex flex-col items-center justify-center gap-12 w-full max-w-3xl px-8">
           {/* Sia Label */}
           <motion.div
             initial={{ opacity: 0, y: -20 }}
@@ -269,92 +271,28 @@ export function SiaConversation({
             </p>
           </motion.div>
 
-          {/* Audio Visualizer Orb */}
-          <div className="relative flex items-center justify-center">
-            {/* Outer glow rings */}
-            <AnimatePresence>
-              {(activeListening || activeSpeaking) && (
-                <>
-                  <motion.div
-                    initial={{ scale: 1, opacity: 0.2 }}
-                    animate={{ scale: 2.5, opacity: 0 }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
-                    className="absolute rounded-full bg-primary/20"
-                    style={{ width: 200, height: 200 }}
-                  />
-                  <motion.div
-                    initial={{ scale: 1, opacity: 0.3 }}
-                    animate={{ scale: 2, opacity: 0 }}
-                    transition={{ duration: 2, repeat: Infinity, delay: 0.5, ease: "easeOut" }}
-                    className="absolute rounded-full bg-primary/25"
-                    style={{ width: 200, height: 200 }}
-                  />
-                </>
-              )}
-            </AnimatePresence>
-
-            {/* Main Orb with Visualizer */}
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={toggleListening}
-              disabled={isConnecting}
-              className="relative z-10 group disabled:cursor-wait"
-            >
-              <div className={cn(
-                "relative h-48 w-48 rounded-full flex items-center justify-center transition-all duration-500",
-                (activeListening || activeSpeaking)
-                  ? "bg-gradient-to-br from-primary via-primary/90 to-primary/70 shadow-2xl shadow-primary/30"
-                  : isConnecting
-                  ? "bg-gradient-to-br from-amber-500/50 via-amber-500/30 to-amber-500/20"
-                  : "bg-gradient-to-br from-muted via-muted/80 to-muted/60 group-hover:from-primary/30 group-hover:to-primary/10"
-              )}>
-                {/* Circular Audio Bars */}
-                <div className="absolute inset-4 rounded-full overflow-hidden">
-                  <div className="relative w-full h-full flex items-center justify-center">
-                    {visualizerBars.map((height, i) => {
-                      const angle = (i / visualizerBars.length) * 360;
-                      const barHeight = 20 + height * 40;
-                      
-                      return (
-                        <motion.div
-                          key={i}
-                          className={cn(
-                            "absolute w-1 rounded-full origin-bottom",
-                            (activeListening || activeSpeaking) 
-                              ? "bg-white/80" 
-                              : "bg-muted-foreground/30"
-                          )}
-                          style={{
-                            height: barHeight,
-                            transform: `rotate(${angle}deg) translateY(-60px)`,
-                          }}
-                          animate={{
-                            scaleY: (activeListening || activeSpeaking) ? height : 0.3,
-                          }}
-                          transition={{ duration: 0.1 }}
-                        />
-                      );
-                    })}
-                  </div>
+          {/* ElevenLabs Orb */}
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={toggleListening}
+            disabled={isConnecting}
+            className="relative z-10 disabled:cursor-wait focus:outline-none"
+          >
+            <div className="h-64 w-64 relative">
+              <Orb
+                colors={ORB_COLORS}
+                agentState={agentState}
+                className="h-full w-full"
+              />
+              
+              {/* Connecting overlay */}
+              {isConnecting && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="h-8 w-8 border-2 border-primary/50 border-t-primary rounded-full animate-spin" />
                 </div>
-
-                {/* Center Icon */}
-                <motion.div
-                  animate={activeListening ? { scale: [1, 1.1, 1] } : {}}
-                  transition={{ duration: 0.8, repeat: Infinity }}
-                  className="relative z-10"
-                >
-                  {isConnecting ? (
-                    <div className="h-8 w-8 border-2 border-white/50 border-t-white rounded-full animate-spin" />
-                  ) : activeListening ? (
-                    <Mic className="h-8 w-8 text-white" />
-                  ) : (
-                    <MicOff className="h-8 w-8 text-muted-foreground" />
-                  )}
-                </motion.div>
-              </div>
-            </motion.button>
-          </div>
+              )}
+            </div>
+          </motion.button>
 
           {/* Status & Controls */}
           <div className="flex flex-col items-center gap-6">

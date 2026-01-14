@@ -190,7 +190,7 @@ export const ConditionNode = memo(({ data, selected }: NodeProps<Node<CustomNode
 ConditionNode.displayName = 'ConditionNode';
 
 interface GenericNodeProps extends NodeProps<Node<CustomNodeData>> {
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   color: string;
   label: string;
 }

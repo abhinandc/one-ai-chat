@@ -5,8 +5,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Sia Agent ID - replace with your actual ElevenLabs agent ID
-const ELEVENLABS_AGENT_ID = Deno.env.get("ELEVENLABS_AGENT_ID") || "your-agent-id";
+// Sia Agent ID
+const ELEVENLABS_AGENT_ID = "agent_8701keg7xdvgfx89gk8fspx7jk5x";
 
 serve(async (req) => {
   // Handle CORS preflight requests
