@@ -36,6 +36,23 @@ export interface Automation {
   updated_at: string;
 }
 
+export interface AutomationTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: 'gsuite' | 'slack' | 'jira' | 'custom';
+  template_data: {
+    icon: string;
+    trigger: 'schedule' | 'webhook' | 'event';
+    [key: string]: any;
+  };
+  required_credentials: string[];
+  is_active: boolean;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 class AutomationService {
   async getAutomations(userEmail: string): Promise<Automation[]> {
     const { data, error } = await supabaseClient
@@ -43,6 +60,17 @@ class AutomationService {
       .select('*')
       .eq('user_email', userEmail)
       .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  async getTemplates(): Promise<AutomationTemplate[]> {
+    const { data, error } = await supabaseClient
+      .from('automation_templates')
+      .select('*')
+      .eq('is_active', true)
+      .order('category', { ascending: true });
 
     if (error) throw error;
     return data || [];

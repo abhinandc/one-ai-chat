@@ -12,6 +12,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { cn } from "@/lib/utils";
 import { realtimeService } from "@/services/realtimeService";
+import { supabase } from "@/services/supabaseClient";
 import LoginPage from "./pages/LoginPage";
 import AuthCallback from "./pages/AuthCallback";
 import Index from "./pages/Index";
@@ -32,14 +33,52 @@ const App = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const user = useCurrentUser();
 
-  // Check for existing auth token on app load
+  // Check for Supabase session on app load
   useEffect(() => {
-    const authToken = localStorage.getItem("oneedge_auth_token");
-    if (authToken) {
-      setIsAuthenticated(true);
-    }
+    const checkSession = async () => {
+      if (!supabase) {
+        setIsLoading(false);
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        localStorage.setItem("oneedge_user", JSON.stringify({
+          email: session.user.email,
+          name: session.user.user_metadata?.full_name || session.user.email?.split("@")[0],
+          picture: session.user.user_metadata?.avatar_url,
+        }));
+        localStorage.setItem("oneedge_auth_token", session.access_token);
+        setIsAuthenticated(true);
+      }
+      setIsLoading(false);
+    };
+
+    checkSession();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase?.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" && session?.user) {
+        localStorage.setItem("oneedge_user", JSON.stringify({
+          email: session.user.email,
+          name: session.user.user_metadata?.full_name || session.user.email?.split("@")[0],
+          picture: session.user.user_metadata?.avatar_url,
+        }));
+        localStorage.setItem("oneedge_auth_token", session.access_token);
+        setIsAuthenticated(true);
+      } else if (event === "SIGNED_OUT") {
+        localStorage.removeItem("oneedge_auth_token");
+        localStorage.removeItem("oneedge_user");
+        setIsAuthenticated(false);
+      }
+    }) ?? { subscription: null };
+
+    return () => {
+      subscription?.unsubscribe();
+    };
   }, []);
 
   // Set up real-time subscriptions for authenticated users
@@ -61,12 +100,24 @@ const App = () => {
     setIsAuthenticated(true);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
     localStorage.removeItem("oneedge_auth_token");
     localStorage.removeItem("oneedge_user");
     realtimeService.unsubscribeAll();
     setIsAuthenticated(false);
   };
+
+  // Show loading while checking session
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (

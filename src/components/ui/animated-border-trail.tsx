@@ -34,12 +34,12 @@ export function AnimatedBorderTrail({
     <div
       {...props}
       className={cn(
-        "relative h-fit w-fit overflow-hidden rounded-xl bg-gray-800 p-px",
+        "relative h-fit w-fit overflow-visible p-[2px]",
         className
       )}
     >
       <div
-        className="absolute inset-0 h-full w-full animate-trail"
+        className="absolute inset-0 h-full w-full animate-trail rounded-lg"
         style={
           {
             "--duration": duration ?? "10s",
@@ -52,7 +52,7 @@ export function AnimatedBorderTrail({
       />
       <div
         className={cn(
-          "relative h-full w-full overflow-hidden rounded-[11px] bg-[#1a1a1a]",
+          "relative h-full w-full rounded-sm",
           contentClassName
         )}
       >

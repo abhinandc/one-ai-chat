@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { automationService, Automation, AutomationExecution } from '../services/automationService';
+import { automationService, Automation, AutomationExecution, AutomationTemplate } from '../services/automationService';
 
 export interface UseAutomationsResult {
   automations: Automation[];
+  templates: AutomationTemplate[];
   loading: boolean;
   error: string | null;
   createAutomation: (automation: Partial<Automation> & { name: string; description: string }) => Promise<Automation>;
@@ -13,21 +14,26 @@ export interface UseAutomationsResult {
 
 export function useAutomations(userEmail?: string): UseAutomationsResult {
   const [automations, setAutomations] = useState<Automation[]>([]);
+  const [templates, setTemplates] = useState<AutomationTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchAutomations = async () => {
-    if (!userEmail) {
-      setAutomations([]);
-      setLoading(false);
-      return;
-    }
-
     try {
       setLoading(true);
       setError(null);
-      const data = await automationService.getAutomations(userEmail);
-      setAutomations(data);
+
+      // Fetch templates (available to all users)
+      const templatesData = await automationService.getTemplates();
+      setTemplates(templatesData);
+
+      // Fetch user automations if logged in
+      if (userEmail) {
+        const data = await automationService.getAutomations(userEmail);
+        setAutomations(data);
+      } else {
+        setAutomations([]);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch automations');
       setAutomations([]);
@@ -73,6 +79,7 @@ export function useAutomations(userEmail?: string): UseAutomationsResult {
 
   return {
     automations,
+    templates,
     loading,
     error,
     createAutomation,

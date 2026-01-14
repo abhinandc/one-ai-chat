@@ -1,0 +1,23 @@
+Changes Made:
+
+1. Button-shaped nodes - Changed nodes from pill/rounded-xl shape to normal button shape (rounded-lg) with dark background (#1e1e1e)
+2. AnimatedBorderTrail component - Created at src/components/ui/animated-border-trail.tsx based on Animata's design. Active nodes now have a color-matched animated border trail that rotates around the node.
+3. AnimatedBeam component - Created at src/components/ui/animated-beam.tsx for use with connectors (ready for future integration)
+4. Tailwind config - Added trail animation keyframe and animation for the border trail effect
+5. CSS @property - Added @property --angle rule to index.css to enable CSS custom property animation
+6. Node colors - Each node type has its own trail color matching its icon:
+
+
+    - Start: Green (#22c55e)
+    - Gmail: Red (#ef4444)
+    - Drive: Yellow (#eab308)
+    - Jira: Blue (#2563eb)
+    - Slack: Purple (#a855f7)
+    - etc.
+
+The workflow builder now features:
+
+- Rectangular button-shaped nodes with rounded corners
+- Animated border trail effect on selected/active nodes
+- Color-coded trail animation matching each connector type
+- All the GSuite, Jira, Slack, and other connectors you requested

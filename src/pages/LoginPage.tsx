@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, EyeOff, Moon, Sun } from "lucide-react";
 import {
   GlassCard,
@@ -9,128 +9,11 @@ import {
 } from "@/components/ui/GlassCard";
 import { GlassInput } from "@/components/ui/GlassInput";
 import { Button } from "@/components/ui/button";
-import supabaseClient from "@/services/supabaseClient";
-import type { GoogleUser } from "@/services/api";
-
-const OAUTH_BRIDGE_KEY = "oneai_oauth_bridge";
-const CODE_VERIFIER_KEY = "oneai_oauth_code_verifier";
-const STATE_KEY = "oneai_oauth_state";
-const GOOGLE_CLIENT_ID =
-  import.meta.env.VITE_GOOGLE_CLIENT_ID ??
-  "373908156464-backo99qegd190e3duh54biihe5tg6i9.apps.googleusercontent.com";
+import { supabase } from "@/services/supabaseClient";
 
 interface LoginPageProps {
   onLogin?: (token: string) => void;
 }
-
-interface GoogleAuthPayload {
-  user: Partial<GoogleUser>;
-  tokens?: {
-    access_token?: string;
-    id_token?: string;
-    refresh_token?: string;
-    session?: string;
-    [key: string]: unknown;
-  };
-  raw?: unknown;
-}
-
-const base64UrlEncode = (input: ArrayBuffer | Uint8Array): string => {
-  const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
-  let binary = "";
-  bytes.forEach((b) => {
-    binary += String.fromCharCode(b);
-  });
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-};
-
-const generateCodeVerifier = (): string => {
-  const bytes = new Uint8Array(64);
-  crypto.getRandomValues(bytes);
-  return base64UrlEncode(bytes);
-};
-
-const generateCodeChallenge = async (verifier: string): Promise<string> => {
-  const data = new TextEncoder().encode(verifier);
-  const digest = await crypto.subtle.digest("SHA-256", data);
-  return base64UrlEncode(digest);
-};
-
-const decodeJwt = (token?: string | null): Partial<GoogleUser> => {
-  if (!token) return {};
-  try {
-    const [, payload] = token.split(".");
-    if (!payload) return {};
-    const json = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
-    return JSON.parse(json);
-  } catch (error) {
-    console.warn("Unable to decode id_token", error);
-    return {};
-  }
-};
-
-const fetchUserInfo = async (accessToken: string): Promise<Partial<GoogleUser>> => {
-  const response = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`userinfo_error_${response.status}`);
-  }
-
-  return (await response.json()) as Partial<GoogleUser>;
-};
-
-const upsertProfile = async (profile: {
-  email: string;
-  name?: string;
-  givenName?: string;
-  familyName?: string;
-  picture?: string;
-}) => {
-  const supabase = supabaseClient;
-  if (!supabase) return;
-
-  try {
-    await supabase
-      .from("users")
-      .upsert(
-        {
-          email: profile.email,
-          name: profile.name ?? null,
-        },
-        { onConflict: "email" },
-      );
-  } catch (error) {
-    console.warn("Unable to persist profile to Supabase", error);
-  }
-};
-
-const storeUserLocally = (profile: {
-  email: string;
-  name?: string;
-  givenName?: string;
-  familyName?: string;
-  picture?: string;
-}) => {
-  const stored = {
-    email: profile.email,
-    name: profile.name,
-    givenName: profile.givenName,
-    familyName: profile.familyName,
-    picture: profile.picture,
-  };
-
-  localStorage.setItem("oneedge_user", JSON.stringify(stored));
-  window.dispatchEvent(new StorageEvent("storage", { key: "oneedge_user" }));
-};
-
-const clearOauthArtifacts = () => {
-  sessionStorage.removeItem(CODE_VERIFIER_KEY);
-  sessionStorage.removeItem(STATE_KEY);
-};
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
   const [email, setEmail] = useState("");
@@ -138,7 +21,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [oauthInProgress, setOauthInProgress] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme");
@@ -150,6 +33,44 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       document.documentElement.classList.add("dark");
     }
   }, []);
+
+  // Check for existing session on mount
+  useEffect(() => {
+    const checkSession = async () => {
+      if (!supabase) return;
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        // Store user info for the app
+        localStorage.setItem("oneedge_user", JSON.stringify({
+          email: session.user.email,
+          name: session.user.user_metadata?.full_name || session.user.email?.split("@")[0],
+          picture: session.user.user_metadata?.avatar_url,
+        }));
+        localStorage.setItem("oneedge_auth_token", session.access_token);
+        onLogin?.(session.access_token);
+      }
+    };
+
+    checkSession();
+
+    // Listen for auth state changes (handles OAuth callback)
+    const { data: { subscription } } = supabase?.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" && session?.user) {
+        localStorage.setItem("oneedge_user", JSON.stringify({
+          email: session.user.email,
+          name: session.user.user_metadata?.full_name || session.user.email?.split("@")[0],
+          picture: session.user.user_metadata?.avatar_url,
+        }));
+        localStorage.setItem("oneedge_auth_token", session.access_token);
+        onLogin?.(session.access_token);
+      }
+    }) ?? { subscription: null };
+
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, [onLogin]);
 
   const toggleDarkMode = () => {
     const newDarkMode = !darkMode;
@@ -163,225 +84,67 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     }
   };
 
-  const finalizeSuccess = useCallback(
-    async (payload: GoogleAuthPayload) => {
-      const tokens = payload.tokens ?? {};
-      const claims = decodeJwt(tokens.id_token as string | undefined);
-      const merged: Partial<GoogleUser> = {
-        ...claims,
-        ...payload.user,
-      };
-
-      if ((!merged.email || !merged.name) && tokens.access_token) {
-        try {
-          const info = await fetchUserInfo(String(tokens.access_token));
-          Object.assign(merged, info);
-        } catch (error) {
-          console.warn("Unable to load Google profile via access token", error);
-        }
-      }
-
-      const email = merged.email;
-      if (!email) {
-        throw new Error("missing_email_claim");
-      }
-
-      const givenName = merged.given_name;
-      const familyName = merged.family_name;
-      const displayName =
-        merged.name ?? ([givenName, familyName].filter(Boolean).join(" ") || email);
-      const picture = merged.picture;
-
-      storeUserLocally({
-        email,
-        name: displayName,
-        givenName: givenName ?? undefined,
-        familyName: familyName ?? undefined,
-        picture: picture ?? undefined,
-      });
-
-      if (tokens.session) {
-        sessionStorage.setItem("oneai_session_token", String(tokens.session));
-      }
-      if (tokens.access_token) {
-        sessionStorage.setItem("oneai_google_access_token", String(tokens.access_token));
-      }
-      if (tokens.id_token) {
-        sessionStorage.setItem("oneai_google_id_token", String(tokens.id_token));
-      }
-
-      await upsertProfile({
-        email,
-        name: displayName,
-        givenName: givenName ?? undefined,
-        familyName: familyName ?? undefined,
-        picture: picture ?? undefined,
-      });
-
-      const authToken = `google_oauth_${Date.now()}`;
-      localStorage.setItem("oneedge_auth_token", authToken);
-      onLogin?.(authToken);
-    },
-    [onLogin],
-  );
-
-  const handleGoogleSignIn = useCallback(async () => {
-    if (oauthInProgress || isLoading) {
-      console.log("OAuth already in progress, ignoring click");
+  const handleGoogleSignIn = async () => {
+    if (!supabase) {
+      setError("Supabase is not configured");
       return;
     }
 
     setIsLoading(true);
-    setOauthInProgress(true);
-
-    let popup: Window | null = null;
-    let oauthCompleted = false;
-    let messageListenerAdded = false;
-    let storageListenerAdded = false;
-
-    const cleanup = () => {
-      if (messageListenerAdded) {
-        window.removeEventListener("message", handleMessage);
-        messageListenerAdded = false;
-      }
-      if (storageListenerAdded) {
-        window.removeEventListener("storage", handleStorage);
-        storageListenerAdded = false;
-      }
-      clearOauthArtifacts();
-      setIsLoading(false);
-      setOauthInProgress(false);
-    };
-
-    const closePopupSafely = () => {
-      if (popup && !popup.closed) {
-        try {
-          popup.close();
-        } catch (error) {
-          console.log("Failed to close OAuth popup", error);
-        }
-      }
-    };
-
-    const finalizeError = (message: string, source: string) => {
-      if (oauthCompleted) return;
-      oauthCompleted = true;
-      console.error(`Google OAuth error (${source}):`, message);
-      alert(`Google authentication failed: ${message}`);
-      cleanup();
-      closePopupSafely();
-    };
-
-    const finalizeSuccessFromPayload = async (payload: GoogleAuthPayload, source: string) => {
-      if (oauthCompleted) return;
-      oauthCompleted = true;
-
-      try {
-        await finalizeSuccess(payload);
-        cleanup();
-        closePopupSafely();
-      } catch (error) {
-        finalizeError(error instanceof Error ? error.message : "profile_error", source);
-      }
-    };
-
-    function handleMessage(event: MessageEvent) {
-      if (!event.data || typeof event.data !== "object") {
-        return;
-      }
-
-      if (event.data.type === "GOOGLE_AUTH_SUCCESS") {
-        void finalizeSuccessFromPayload(event.data as GoogleAuthPayload, "postMessage");
-      } else if (event.data.type === "GOOGLE_AUTH_ERROR") {
-        finalizeError(event.data.error ?? "Authentication failed", "postMessage");
-      }
-    }
-
-    function handleStorage(event: StorageEvent) {
-      if (event.key !== OAUTH_BRIDGE_KEY || !event.newValue) {
-        return;
-      }
-
-      try {
-        const payload = JSON.parse(event.newValue);
-        if (payload.type === "GOOGLE_AUTH_SUCCESS" && payload.user) {
-          void finalizeSuccessFromPayload(payload as GoogleAuthPayload, "storage");
-        } else if (payload.type === "GOOGLE_AUTH_ERROR") {
-          finalizeError(payload.error ?? "Authentication failed", "storage");
-        }
-      } catch (error) {
-        console.error("Failed to parse OAuth bridge payload", error);
-      }
-    }
+    setError(null);
 
     try {
-      localStorage.removeItem(OAUTH_BRIDGE_KEY);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: window.location.origin,
+        },
+      });
 
-      const codeVerifier = generateCodeVerifier();
-      sessionStorage.setItem(CODE_VERIFIER_KEY, codeVerifier);
-
-      const codeChallenge = await generateCodeChallenge(codeVerifier);
-      const state = `google-auth:${crypto.randomUUID?.() ?? Date.now().toString(36)}`;
-      sessionStorage.setItem(STATE_KEY, state);
-
-      const redirectUri = `${window.location.origin}/oauth2/callback`;
-      const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-      authUrl.searchParams.set("client_id", GOOGLE_CLIENT_ID);
-      authUrl.searchParams.set("redirect_uri", redirectUri);
-      authUrl.searchParams.set("response_type", "code");
-      authUrl.searchParams.set("scope", "openid email profile");
-      authUrl.searchParams.set("access_type", "offline");
-      authUrl.searchParams.set("prompt", "select_account");
-      authUrl.searchParams.set("state", state);
-      authUrl.searchParams.set("code_challenge", codeChallenge);
-      authUrl.searchParams.set("code_challenge_method", "S256");
-
-      popup = window.open(
-        authUrl.toString(),
-        "google-oauth",
-        "width=500,height=600,scrollbars=yes,resizable=yes",
-      );
-
-      if (!popup) {
-        finalizeError("Popup blocked", "popup");
-        return;
+      if (error) {
+        setError(error.message);
+        setIsLoading(false);
       }
-
-      window.addEventListener("message", handleMessage);
-      messageListenerAdded = true;
-      window.addEventListener("storage", handleStorage);
-      storageListenerAdded = true;
-    } catch (error) {
-      finalizeError(error instanceof Error ? error.message : "oauth_setup_failed", "setup");
+      // If successful, the page will redirect to Google
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to sign in with Google");
+      setIsLoading(false);
     }
-  }, [finalizeSuccess, isLoading, oauthInProgress]);
+  };
 
   const handleEmailSignIn = async (event: React.FormEvent) => {
     event.preventDefault();
+
+    if (!supabase) {
+      setError("Supabase is not configured");
+      return;
+    }
+
     setIsLoading(true);
+    setError(null);
 
     try {
-      console.log("Email sign-in:", { email });
-      const mockToken = `email-login-${Date.now()}`;
-      
-      // Store user profile data so useCurrentUser returns the user
-      storeUserLocally({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        name: email.split("@")[0], // Use email prefix as name
+        password,
       });
-      
-      localStorage.setItem("oneedge_auth_token", mockToken);
-      
-      // Persist to Supabase in background (don't block login)
-      upsertProfile({
-        email,
-        name: email.split("@")[0],
-      }).catch((err) => console.warn("Failed to persist to Supabase:", err));
-      
-      onLogin?.(mockToken);
-    } catch (error) {
-      console.error("Email sign-in failed:", error);
-      alert("Email authentication failed. Please try again.");
+
+      if (error) {
+        setError(error.message);
+        setIsLoading(false);
+        return;
+      }
+
+      if (data.session) {
+        localStorage.setItem("oneedge_user", JSON.stringify({
+          email: data.user?.email,
+          name: data.user?.user_metadata?.full_name || email.split("@")[0],
+        }));
+        localStorage.setItem("oneedge_auth_token", data.session.access_token);
+        onLogin?.(data.session.access_token);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to sign in");
     } finally {
       setIsLoading(false);
     }
@@ -417,8 +180,14 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           </GlassCardHeader>
 
           <GlassCardContent className="space-y-lg">
+            {error && (
+              <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                {error}
+              </div>
+            )}
+
             <Button
-              onClick={() => void handleGoogleSignIn()}
+              onClick={handleGoogleSignIn}
               disabled={isLoading}
               className="w-full h-12 bg-card text-card-foreground border border-border-primary hover:bg-surface-graphite-hover"
               variant="outline"
@@ -442,7 +211,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                   />
                 </svg>
-                Continue with Google (oneorigin.us)
+                {isLoading ? "Signing in..." : "Continue with Google (oneorigin.us)"}
               </div>
             </Button>
 

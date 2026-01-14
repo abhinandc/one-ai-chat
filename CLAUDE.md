@@ -29,19 +29,19 @@ OneEdge is an **employee-facing AI platform** that provides enterprise teams wit
 
 ### Key Stakeholders
 
-| Role | Description |
-|------|-------------|
-| **EdgeAdmin Administrators** | Manage API keys, create virtual keys, assign models to employees, set budgets/limits |
-| **OneEdge Admins** | Internal admins who configure prompt feeds, automation templates, manage employee settings |
-| **Employees** | End users who consume AI services through chat, automations, and agents |
+| Role                         | Description                                                                                |
+| ---------------------------- | ------------------------------------------------------------------------------------------ |
+| **EdgeAdmin Administrators** | Manage API keys, create virtual keys, assign models to employees, set budgets/limits       |
+| **OneEdge Admins**           | Internal admins who configure prompt feeds, automation templates, manage employee settings |
+| **Employees**                | End users who consume AI services through chat, automations, and agents                    |
 
 ### Platform Distribution
 
-| Platform | Technology | Distribution |
-|----------|------------|--------------|
-| **Web App** | React 18 + Vite + TypeScript | Standard web deployment |
-| **iOS App** | Flutter | TestFlight (internal) |
-| **Android App** | Flutter | Managed Google Play (enterprise) |
+| Platform        | Technology                   | Distribution                     |
+| --------------- | ---------------------------- | -------------------------------- |
+| **Web App**     | React 18 + Vite + TypeScript | Standard web deployment          |
+| **iOS App**     | Flutter                      | TestFlight (internal)            |
+| **Android App** | Flutter                      | Managed Google Play (enterprise) |
 
 ### Core Value Proposition
 
@@ -116,23 +116,24 @@ EdgeAdmin                     Supabase                    OneEdge
 
 ### Existing Web App Features
 
-| Page | Current Status | Functional |
-|------|---------------|------------|
-| Dashboard (`/`) | Basic implementation | Partial - needs metrics overhaul |
-| Chat (`/chat`) | Functional | Yes - needs polish |
-| Agents (`/agents`) | Basic implementation | Partial - n8n integration incomplete |
-| Automations (`/automations`) | Basic implementation | Partial - no templates |
-| Models Hub (`/models`) | Functional | Yes |
-| Prompt Library (`/prompts`) | Functional | Yes - needs community feeds |
-| Playground (`/playground`) | Functional | Yes - needs to merge into Prompts |
-| Tools Gallery (`/tools`) | Basic implementation | Partial - rename to AI Gallery |
-| Help (`/help`) | Static content | Yes |
-| Theme (`/theme`) | Design reference | Dev only |
-| Login | Google OAuth | Needs Supabase SSO migration |
+| Page                         | Current Status       | Functional                           |
+| ---------------------------- | -------------------- | ------------------------------------ |
+| Dashboard (`/`)              | Basic implementation | Partial - needs metrics overhaul     |
+| Chat (`/chat`)               | Functional           | Yes - needs polish                   |
+| Agents (`/agents`)           | Basic implementation | Partial - n8n integration incomplete |
+| Automations (`/automations`) | Basic implementation | Partial - no templates               |
+| Models Hub (`/models`)       | Functional           | Yes                                  |
+| Prompt Library (`/prompts`)  | Functional           | Yes - needs community feeds          |
+| Playground (`/playground`)   | Functional           | Yes - needs to merge into Prompts    |
+| Tools Gallery (`/tools`)     | Basic implementation | Partial - rename to AI Gallery       |
+| Help (`/help`)               | Static content       | Yes                                  |
+| Theme (`/theme`)             | Design reference     | Dev only                             |
+| Login                        | Google OAuth         | Needs Supabase SSO migration         |
 
 ### Existing Supabase Schema
 
 **Tables Available:**
+
 - `app_users` - User profiles
 - `virtual_keys` - API key allocations from EdgeAdmin
 - `user_preferences` - User settings
@@ -148,6 +149,7 @@ EdgeAdmin                     Supabase                    OneEdge
 ### What's Missing
 
 1. **Schema Additions Needed:**
+
    - `agents` - Custom agent definitions (shareable)
    - `agent_credentials` - EdgeVault secure credential storage
    - `automation_templates` - Pre-built automation templates
@@ -172,28 +174,28 @@ EdgeAdmin                     Supabase                    OneEdge
 
 ### Web App Pages (Final Structure)
 
-| Route | Page | Mobile | Description |
-|-------|------|--------|-------------|
-| `/` | Dashboard | No | Metrics, Spotlight search, 4-model comparison |
-| `/chat` | Chat | **Yes** | ChatGPT-style conversation interface |
-| `/agents` | Agents | No | N8N config + custom agent builder |
-| `/automations` | Automations | No | Process automations with templates |
-| `/models` | Models Hub | No | Model catalog, virtual keys display |
-| `/prompts` | Prompt Library | No | Prompts + Playground (merged) + community |
-| `/ai-gallery` | AI Gallery | No | Model requests + tool requests |
-| `/help` | Help & Profile | **Yes** | Documentation + user profile |
-| `/admin` | Admin Settings | No | OneEdge admin config (admins only) |
+| Route          | Page           | Mobile  | Description                                   |
+| -------------- | -------------- | ------- | --------------------------------------------- |
+| `/`            | Dashboard      | No      | Metrics, Spotlight search, 4-model comparison |
+| `/chat`        | Chat           | **Yes** | ChatGPT-style conversation interface          |
+| `/agents`      | Agents         | No      | N8N config + custom agent builder             |
+| `/automations` | Automations    | No      | Process automations with templates            |
+| `/models`      | Models Hub     | No      | Model catalog, virtual keys display           |
+| `/prompts`     | Prompt Library | No      | Prompts + Playground (merged) + community     |
+| `/ai-gallery`  | AI Gallery     | No      | Model requests + tool requests                |
+| `/help`        | Help & Profile | **Yes** | Documentation + user profile                  |
+| `/admin`       | Admin Settings | No      | OneEdge admin config (admins only)            |
 
 ### Mobile App Pages (Flutter)
 
-| Screen | Description |
-|--------|-------------|
-| **Home/Chats** | List of conversations, search, new chat |
-| **Chat** | Active conversation with model switcher |
-| **Projects** | Conversation folders/organization |
-| **Modes** | Quick model presets (Thinking, Fast, Coding) |
-| **Sia** | Voice assistant interface |
-| **Profile** | Settings, preferences, help |
+| Screen         | Description                                  |
+| -------------- | -------------------------------------------- |
+| **Home/Chats** | List of conversations, search, new chat      |
+| **Chat**       | Active conversation with model switcher      |
+| **Projects**   | Conversation folders/organization            |
+| **Modes**      | Quick model presets (Thinking, Fast, Coding) |
+| **Sia**        | Voice assistant interface                    |
+| **Profile**    | Settings, preferences, help                  |
 
 ---
 
@@ -202,6 +204,7 @@ EdgeAdmin                     Supabase                    OneEdge
 ### 1. Dashboard (Web Only)
 
 #### Spotlight Search
+
 - Mac-style search bar prominently centered
 - AI analyzes query to understand user's task intent
 - Automatically queries 4 relevant models in parallel
@@ -210,7 +213,9 @@ EdgeAdmin                     Supabase                    OneEdge
 - On selection: Animated transition to Chat page with conversation pre-populated
 
 #### Metrics Dashboard
+
 Display insane, useful metrics including:
+
 - **Today's Stats:** Messages sent, tokens used, cost, active time
 - **This Week:** Conversations started, models used, top model
 - **Usage Trends:** Sparkline charts for daily/weekly activity
@@ -220,6 +225,7 @@ Display insane, useful metrics including:
 - **Recent Activity:** Last 10 actions with quick-resume
 
 #### Quick Actions
+
 - Start new chat
 - Resume last conversation
 - Access favorite prompts
@@ -228,6 +234,7 @@ Display insane, useful metrics including:
 ### 2. Chat (Web + Mobile)
 
 #### Web Features
+
 - Conversation sidebar (collapsible)
 - Model selector dropdown
 - System prompt configuration
@@ -240,6 +247,7 @@ Display insane, useful metrics including:
 - Export as markdown/PDF
 
 #### Mobile Features (ChatGPT-style)
+
 - Bottom navigation: Chats | Sia | Projects | Profile
 - Swipe gestures for conversation management
 - Pull-to-refresh
@@ -252,6 +260,7 @@ Display insane, useful metrics including:
 ### 3. Agents (Web Only)
 
 #### N8N Configuration Tab
+
 - Connect to n8n instance (URL, API key)
 - Sync workflows from n8n
 - View workflow status (active/inactive)
@@ -259,6 +268,7 @@ Display insane, useful metrics including:
 - **No external editor** - all config in-app
 
 #### Custom Agent Builder Tab
+
 - Visual node-based editor (ReactFlow)
 - Node types: System, Tool, Router, Memory, Retrieval, Decision, Code, Human, Webhook, Delay, Output
 - Save/load agent workflows
@@ -269,9 +279,11 @@ Display insane, useful metrics including:
 ### 4. Automations (Web Only)
 
 #### Automation Templates (Admin-Maintained)
+
 Pre-built templates for enterprise stack:
 
 **GSuite Automations:**
+
 - "Email Summarizer" - Summarize unread emails daily
 - "Email Forwarder" - Forward emails from specific sender to recipient
 - "Calendar Prep" - Prepare meeting notes before calendar events
@@ -279,25 +291,30 @@ Pre-built templates for enterprise stack:
 - "Sheet Analyzer" - Analyze Google Sheets data
 
 **Slack Automations:**
+
 - "Channel Summarizer" - Daily digest of channel activity
 - "Customer Email Responder" - Draft responses to customer emails
 - "Mention Alerter" - AI-summarized mention notifications
 
 **Jira Automations:**
+
 - "Ticket Prioritizer" - AI-prioritize new tickets
 - "Sprint Reporter" - Generate sprint summary reports
 - "Bug Analyzer" - Analyze bug patterns
 
 **Google Chat Automations:**
+
 - "Space Responder" - Draft responses to space messages
 - "Meeting Scheduler" - AI-assisted meeting scheduling
 
 **Custom Automations:**
+
 - Visual builder for custom workflows
 - Trigger types: Schedule, Webhook, Email, Event
 - Action types: AI Process, Send Email, Post Message, Create Doc
 
 #### EdgeVault (Credential Management)
+
 - Secure credential storage per user
 - Supported integrations: Google, Slack, Jira, n8n, custom OAuth
 - Test & validate connections
@@ -305,6 +322,7 @@ Pre-built templates for enterprise stack:
 - Audit log for credential access
 
 #### Model Selection
+
 - Each automation can use specific model
 - Model selected from user's available models (virtual key)
 - Default model fallback
@@ -312,6 +330,7 @@ Pre-built templates for enterprise stack:
 ### 5. Models Hub (Web Only)
 
 #### Features
+
 - View all available models (from virtual keys)
 - Model details: capabilities, pricing, limits
 - Usage per model (tokens, cost, requests)
@@ -321,6 +340,7 @@ Pre-built templates for enterprise stack:
 ### 6. Prompt Library + Playground (Web Only)
 
 #### Prompt Library
+
 - Create/edit/delete prompts
 - Categories and tags
 - Difficulty levels (beginner/intermediate/advanced)
@@ -329,6 +349,7 @@ Pre-built templates for enterprise stack:
 - Template variables with fill-in forms
 
 #### Playground (Integrated Section)
+
 - Collapsible right panel OR dedicated tab
 - Test prompts with different models
 - Parameter adjustments (temp, tokens, top_p)
@@ -336,6 +357,7 @@ Pre-built templates for enterprise stack:
 - Export/share sessions
 
 #### Community Feeds (Admin-Configured)
+
 - External prompt sources via API/webhook
 - Admin configures feed sources
 - Employees can filter/browse external prompts
@@ -346,12 +368,14 @@ Pre-built templates for enterprise stack:
 Replaces "Tools Gallery" - now for requests:
 
 #### Model Requests
+
 - Request access to new models
 - Business justification form
 - Admin approval workflow
 - Status tracking (pending/approved/rejected)
 
 #### Tool Requests
+
 - Request new AI tools (Cursor, Copilot, etc.)
 - License request workflow
 - Integration requests
@@ -360,6 +384,7 @@ Replaces "Tools Gallery" - now for requests:
 ### 8. Help & Profile (Web + Mobile)
 
 #### Help Section
+
 - Searchable documentation
 - Video tutorials
 - FAQ accordion
@@ -367,6 +392,7 @@ Replaces "Tools Gallery" - now for requests:
 - Keyboard shortcuts reference
 
 #### Profile (Mobile-focused)
+
 - Edit display name, avatar
 - Theme preferences
 - Notification settings
@@ -379,17 +405,20 @@ Replaces "Tools Gallery" - now for requests:
 OneEdge-specific admin configuration:
 
 #### Prompt Feed Management
+
 - Add/remove external prompt sources
 - Configure API endpoints or webhooks
 - Set refresh intervals
 - Enable/disable feeds for all employees
 
 #### Automation Template Management
+
 - Create/edit automation templates
 - Set template visibility (all/specific teams)
 - Template versioning
 
 #### User Management
+
 - View employees and their access
 - Role assignment (admin/employee)
 - Usage analytics per user
@@ -403,6 +432,7 @@ OneEdge-specific admin configuration:
 **Style:** Clean, minimal, bold edge (shadcn + Radix)
 
 **CSS Variables (Light):**
+
 ```css
 :root {
   --radius: 0.5rem;
@@ -434,6 +464,7 @@ OneEdge-specific admin configuration:
 ```
 
 **CSS Variables (Dark):**
+
 ```css
 .dark {
   --radius: 0.5rem;
@@ -467,6 +498,7 @@ OneEdge-specific admin configuration:
 ### Mobile App Theme
 
 **Theme 1 (Warm - Default):**
+
 ```css
 :root {
   --primary: oklch(0.874 0.087 73.746);
@@ -478,6 +510,7 @@ OneEdge-specific admin configuration:
 ```
 
 **Theme 2 (Purple/Rose - Alternative):**
+
 ```css
 :root {
   --primary: oklch(0.205 0.032 295.665);
@@ -737,12 +770,14 @@ CREATE POLICY "Users can view own role" ON public.user_roles
 ### Sia - Voice Assistant
 
 #### Identity
+
 - **Name:** Sia (Strategic Intelligence Assistant)
 - **Voice:** Custom ElevenLabs voice (warm, professional, slightly playful)
 - **Avatar:** Animated orb/waveform (similar to Siri but unique)
 - **Personality:** Helpful, concise, occasionally witty
 
 #### Capabilities
+
 - Voice-to-voice conversations
 - Persistent memory across sessions
 - Context-aware responses (knows user's preferences, recent chats)
@@ -750,6 +785,7 @@ CREATE POLICY "Users can view own role" ON public.user_roles
 - Task delegation to automations
 
 #### Technical Implementation
+
 ```dart
 // ElevenLabs Agent integration
 class SiaAgent {
@@ -769,11 +805,11 @@ class SiaAgent {
 
 ### Mode Presets
 
-| Mode | Model | Temperature | Use Case |
-|------|-------|-------------|----------|
-| **Thinking** | claude-3-opus | 0.3 | Deep analysis, complex reasoning |
-| **Fast** | gpt-4o-mini / claude-haiku | 0.7 | Quick responses, casual chat |
-| **Coding** | claude-3-sonnet / gpt-4 | 0.2 | Code generation, debugging |
+| Mode         | Model                      | Temperature | Use Case                         |
+| ------------ | -------------------------- | ----------- | -------------------------------- |
+| **Thinking** | claude-3-opus              | 0.3         | Deep analysis, complex reasoning |
+| **Fast**     | gpt-4o-mini / claude-haiku | 0.7         | Quick responses, casual chat     |
+| **Coding**   | claude-3-sonnet / gpt-4    | 0.2         | Code generation, debugging       |
 
 ### Mobile Theme Implementation
 
@@ -891,6 +927,7 @@ lib/
 ### AI Models (via LiteLLM-style proxy)
 
 Access controlled by virtual keys from EdgeAdmin:
+
 - OpenAI (GPT-4, GPT-4o, GPT-4o-mini)
 - Anthropic (Claude 3 Opus, Sonnet, Haiku)
 - Google (Gemini Pro, Gemini Flash)
@@ -921,6 +958,7 @@ Access controlled by virtual keys from EdgeAdmin:
 ## Implementation Priority
 
 ### Phase 1: Core Polish (Web)
+
 1. Migrate auth to Supabase SSO
 2. Implement new theme system (OKLCH)
 3. Dashboard overhaul with Spotlight search
@@ -928,6 +966,7 @@ Access controlled by virtual keys from EdgeAdmin:
 5. Merge Playground into Prompt Library
 
 ### Phase 2: Enterprise Features (Web)
+
 1. EdgeVault credential management
 2. Automation templates
 3. N8N configuration page
@@ -935,6 +974,7 @@ Access controlled by virtual keys from EdgeAdmin:
 5. AI Gallery (requests)
 
 ### Phase 3: Mobile MVP
+
 1. Flutter project setup
 2. Authentication flow
 3. Chat interface
@@ -942,6 +982,7 @@ Access controlled by virtual keys from EdgeAdmin:
 5. Basic Sia integration
 
 ### Phase 4: Mobile Polish
+
 1. Full Sia voice implementation
 2. Mode presets
 3. Offline caching
@@ -971,24 +1012,13 @@ flutter analyze   # Static analysis
 
 ### Key Files
 
-| File | Purpose |
-|------|---------|
-| `src/App.tsx` | Main routing |
+| File                             | Purpose                |
+| -------------------------------- | ---------------------- |
+| `src/App.tsx`                    | Main routing           |
 | `src/services/supabaseClient.ts` | Supabase configuration |
-| `src/services/api.ts` | AI model API client |
-| `src/hooks/useCurrentUser.ts` | Authentication state |
-| `tailwind.config.ts` | Theme configuration |
-| `supabase-schema.sql` | Database schema |
+| `src/services/api.ts`            | AI model API client    |
+| `src/hooks/useCurrentUser.ts`    | Authentication state   |
+| `tailwind.config.ts`             | Theme configuration    |
+| `supabase-schema.sql`            | Database schema        |
 
-### Environment Variables
-
-```env
-VITE_SUPABASE_URL=
-VITE_SUPABASE_ANON_KEY=
-VITE_API_PROXY_URL=
-VITE_ELEVENLABS_API_KEY=
-```
-
----
-
-*This document is the source of truth for OneEdge development. Update as requirements evolve.*
+_This document is the source of truth for OneEdge development. Update as requirements evolve._

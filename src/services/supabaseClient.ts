@@ -10,7 +10,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase: SupabaseClient | undefined = supabaseUrl && supabaseAnonKey
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
-        persistSession: false,
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
       },
     })
   : undefined;
