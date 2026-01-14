@@ -16,6 +16,8 @@
     "ci": "pnpm preflight && pnpm lint && pnpm typecheck && pnpm test && pnpm test:ui"
   },
   "dependencies": {
+    "@assistant-ui/react": "^0.11.53",
+    "@assistant-ui/react-ai-sdk": "^1.1.20",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
@@ -48,6 +50,7 @@
     "@supabase/supabase-js": "^2.90.1",
     "@tanstack/react-query": "^5.83.0",
     "@xyflow/react": "^12.8.4",
+    "ai": "^6.0.33",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
