@@ -2,22 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { Menu, Settings, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChatSidebar } from "@/components/chat/ChatSidebar";
 import { ChatThread } from "@/components/chat/ChatThread";
 import { AIInput } from "@/components/chat/AIInput";
+import { ChatSettingsDrawer } from "@/components/chat/ChatSettingsDrawer";
 import { useChat } from "@/hooks/useChat";
 import { useModels } from "@/hooks/useModels";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -41,9 +34,15 @@ const Chat = () => {
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [systemPrompt] = useState("You are a helpful AI assistant.");
-  const [temperature] = useState(0.7);
-  const [maxTokens] = useState(4000);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [chatSettings, setChatSettings] = useState({
+    systemPrompt: "You are a helpful AI assistant.",
+    temperature: 0.7,
+    maxTokens: 4000,
+    topP: 0.9,
+    streamResponse: true,
+  });
+
 
   const {
     messages,
@@ -54,9 +53,9 @@ const Chat = () => {
     streamingMessage,
   } = useChat({
     model: selectedModel,
-    systemPrompt,
-    temperature,
-    maxTokens,
+    systemPrompt: chatSettings.systemPrompt,
+    temperature: chatSettings.temperature,
+    maxTokens: chatSettings.maxTokens,
   });
 
   // Initialize with first available model
@@ -96,11 +95,11 @@ const Chat = () => {
         settings: {
           model: selectedModel,
           provider: "litellm" as const,
-          temperature,
-          topP: 0.9,
-          maxTokens,
+          temperature: chatSettings.temperature,
+          topP: chatSettings.topP,
+          maxTokens: chatSettings.maxTokens,
           stopSequences: [],
-          systemPrompt,
+          systemPrompt: chatSettings.systemPrompt,
         },
       });
     } catch (error) {
@@ -123,11 +122,11 @@ const Chat = () => {
       settings: {
         model: selectedModel,
         provider: "litellm",
-        temperature,
-        topP: 0.9,
-        maxTokens,
+        temperature: chatSettings.temperature,
+        topP: chatSettings.topP,
+        maxTokens: chatSettings.maxTokens,
         stopSequences: [],
-        systemPrompt,
+        systemPrompt: chatSettings.systemPrompt,
       },
     };
 
@@ -389,7 +388,12 @@ const Chat = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="h-9 w-9">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-9 w-9"
+            onClick={() => setSettingsOpen(true)}
+          >
             <Settings className="h-5 w-5" />
           </Button>
         </div>
@@ -419,6 +423,14 @@ const Chat = () => {
           />
         </div>
       </main>
+
+      {/* Settings Drawer */}
+      <ChatSettingsDrawer
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        settings={chatSettings}
+        onSettingsChange={setChatSettings}
+      />
     </div>
   );
 };

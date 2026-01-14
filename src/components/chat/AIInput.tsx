@@ -1,7 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ArrowUp, Paperclip, X, Square } from "lucide-react";
+import { ArrowUp, Paperclip, X, Square, Plus, Mic, Globe, ImageIcon, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface AIInputProps {
   onSend: (message: string) => void;
@@ -10,7 +17,14 @@ interface AIInputProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  onOpenSettings?: () => void;
 }
+
+const tools = [
+  { id: "search", label: "Search the web", icon: Globe },
+  { id: "image", label: "Generate image", icon: ImageIcon },
+  { id: "reason", label: "Deep reasoning", icon: Sparkles },
+];
 
 export function AIInput({
   onSend,
@@ -19,9 +33,11 @@ export function AIInput({
   placeholder = "Message OneEdge...",
   disabled = false,
   className,
+  onOpenSettings,
 }: AIInputProps) {
   const [message, setMessage] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -44,8 +60,8 @@ export function AIInput({
     onSend(message.trim());
     setMessage("");
     setAttachments([]);
+    setSelectedTool(null);
     
-    // Reset textarea height
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
@@ -63,7 +79,6 @@ export function AIInput({
     if (files) {
       setAttachments(prev => [...prev, ...Array.from(files)]);
     }
-    // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -79,31 +94,94 @@ export function AIInput({
     <div className={cn("w-full", className)}>
       <div className="relative mx-auto max-w-3xl">
         {/* Attachments Preview */}
-        {attachments.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-2 px-1">
-            {attachments.map((file, index) => (
-              <div
-                key={index}
-                className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg text-sm"
-              >
-                <span className="truncate max-w-[150px]">{file.name}</span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-5 w-5"
-                  onClick={() => removeAttachment(index)}
+        <AnimatePresence>
+          {attachments.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="flex flex-wrap gap-2 mb-2 px-1"
+            >
+              {attachments.map((file, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg text-sm"
+                >
+                  <span className="truncate max-w-[150px]">{file.name}</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5"
+                    onClick={() => removeAttachment(index)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Selected Tool Badge */}
+        <AnimatePresence>
+          {selectedTool && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="flex items-center gap-2 mb-2 px-1"
+            >
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
+                {tools.find(t => t.id === selectedTool)?.icon && (
+                  <span className="h-3 w-3">
+                    {(() => {
+                      const Icon = tools.find(t => t.id === selectedTool)?.icon;
+                      return Icon ? <Icon className="h-3 w-3" /> : null;
+                    })()}
+                  </span>
+                )}
+                {tools.find(t => t.id === selectedTool)?.label}
+                <button
+                  onClick={() => setSelectedTool(null)}
+                  className="ml-1 hover:bg-primary/20 rounded-full p-0.5"
                 >
                   <X className="h-3 w-3" />
-                </Button>
+                </button>
               </div>
-            ))}
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Input Container */}
-        <div className="relative flex items-end gap-2 rounded-2xl border border-border bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background transition-shadow">
-          {/* Attachment Button */}
-          <div className="flex items-center pl-3 pb-3">
+        <div className="relative flex items-center rounded-2xl border border-border bg-background shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background transition-shadow">
+          {/* Left Actions */}
+          <div className="flex items-center gap-1 pl-2">
+            {/* Plus Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  disabled={disabled}
+                >
+                  <Plus className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                  <Paperclip className="h-4 w-4 mr-2" />
+                  Attach file
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                  <ImageIcon className="h-4 w-4 mr-2" />
+                  Upload image
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Hidden file input */}
             <input
               ref={fileInputRef}
               type="file"
@@ -112,16 +190,36 @@ export function AIInput({
               onChange={handleFileSelect}
               className="hidden"
             />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={disabled}
-            >
-              <Paperclip className="h-5 w-5" />
-            </Button>
+
+            {/* Tools Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    "h-8 w-8 text-muted-foreground hover:text-foreground",
+                    selectedTool && "text-primary"
+                  )}
+                  disabled={disabled}
+                >
+                  <Sparkles className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                {tools.map((tool) => (
+                  <DropdownMenuItem
+                    key={tool.id}
+                    onClick={() => setSelectedTool(tool.id)}
+                    className={cn(selectedTool === tool.id && "bg-muted")}
+                  >
+                    <tool.icon className="h-4 w-4 mr-2" />
+                    {tool.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Textarea */}
@@ -134,15 +232,27 @@ export function AIInput({
             disabled={disabled || isLoading}
             rows={1}
             className={cn(
-              "flex-1 resize-none bg-transparent py-3.5 text-sm outline-none",
+              "flex-1 resize-none bg-transparent py-3 px-2 text-sm outline-none",
               "placeholder:text-muted-foreground",
               "disabled:opacity-50 disabled:cursor-not-allowed",
-              "min-h-[52px] max-h-[200px]"
+              "min-h-[48px] max-h-[200px]"
             )}
           />
 
-          {/* Send/Stop Button */}
-          <div className="flex items-center pr-3 pb-3">
+          {/* Right Actions */}
+          <div className="flex items-center gap-1 pr-2">
+            {/* Voice Button */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              disabled={disabled}
+            >
+              <Mic className="h-5 w-5" />
+            </Button>
+
+            {/* Send/Stop Button */}
             {isLoading ? (
               <Button
                 type="button"
