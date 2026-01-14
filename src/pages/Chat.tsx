@@ -333,7 +333,7 @@ const Chat = () => {
   const currentModel = models.find((m) => m.id === selectedModel);
 
   return (
-    <div className="h-[calc(100vh-4rem-3rem)] flex flex-col bg-background overflow-hidden relative">
+    <div className="h-[calc(100vh-4rem)] flex flex-col bg-background overflow-hidden relative">
       {/* Sidebar */}
       <ChatSidebar
         conversations={uiConversations}

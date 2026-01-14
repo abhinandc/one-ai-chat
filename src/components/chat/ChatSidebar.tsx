@@ -74,7 +74,7 @@ export function ChatSidebar({
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed left-0 top-16 z-50 h-[calc(100vh-4rem)] w-72 bg-background border-r border-border transform transition-transform duration-300 ease-in-out flex flex-col",
+          "fixed left-0 top-16 bottom-0 z-50 w-72 bg-background border-r border-border transform transition-transform duration-300 ease-in-out flex flex-col",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
