@@ -1,4 +1,4 @@
-import { useEffect, useRef, memo, useMemo, useLayoutEffect } from "react";
+import { useEffect, useRef, memo, useMemo, useCallback } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChatMessage } from "./ChatMessage";
 import { ThinkingLine } from "@/components/ui/shimmer-text";
@@ -16,62 +16,46 @@ export const ChatThread = memo(function ChatThread({
   streamingMessage 
 }: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const prevMessageCountRef = useRef(messages.length);
-  const isInitialMount = useRef(true);
+  const prevLengthRef = useRef(0);
 
   // Smooth scroll to bottom
-  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior, block: "end" });
-    }
-  };
+  const scrollToBottom = useCallback((instant = false) => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollIntoView({ 
+        behavior: instant ? "instant" : "smooth", 
+        block: "end" 
+      });
+    });
+  }, []);
 
-  // Scroll on new messages (not on initial load to prevent jump)
-  useLayoutEffect(() => {
-    const isNewMessage = messages.length > prevMessageCountRef.current;
-    prevMessageCountRef.current = messages.length;
+  // Scroll on new messages
+  useEffect(() => {
+    const isNewMessage = messages.length > prevLengthRef.current;
+    const isInitialLoad = prevLengthRef.current === 0 && messages.length > 0;
+    prevLengthRef.current = messages.length;
     
-    if (isNewMessage) {
-      // Use RAF to ensure DOM is painted before scrolling
-      requestAnimationFrame(() => {
-        scrollToBottom("smooth");
-      });
+    if (isInitialLoad) {
+      scrollToBottom(true); // Instant on initial load
+    } else if (isNewMessage) {
+      scrollToBottom(false); // Smooth for new messages
     }
-  }, [messages.length]);
+  }, [messages.length, scrollToBottom]);
 
-  // Scroll when streaming updates
+  // Scroll during streaming
   useEffect(() => {
-    if (isStreaming && streamingMessage) {
-      requestAnimationFrame(() => {
-        scrollToBottom("smooth");
-      });
+    if (isStreaming) {
+      scrollToBottom(false);
     }
-  }, [isStreaming, streamingMessage]);
+  }, [isStreaming, streamingMessage, scrollToBottom]);
 
-  // Initial scroll to bottom (instant, no animation)
-  useEffect(() => {
-    if (messages.length > 0 && isInitialMount.current) {
-      isInitialMount.current = false;
-      requestAnimationFrame(() => {
-        scrollRef.current?.scrollIntoView({ behavior: "instant", block: "end" });
-      });
-    }
-  }, [messages.length]);
-
-  // Memoize rendered messages to prevent re-renders
+  // Stable message keys to prevent re-renders
   const renderedMessages = useMemo(() => {
     return messages.map((message, index) => (
-      <div 
-        key={message.id || `msg-${index}`}
-        className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 fill-mode-both"
-        style={{ animationDelay: `${Math.min(index * 20, 100)}ms` }}
-      >
-        <ChatMessage
-          message={message}
-          isStreaming={false}
-        />
-      </div>
+      <ChatMessage
+        key={message.id || `msg-${index}-${message.role}`}
+        message={message}
+        isStreaming={false}
+      />
     ));
   }, [messages]);
 
@@ -80,35 +64,33 @@ export const ChatThread = memo(function ChatThread({
   }
 
   return (
-    <ScrollArea className="flex-1" ref={containerRef}>
+    <ScrollArea className="flex-1">
       <div className="pb-32">
         {renderedMessages}
         
         {/* Streaming message */}
         {isStreaming && streamingMessage && (
-          <div className="animate-in fade-in-0 duration-200">
-            <ChatMessage
-              message={{
-                id: "streaming",
-                role: "assistant",
-                content: streamingMessage,
-                timestamp: new Date(),
-              }}
-              isStreaming
-            />
-          </div>
+          <ChatMessage
+            message={{
+              id: "streaming-msg",
+              role: "assistant",
+              content: streamingMessage,
+              timestamp: new Date(),
+            }}
+            isStreaming
+          />
         )}
         
         {/* Loading indicator when waiting for response */}
         {isStreaming && !streamingMessage && (
-          <div className="w-full py-4 animate-in fade-in-0 duration-200">
+          <div className="w-full py-4">
             <div className="mx-auto max-w-3xl px-4">
               <ThinkingLine text="AI is thinking" />
             </div>
           </div>
         )}
         
-        <div ref={scrollRef} className="h-px" />
+        <div ref={scrollRef} className="h-1" />
       </div>
     </ScrollArea>
   );
@@ -124,7 +106,7 @@ function EmptyState() {
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-y-auto">
-      <div className="max-w-2xl w-full text-center space-y-8 animate-in fade-in-0 duration-500">
+      <div className="max-w-2xl w-full text-center space-y-8">
         {/* Animated gradient orb */}
         <div className="flex justify-center">
           <div className="relative h-24 w-24">
@@ -140,7 +122,7 @@ function EmptyState() {
             How can I help you today?
           </h1>
           <p className="text-muted-foreground">
-            Ask me anything — I'm here to assist
+            Ask me anything — I&apos;m here to assist
           </p>
         </div>
 
@@ -149,7 +131,7 @@ function EmptyState() {
           {suggestions.map((suggestion, index) => (
             <button
               key={index}
-              className="group text-left p-4 rounded-xl border border-border bg-card hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 hover:scale-[1.02] hover:-translate-y-0.5"
+              className="group text-left p-4 rounded-xl border border-border bg-card hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 hover:scale-[1.02]"
             >
               <span className="text-sm text-foreground group-hover:text-primary transition-colors">
                 {suggestion}

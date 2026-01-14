@@ -1,14 +1,14 @@
-import { useState, memo, useCallback } from "react";
+import { useState, memo, useCallback, useMemo } from "react";
 import { CopyIcon, CheckIcon, ReloadIcon } from "@radix-ui/react-icons";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { StreamingText } from "@/components/ui/typing-animation";
 import { ThinkingLine } from "@/components/ui/shimmer-text";
 import type { Message } from "@/types";
 
 interface ChatMessageProps {
   message: Message;
   isStreaming?: boolean;
-  isFirstMessage?: boolean;
 }
 
 // Memoize to prevent unnecessary re-renders that cause flickering
@@ -28,12 +28,40 @@ export const ChatMessage = memo(function ChatMessage({
     setTimeout(() => setCopied(false), 2000);
   }, [message.content]);
 
-  // Render markdown-like content with proper formatting
-  const renderContent = useCallback((content: string) => {
-    if (!content) return null;
+  // Handle inline formatting (bold, italic, inline code)
+  const renderInlineFormatting = useCallback((text: string) => {
+    // Handle inline code first
+    const parts = text.split(/(`[^`]+`)/);
+    return parts.map((part, index) => {
+      if (part.startsWith("`") && part.endsWith("`")) {
+        return (
+          <code
+            key={index}
+            className="px-1.5 py-0.5 bg-muted/80 rounded text-sm font-mono text-primary"
+          >
+            {part.slice(1, -1)}
+          </code>
+        );
+      }
+      // Handle bold
+      if (part.includes("**")) {
+        return part.split(/(\*\*[^*]+\*\*)/).map((subpart, i) => {
+          if (subpart.startsWith("**") && subpart.endsWith("**")) {
+            return <strong key={i} className="font-semibold text-foreground">{subpart.slice(2, -2)}</strong>;
+          }
+          return subpart;
+        });
+      }
+      return part;
+    });
+  }, []);
+
+  // Render markdown-like content with proper formatting - memoized
+  const renderedContent = useMemo(() => {
+    if (!message.content) return null;
 
     // Split content into paragraphs first
-    const paragraphs = content.split(/\n\n+/);
+    const paragraphs = message.content.split(/\n\n+/);
     
     return paragraphs.map((paragraph, pIndex) => {
       // Handle code blocks
@@ -108,35 +136,7 @@ export const ChatMessage = memo(function ChatMessage({
         </p>
       );
     });
-  }, []);
-
-  // Handle inline formatting (bold, italic, inline code)
-  const renderInlineFormatting = (text: string) => {
-    // Handle inline code first
-    const parts = text.split(/(`[^`]+`)/);
-    return parts.map((part, index) => {
-      if (part.startsWith("`") && part.endsWith("`")) {
-        return (
-          <code
-            key={index}
-            className="px-1.5 py-0.5 bg-muted/80 rounded text-sm font-mono text-primary"
-          >
-            {part.slice(1, -1)}
-          </code>
-        );
-      }
-      // Handle bold
-      if (part.includes("**")) {
-        return part.split(/(\*\*[^*]+\*\*)/).map((subpart, i) => {
-          if (subpart.startsWith("**") && subpart.endsWith("**")) {
-            return <strong key={i} className="font-semibold text-foreground">{subpart.slice(2, -2)}</strong>;
-          }
-          return subpart;
-        });
-      }
-      return part;
-    });
-  };
+  }, [message.content, renderInlineFormatting]);
 
   // Show AI loading state for empty assistant messages
   if (isAssistant && isEmpty && isStreaming) {
@@ -152,8 +152,8 @@ export const ChatMessage = memo(function ChatMessage({
   return (
     <div 
       className={cn(
-        "group w-full py-4",
-        isUser ? "bg-transparent" : "bg-gradient-to-r from-muted/20 via-muted/10 to-transparent"
+        "group w-full py-4 transition-colors duration-200",
+        isUser ? "bg-transparent" : "bg-muted/5"
       )}
     >
       <div className="mx-auto max-w-3xl px-4 flex justify-start">
@@ -169,7 +169,7 @@ export const ChatMessage = memo(function ChatMessage({
             {/* Subtle gradient background for assistant messages */}
             {isAssistant && (
               <div 
-                className="absolute inset-0 opacity-20 pointer-events-none"
+                className="absolute inset-0 opacity-10 pointer-events-none"
                 style={{
                   background: "linear-gradient(135deg, hsl(var(--primary)/0.1) 0%, hsl(var(--accent)/0.05) 50%, transparent 100%)"
                 }}
@@ -180,15 +180,10 @@ export const ChatMessage = memo(function ChatMessage({
               "relative z-10 px-4 py-3",
               "prose prose-sm dark:prose-invert max-w-none text-foreground"
             )}>
-              {renderContent(message.content)}
-              
-              {/* Streaming indicator - simple CSS animation, no motion */}
-              {isStreaming && !isEmpty && (
-                <span className="inline-flex items-center gap-1 ml-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" style={{ animationDelay: "0.2s" }} />
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" style={{ animationDelay: "0.4s" }} />
-                </span>
+              {isStreaming && isAssistant ? (
+                <StreamingText content={message.content} showCursor />
+              ) : (
+                renderedContent
               )}
             </div>
           </div>
