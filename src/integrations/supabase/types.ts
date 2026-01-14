@@ -250,6 +250,75 @@ export type Database = {
           },
         ]
       }
+      automation_rules: {
+        Row: {
+          action_channel_id: string | null
+          action_config: Json | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_automated: boolean | null
+          is_enabled: boolean | null
+          last_triggered_at: string | null
+          name: string
+          natural_language_rule: string
+          trigger_channel_id: string | null
+          trigger_config: Json | null
+          trigger_count: number | null
+          updated_at: string | null
+          user_email: string
+        }
+        Insert: {
+          action_channel_id?: string | null
+          action_config?: Json | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_automated?: boolean | null
+          is_enabled?: boolean | null
+          last_triggered_at?: string | null
+          name: string
+          natural_language_rule: string
+          trigger_channel_id?: string | null
+          trigger_config?: Json | null
+          trigger_count?: number | null
+          updated_at?: string | null
+          user_email: string
+        }
+        Update: {
+          action_channel_id?: string | null
+          action_config?: Json | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_automated?: boolean | null
+          is_enabled?: boolean | null
+          last_triggered_at?: string | null
+          name?: string
+          natural_language_rule?: string
+          trigger_channel_id?: string | null
+          trigger_config?: Json | null
+          trigger_count?: number | null
+          updated_at?: string | null
+          user_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_rules_action_channel_id_fkey"
+            columns: ["action_channel_id"]
+            isOneToOne: false
+            referencedRelation: "integration_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_rules_trigger_channel_id_fkey"
+            columns: ["trigger_channel_id"]
+            isOneToOne: false
+            referencedRelation: "integration_channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       automation_templates: {
         Row: {
           category: string
@@ -618,6 +687,48 @@ export type Database = {
           severity?: string | null
           tags?: string[] | null
           type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      integration_channels: {
+        Row: {
+          auth_type: string | null
+          category: string
+          config_schema: Json | null
+          created_at: string | null
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          slug: string
+          updated_at: string | null
+        }
+        Insert: {
+          auth_type?: string | null
+          category?: string
+          config_schema?: Json | null
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          slug: string
+          updated_at?: string | null
+        }
+        Update: {
+          auth_type?: string | null
+          category?: string
+          config_schema?: Json | null
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          slug?: string
           updated_at?: string | null
         }
         Relationships: []
@@ -2170,6 +2281,47 @@ export type Database = {
         }
         Relationships: []
       }
+      user_integrations: {
+        Row: {
+          channel_id: string | null
+          config_encrypted: Json | null
+          created_at: string | null
+          id: string
+          last_sync_at: string | null
+          status: string | null
+          updated_at: string | null
+          user_email: string
+        }
+        Insert: {
+          channel_id?: string | null
+          config_encrypted?: Json | null
+          created_at?: string | null
+          id?: string
+          last_sync_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_email: string
+        }
+        Update: {
+          channel_id?: string | null
+          config_encrypted?: Json | null
+          created_at?: string | null
+          id?: string
+          last_sync_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_integrations_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "integration_channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           created_at: string | null
@@ -2257,6 +2409,51 @@ export type Database = {
           team_id?: string | null
           tpd?: number
           tpm?: number
+        }
+        Relationships: []
+      }
+      workflow_templates: {
+        Row: {
+          action_channel_slug: string | null
+          category: string
+          created_at: string | null
+          default_config: Json | null
+          description: string | null
+          icon: string | null
+          id: string
+          is_featured: boolean | null
+          name: string
+          natural_language_example: string | null
+          trigger_channel_slug: string | null
+          use_count: number | null
+        }
+        Insert: {
+          action_channel_slug?: string | null
+          category?: string
+          created_at?: string | null
+          default_config?: Json | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_featured?: boolean | null
+          name: string
+          natural_language_example?: string | null
+          trigger_channel_slug?: string | null
+          use_count?: number | null
+        }
+        Update: {
+          action_channel_slug?: string | null
+          category?: string
+          created_at?: string | null
+          default_config?: Json | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_featured?: boolean | null
+          name?: string
+          natural_language_example?: string | null
+          trigger_channel_slug?: string | null
+          use_count?: number | null
         }
         Relationships: []
       }
