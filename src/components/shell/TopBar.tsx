@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Settings, User, Command, Moon, Sun, LogOut, Link2 } from "lucide-react";
+import { MagnifyingGlassIcon, GearIcon, PersonIcon, KeyboardIcon, MoonIcon, SunIcon, ExitIcon, Link2Icon } from "@radix-ui/react-icons";
 import { GlassToolbar, GlassToolbarSection, GlassToolbarSeparator } from "@/components/ui/GlassToolbar";
 import { GlassInput } from "@/components/ui/GlassInput";
 import { Button } from "@/components/ui/button";
@@ -99,7 +99,7 @@ export function TopBar({ onToggleSidebar, onOpenCommandPalette, onLogout, sideba
       {/* Center Section - Search (centered in main content area) */}
       <GlassToolbarSection className="flex-1 justify-center">
         <div className="relative w-full max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-text-tertiary" />
+          <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-text-tertiary" />
           <GlassInput
             placeholder="Search anything..."
             className="pl-10 w-full"
@@ -118,7 +118,7 @@ export function TopBar({ onToggleSidebar, onOpenCommandPalette, onLogout, sideba
             onClick={onOpenCommandPalette}
             className="text-text-secondary hover:text-text-primary"
           >
-            <Command className="h-4 w-4" />
+            <KeyboardIcon className="h-4 w-4" />
           </Button>
 
           {/* Dark Mode Toggle */}
@@ -128,7 +128,7 @@ export function TopBar({ onToggleSidebar, onOpenCommandPalette, onLogout, sideba
             onClick={toggleDarkMode}
             className="text-text-secondary hover:text-text-primary"
           >
-            {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {darkMode ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
           </Button>
 
           {/* Settings Dropdown */}
@@ -139,7 +139,7 @@ export function TopBar({ onToggleSidebar, onOpenCommandPalette, onLogout, sideba
                 size="sm"
                 className="text-text-secondary hover:text-text-primary"
               >
-                <Settings className="h-4 w-4" />
+                <GearIcon className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56 bg-card border-border-primary shadow-lg z-50">
@@ -147,14 +147,14 @@ export function TopBar({ onToggleSidebar, onOpenCommandPalette, onLogout, sideba
                 className="text-card-foreground hover:bg-surface-graphite cursor-pointer"
                 onClick={() => setPreferencesOpen(true)}
               >
-                <Settings className="mr-2 h-4 w-4" />
+                <GearIcon className="mr-2 h-4 w-4" />
                 <span>Preferences</span>
               </DropdownMenuItem>
               <DropdownMenuItem 
                 className="text-card-foreground hover:bg-surface-graphite cursor-pointer"
                 onClick={onOpenCommandPalette}
               >
-                <Command className="mr-2 h-4 w-4" />
+                <KeyboardIcon className="mr-2 h-4 w-4" />
                 <span>Keyboard Shortcuts</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-border-secondary" />
@@ -181,7 +181,7 @@ export function TopBar({ onToggleSidebar, onOpenCommandPalette, onLogout, sideba
                 onClick={() => setIntegrationsOpen(true)}
                 data-testid="menu-item-integrations"
               >
-                <Link2 className="mr-2 h-4 w-4" />
+                <Link2Icon className="mr-2 h-4 w-4" />
                 <span>Integrations</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -195,7 +195,7 @@ export function TopBar({ onToggleSidebar, onOpenCommandPalette, onLogout, sideba
                 size="sm"
                 className="text-text-secondary hover:text-text-primary"
               >
-                <User className="h-4 w-4" />
+                <PersonIcon className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56 bg-card border-border-primary shadow-lg z-50">
@@ -203,7 +203,7 @@ export function TopBar({ onToggleSidebar, onOpenCommandPalette, onLogout, sideba
                 className="text-card-foreground hover:bg-surface-graphite cursor-pointer"
                 onClick={() => setProfileOpen(true)}
               >
-                <User className="mr-2 h-4 w-4" />
+                <PersonIcon className="mr-2 h-4 w-4" />
                 <span>Profile</span>
               </DropdownMenuItem>
               <DropdownMenuItem 
@@ -217,7 +217,7 @@ export function TopBar({ onToggleSidebar, onOpenCommandPalette, onLogout, sideba
                 className="text-accent-red hover:bg-accent-red/10 cursor-pointer"
                 onClick={onLogout}
               >
-                <LogOut className="mr-2 h-4 w-4" />
+                <ExitIcon className="mr-2 h-4 w-4" />
                 <span>Sign out</span>
               </DropdownMenuItem>
             </DropdownMenuContent>

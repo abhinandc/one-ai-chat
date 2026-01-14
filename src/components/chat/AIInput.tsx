@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ArrowUp, Paperclip, X, Square, Plus, Globe, ImageIcon, Sparkles, Zap, Brain, Code2, ChevronDown } from "lucide-react";
+import { ArrowUpIcon, Cross2Icon, StopIcon, PlusIcon, GlobeIcon, ImageIcon, MagicWandIcon, LightningBoltIcon, CubeIcon, CodeIcon, ChevronDownIcon, PaperPlaneIcon } from "@radix-ui/react-icons";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -30,15 +30,15 @@ interface AIInputProps {
 }
 
 const tools = [
-  { id: "search", label: "Search the web", icon: Globe },
+  { id: "search", label: "Search the web", icon: GlobeIcon },
   { id: "image", label: "Generate image", icon: ImageIcon },
-  { id: "reason", label: "Deep reasoning", icon: Sparkles },
+  { id: "reason", label: "Deep reasoning", icon: MagicWandIcon },
 ];
 
 const modelModes = [
-  { id: "thinking", label: "Thinking", icon: Brain, description: "Deep analysis & reasoning" },
-  { id: "fast", label: "Fast", icon: Zap, description: "Quick responses" },
-  { id: "coding", label: "Coding", icon: Code2, description: "Optimized for code" },
+  { id: "thinking", label: "Thinking", icon: CubeIcon, description: "Deep analysis & reasoning" },
+  { id: "fast", label: "Fast", icon: LightningBoltIcon, description: "Quick responses" },
+  { id: "coding", label: "Coding", icon: CodeIcon, description: "Optimized for code" },
 ];
 
 export function AIInput({
@@ -144,7 +144,7 @@ export function AIInput({
                     className="h-5 w-5"
                     onClick={() => removeAttachment(index)}
                   >
-                    <X className="h-3 w-3" />
+                    <Cross2Icon className="h-3 w-3" />
                   </Button>
                 </div>
               ))}
@@ -175,7 +175,7 @@ export function AIInput({
                   onClick={() => setSelectedTool(null)}
                   className="ml-1 hover:bg-primary/20 rounded-full p-0.5"
                 >
-                  <X className="h-3 w-3" />
+                  <Cross2Icon className="h-3 w-3" />
                 </button>
               </div>
             </motion.div>
@@ -195,12 +195,12 @@ export function AIInput({
                   size="icon"
                   className="h-8 w-8 text-muted-foreground hover:text-foreground"
                 >
-                  <Plus className="h-5 w-5" />
+                  <PlusIcon className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-48 bg-popover">
                 <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-                  <Paperclip className="h-4 w-4 mr-2" />
+                  <PaperPlaneIcon className="h-4 w-4 mr-2" />
                   Attach file
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
@@ -231,7 +231,7 @@ export function AIInput({
                 >
                   <currentMode.icon className="h-4 w-4" />
                   <span className="text-xs font-medium">{currentMode.label}</span>
-                  <ChevronDown className="h-3 w-3 opacity-50" />
+                  <ChevronDownIcon className="h-3 w-3 opacity-50" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-56 bg-popover">
@@ -263,7 +263,7 @@ export function AIInput({
                 ))}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-xs text-muted-foreground">
-                  <Sparkles className="h-3.5 w-3.5 mr-2" />
+                  <MagicWandIcon className="h-3.5 w-3.5 mr-2" />
                   Mode affects response style
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -323,7 +323,7 @@ export function AIInput({
                 className="h-8 w-8 rounded-lg"
                 onClick={onStop}
               >
-                <Square className="h-3.5 w-3.5 fill-current" />
+                <StopIcon className="h-3.5 w-3.5 fill-current" />
               </Button>
             ) : (
               <Button
@@ -338,7 +338,7 @@ export function AIInput({
                 disabled={!canSend}
                 onClick={handleSend}
               >
-                <ArrowUp className="h-4 w-4" />
+                <ArrowUpIcon className="h-4 w-4" />
               </Button>
             )}
           </div>
