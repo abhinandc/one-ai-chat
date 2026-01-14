@@ -201,7 +201,7 @@ export function AdvancedAIInput({
                   >
                     <span className="font-medium text-sm">{model.name}</span>
                     <span className="text-xs text-muted-foreground">
-                      {model.provider} • {model.api_path || '/v1/chat/completions'}
+                      {model.provider}{model.api_path ? ` • ${model.api_path}` : ''}
                     </span>
                   </DropdownMenuItem>
                 ))}

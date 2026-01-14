@@ -386,7 +386,7 @@ const Chat = () => {
             <Menu className="h-5 w-5" />
           </Button>
 
-          {/* Model Selector */}
+          {/* Model Selector - Remove hardcoded api_path */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="gap-1.5 font-medium">
@@ -408,7 +408,7 @@ const Chat = () => {
                 >
                   <span className="font-medium">{model.id}</span>
                   <span className="text-xs text-muted-foreground">
-                    {model.owned_by} • {model.api_path || '/v1/chat/completions'}
+                    {model.owned_by}{model.api_path ? ` • ${model.api_path}` : ''}
                   </span>
                 </DropdownMenuItem>
               ))}
