@@ -106,6 +106,11 @@ const App = () => {
     }
     localStorage.removeItem("oneedge_auth_token");
     localStorage.removeItem("oneedge_user");
+    // Clear credentials cache on logout
+    localStorage.removeItem("oneai_credentials");
+    localStorage.removeItem("oneai_all_credentials");
+    localStorage.removeItem("oneai_api_key");
+    localStorage.removeItem("oneai_credentials_email");
     realtimeService.unsubscribeAll();
     setIsAuthenticated(false);
   };

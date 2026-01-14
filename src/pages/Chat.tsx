@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Menu, Settings, ChevronDown } from "lucide-react";
+import { Menu, Settings, ChevronDown, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -35,7 +35,7 @@ const Chat = () => {
   const { toast } = useToast();
   
   // Auto-initialize virtual API key from employee_keys
-  const { initialized: keyInitialized, loading: keyLoading, error: keyError } = useVirtualKeyInit(user?.email);
+  const { initialized: keyInitialized, loading: keyLoading, error: keyError, refreshCredentials } = useVirtualKeyInit(user?.email);
   
   // Only load models after key initialization is complete
   const { models, loading: modelsLoading, refetch: refetchModels } = useModels(keyInitialized ? user?.email : undefined);
@@ -476,21 +476,38 @@ const Chat = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-64">
-              {models.map((model) => (
-                <DropdownMenuItem
-                  key={model.id}
-                  onClick={() => setSelectedModel(model.id)}
-                  className={cn(
-                    "flex flex-col items-start gap-0.5",
-                    model.id === selectedModel && "bg-muted"
-                  )}
-                >
-                  <span className="font-medium">{model.id}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {model.owned_by}{model.api_path ? ` • ${model.api_path}` : ''}
-                  </span>
+              {models.length === 0 ? (
+                <DropdownMenuItem disabled>
+                  <span className="text-muted-foreground">No models available</span>
                 </DropdownMenuItem>
-              ))}
+              ) : (
+                models.map((model) => (
+                  <DropdownMenuItem
+                    key={model.id}
+                    onClick={() => setSelectedModel(model.id)}
+                    className={cn(
+                      "flex flex-col items-start gap-0.5",
+                      model.id === selectedModel && "bg-muted"
+                    )}
+                  >
+                    <span className="font-medium">{model.id}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {model.owned_by}{model.api_path ? ` • ${model.api_path}` : ''}
+                    </span>
+                  </DropdownMenuItem>
+                ))
+              )}
+              <DropdownMenuItem
+                onClick={async () => {
+                  await refreshCredentials();
+                  refetchModels();
+                  toast({ title: "Models refreshed", description: "Reloaded models from your assigned keys" });
+                }}
+                className="text-primary"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh models
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
