@@ -1,10 +1,15 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import { Mic, MicOff, Volume2, VolumeX } from "lucide-react";
+import { useConversation } from "@elevenlabs/react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/services/supabaseClient";
+
+// Sia Voice ID from ElevenLabs
+const SIA_AGENT_ID = "sia_voice_agent"; // Replace with actual agent ID if available
 
 interface SiaConversationProps {
   open: boolean;
@@ -17,64 +22,53 @@ export function SiaConversation({
   onOpenChange,
   onTranscript,
 }: SiaConversationProps) {
-  const [isListening, setIsListening] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [transcript, setTranscript] = useState("");
-  const [siaResponse, setSiaResponse] = useState("");
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [visualizerBars, setVisualizerBars] = useState<number[]>(Array(20).fill(0.2));
-  const recognitionRef = useRef<any>(null);
   const animationFrameRef = useRef<number>();
 
-  useEffect(() => {
-    if (!open) {
-      setTranscript("");
-      setSiaResponse("");
-      setIsListening(false);
-      setIsSpeaking(false);
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
+  // ElevenLabs Conversational AI
+  const conversation = useConversation({
+    onConnect: () => {
+      setIsConnecting(false);
+      setError(null);
+    },
+    onDisconnect: () => {
+      setIsConnecting(false);
+    },
+    onMessage: (message) => {
+      // Handle user transcript from the message
+      const msg = message as Record<string, any>;
+      if (msg?.user_transcription_event?.user_transcript) {
+        setTranscript(msg.user_transcription_event.user_transcript);
       }
-    }
-  }, [open]);
+    },
+    onError: (err) => {
+      console.error("ElevenLabs error:", err);
+      setError("Voice connection failed. Using browser speech recognition.");
+      setIsConnecting(false);
+      // Fallback to browser speech recognition
+      startBrowserSpeechRecognition();
+    },
+  });
 
-  // Animate visualizer bars
-  useEffect(() => {
-    const animate = () => {
-      if (isListening || isSpeaking) {
-        setVisualizerBars((prev) =>
-          prev.map(() => 0.2 + Math.random() * 0.8)
-        );
-      } else {
-        setVisualizerBars((prev) =>
-          prev.map((v) => Math.max(0.2, v * 0.95))
-        );
-      }
-      animationFrameRef.current = requestAnimationFrame(animate);
-    };
+  const isListening = conversation.status === "connected";
+  const isSpeaking = conversation.isSpeaking;
 
-    animationFrameRef.current = requestAnimationFrame(animate);
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, [isListening, isSpeaking]);
+  // Browser speech recognition fallback
+  const recognitionRef = useRef<any>(null);
+  const [useBrowserSpeech, setUseBrowserSpeech] = useState(false);
+  const [browserListening, setBrowserListening] = useState(false);
 
-  // Auto-start listening when modal opens
-  useEffect(() => {
-    if (open && !isListening) {
-      startListening();
-    }
-  }, [open]);
-
-  const startListening = () => {
-    setTranscript("");
-
+  const startBrowserSpeechRecognition = useCallback(() => {
+    setUseBrowserSpeech(true);
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
+      setError("Speech recognition not supported in this browser.");
       return;
     }
 
@@ -85,9 +79,8 @@ export function SiaConversation({
     recognition.interimResults = true;
     recognition.lang = "en-US";
 
-    recognition.onstart = () => {
-      setIsListening(true);
-    };
+    recognition.onstart = () => setBrowserListening(true);
+    recognition.onend = () => setBrowserListening(false);
 
     recognition.onresult = (event: any) => {
       let finalTranscript = "";
@@ -105,36 +98,121 @@ export function SiaConversation({
       setTranscript(finalTranscript || interimTranscript);
     };
 
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
     recognition.start();
-  };
+  }, []);
 
-  const stopListening = () => {
+  const stopBrowserSpeechRecognition = useCallback(() => {
     if (recognitionRef.current) {
       recognitionRef.current.stop();
     }
-    setIsListening(false);
+    setBrowserListening(false);
+  }, []);
+
+  // Start ElevenLabs conversation
+  const startConversation = useCallback(async () => {
+    setIsConnecting(true);
+    setError(null);
+
+    try {
+      // Request microphone permission
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      // Try to get token from edge function
+      const { data, error: fetchError } = await supabase.functions.invoke(
+        "elevenlabs-conversation-token"
+      );
+
+      if (fetchError || !data?.token) {
+        throw new Error(fetchError?.message || "No token received");
+      }
+
+      // Start the conversation with WebRTC
+      await conversation.startSession({
+        conversationToken: data.token,
+        connectionType: "webrtc",
+      });
+    } catch (err) {
+      console.error("Failed to start ElevenLabs conversation:", err);
+      setError("Using browser speech recognition.");
+      setIsConnecting(false);
+      // Fallback to browser speech recognition
+      startBrowserSpeechRecognition();
+    }
+  }, [conversation, startBrowserSpeechRecognition]);
+
+  const stopConversation = useCallback(async () => {
+    if (useBrowserSpeech) {
+      stopBrowserSpeechRecognition();
+    } else {
+      await conversation.endSession();
+    }
     
     if (transcript && onTranscript) {
       onTranscript(transcript);
     }
-  };
+  }, [conversation, useBrowserSpeech, stopBrowserSpeechRecognition, transcript, onTranscript]);
+
+  // Auto-start when modal opens
+  useEffect(() => {
+    if (open && !isListening && !browserListening && !isConnecting) {
+      startConversation();
+    }
+  }, [open]);
+
+  // Cleanup on close
+  useEffect(() => {
+    if (!open) {
+      setTranscript("");
+      setError(null);
+      setUseBrowserSpeech(false);
+      if (isListening) {
+        conversation.endSession();
+      }
+      if (browserListening) {
+        stopBrowserSpeechRecognition();
+      }
+    }
+  }, [open]);
+
+  // Animate visualizer bars
+  useEffect(() => {
+    const animate = () => {
+      const active = isListening || isSpeaking || browserListening;
+      if (active) {
+        setVisualizerBars((prev) =>
+          prev.map(() => 0.2 + Math.random() * 0.8)
+        );
+      } else {
+        setVisualizerBars((prev) =>
+          prev.map((v) => Math.max(0.2, v * 0.95))
+        );
+      }
+      animationFrameRef.current = requestAnimationFrame(animate);
+    };
+
+    animationFrameRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [isListening, isSpeaking, browserListening]);
 
   const toggleListening = () => {
-    if (isListening) {
-      stopListening();
+    if (isListening || browserListening) {
+      stopConversation();
     } else {
-      startListening();
+      startConversation();
     }
   };
 
   const handleClose = () => {
-    stopListening();
+    stopConversation();
     onOpenChange(false);
   };
+
+  const activeListening = isListening || browserListening;
+  const activeSpeaking = isSpeaking;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -149,8 +227,8 @@ export function SiaConversation({
               key={i}
               className="absolute w-1 h-1 rounded-full bg-primary/30"
               initial={{
-                x: Math.random() * window.innerWidth,
-                y: Math.random() * window.innerHeight,
+                x: Math.random() * (typeof window !== 'undefined' ? window.innerWidth : 1000),
+                y: Math.random() * (typeof window !== 'undefined' ? window.innerHeight : 800),
               }}
               animate={{
                 y: [null, Math.random() * -200, null],
@@ -187,7 +265,7 @@ export function SiaConversation({
               Sia
             </h2>
             <p className="text-sm text-muted-foreground/70 mt-1">
-              Voice Assistant
+              {useBrowserSpeech ? "Voice Assistant (Browser)" : "Voice Assistant"}
             </p>
           </motion.div>
 
@@ -195,7 +273,7 @@ export function SiaConversation({
           <div className="relative flex items-center justify-center">
             {/* Outer glow rings */}
             <AnimatePresence>
-              {(isListening || isSpeaking) && (
+              {(activeListening || activeSpeaking) && (
                 <>
                   <motion.div
                     initial={{ scale: 1, opacity: 0.2 }}
@@ -219,12 +297,15 @@ export function SiaConversation({
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={toggleListening}
-              className="relative z-10 group"
+              disabled={isConnecting}
+              className="relative z-10 group disabled:cursor-wait"
             >
               <div className={cn(
                 "relative h-48 w-48 rounded-full flex items-center justify-center transition-all duration-500",
-                (isListening || isSpeaking)
+                (activeListening || activeSpeaking)
                   ? "bg-gradient-to-br from-primary via-primary/90 to-primary/70 shadow-2xl shadow-primary/30"
+                  : isConnecting
+                  ? "bg-gradient-to-br from-amber-500/50 via-amber-500/30 to-amber-500/20"
                   : "bg-gradient-to-br from-muted via-muted/80 to-muted/60 group-hover:from-primary/30 group-hover:to-primary/10"
               )}>
                 {/* Circular Audio Bars */}
@@ -238,8 +319,8 @@ export function SiaConversation({
                         <motion.div
                           key={i}
                           className={cn(
-                            "absolute w-1 rounded-full origin-bottom transition-colors duration-300",
-                            (isListening || isSpeaking) 
+                            "absolute w-1 rounded-full origin-bottom",
+                            (activeListening || activeSpeaking) 
                               ? "bg-white/80" 
                               : "bg-muted-foreground/30"
                           )}
@@ -248,7 +329,7 @@ export function SiaConversation({
                             transform: `rotate(${angle}deg) translateY(-60px)`,
                           }}
                           animate={{
-                            scaleY: (isListening || isSpeaking) ? height : 0.3,
+                            scaleY: (activeListening || activeSpeaking) ? height : 0.3,
                           }}
                           transition={{ duration: 0.1 }}
                         />
@@ -259,11 +340,13 @@ export function SiaConversation({
 
                 {/* Center Icon */}
                 <motion.div
-                  animate={isListening ? { scale: [1, 1.1, 1] } : {}}
+                  animate={activeListening ? { scale: [1, 1.1, 1] } : {}}
                   transition={{ duration: 0.8, repeat: Infinity }}
                   className="relative z-10"
                 >
-                  {isListening ? (
+                  {isConnecting ? (
+                    <div className="h-8 w-8 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                  ) : activeListening ? (
                     <Mic className="h-8 w-8 text-white" />
                   ) : (
                     <MicOff className="h-8 w-8 text-muted-foreground" />
@@ -275,15 +358,22 @@ export function SiaConversation({
 
           {/* Status & Controls */}
           <div className="flex flex-col items-center gap-6">
+            {/* Error Message */}
+            {error && (
+              <p className="text-xs text-amber-500/80">{error}</p>
+            )}
+
             {/* Status Text */}
             <motion.p
               animate={{ opacity: [0.5, 1, 0.5] }}
               transition={{ duration: 2, repeat: Infinity }}
               className="text-sm text-muted-foreground/70 font-light tracking-wide"
             >
-              {isListening 
+              {isConnecting 
+                ? "Connecting..." 
+                : activeListening 
                 ? "Listening..." 
-                : isSpeaking 
+                : activeSpeaking 
                 ? "Sia is speaking..." 
                 : "Tap to speak"}
             </motion.p>

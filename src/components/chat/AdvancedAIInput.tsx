@@ -131,12 +131,24 @@ export function AdvancedAIInput({
     onModeChange?.(modeId);
   };
 
-  const handleSend = async () => {
+  const handleSend = useCallback(async () => {
     if (!message.trim() || disabled || isLoading) return;
+    
+    const messageToSend = message.trim();
+    const attachmentsToSend = [...attachments];
+    
+    // Clear state first to prevent flicker
+    setMessage("");
+    setAttachments([]);
+    setSelectedTool(null);
+    
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
     
     // Process attachments to get base64 data for images
     const processedAttachments: AttachmentData[] = await Promise.all(
-      attachments.map(async (file) => {
+      attachmentsToSend.map(async (file) => {
         const attachmentData: AttachmentData = {
           name: file.name,
           type: file.type,
@@ -157,15 +169,8 @@ export function AdvancedAIInput({
       })
     );
     
-    onSend(message.trim(), processedAttachments.length > 0 ? processedAttachments : undefined);
-    setMessage("");
-    setAttachments([]);
-    setSelectedTool(null);
-    
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
-  };
+    onSend(messageToSend, processedAttachments.length > 0 ? processedAttachments : undefined);
+  }, [message, attachments, disabled, isLoading, onSend]);
 
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
