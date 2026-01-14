@@ -1,4 +1,4 @@
-import { useEffect, useRef, memo, useMemo, useCallback } from "react";
+import { useEffect, useRef, memo, useMemo, useCallback, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChatMessage } from "./ChatMessage";
 import { ThinkingLine } from "@/components/ui/shimmer-text";
@@ -8,12 +8,14 @@ interface ChatThreadProps {
   messages: Message[];
   isStreaming?: boolean;
   streamingMessage?: string;
+  onSuggestionClick?: (suggestion: string) => void;
 }
 
 export const ChatThread = memo(function ChatThread({ 
   messages, 
   isStreaming, 
-  streamingMessage 
+  streamingMessage,
+  onSuggestionClick 
 }: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevLengthRef = useRef(0);
@@ -60,7 +62,7 @@ export const ChatThread = memo(function ChatThread({
   }, [messages]);
 
   if (messages.length === 0 && !isStreaming) {
-    return <EmptyState />;
+    return <EmptyState onSuggestionClick={onSuggestionClick} />;
   }
 
   return (
@@ -96,13 +98,43 @@ export const ChatThread = memo(function ChatThread({
   );
 });
 
-function EmptyState() {
-  const suggestions = [
-    "Explain how AI models work",
-    "Write a Python function to sort a list",
-    "Help me understand machine learning",
-    "What are the best practices for prompts?",
-  ];
+const ALL_SUGGESTIONS = [
+  "Explain how AI models work",
+  "Write a Python function to sort a list",
+  "Help me understand machine learning",
+  "What are the best practices for prompts?",
+  "Create a REST API endpoint in Node.js",
+  "Explain the difference between SQL and NoSQL",
+  "Help me optimize this algorithm",
+  "Write a React component with hooks",
+  "How do neural networks learn?",
+  "What is prompt engineering?",
+  "Explain containerization with Docker",
+  "Write unit tests for my code",
+];
+
+interface EmptyStateProps {
+  onSuggestionClick?: (suggestion: string) => void;
+}
+
+function EmptyState({ onSuggestionClick }: EmptyStateProps) {
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+
+  // Pick 4 random suggestions on mount and rotate every 8 seconds
+  useEffect(() => {
+    const pickRandom = () => {
+      const shuffled = [...ALL_SUGGESTIONS].sort(() => Math.random() - 0.5);
+      setSuggestions(shuffled.slice(0, 4));
+    };
+    
+    pickRandom();
+    const interval = setInterval(pickRandom, 8000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleClick = (suggestion: string) => {
+    onSuggestionClick?.(suggestion);
+  };
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-y-auto">
@@ -130,8 +162,9 @@ function EmptyState() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl mx-auto">
           {suggestions.map((suggestion, index) => (
             <button
-              key={index}
-              className="group text-left p-4 rounded-xl border border-border bg-card hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 hover:scale-[1.02]"
+              key={`${suggestion}-${index}`}
+              onClick={() => handleClick(suggestion)}
+              className="group text-left p-4 rounded-xl bg-card hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 hover:scale-[1.02] cursor-pointer"
             >
               <span className="text-sm text-foreground group-hover:text-primary transition-colors">
                 {suggestion}

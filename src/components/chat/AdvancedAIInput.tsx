@@ -46,6 +46,8 @@ interface AdvancedAIInputProps {
   disabled?: boolean;
   className?: string;
   onModeChange?: (mode: string) => void;
+  initialMessage?: string;
+  onInitialMessageConsumed?: () => void;
 }
 
 const STORAGE_KEY_MODE = "oneEdge_chat_mode";
@@ -88,10 +90,21 @@ export function AdvancedAIInput({
   disabled = false,
   className,
   onModeChange,
+  initialMessage,
+  onInitialMessageConsumed,
 }: AdvancedAIInputProps) {
   const [message, setMessage] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
+
+  // Handle initial message from suggestions
+  useEffect(() => {
+    if (initialMessage && initialMessage.trim()) {
+      setMessage(initialMessage);
+      onInitialMessageConsumed?.();
+      textareaRef.current?.focus();
+    }
+  }, [initialMessage, onInitialMessageConsumed]);
   
   // Persist mode selection in localStorage
   const [selectedMode, setSelectedMode] = useState(() => {
