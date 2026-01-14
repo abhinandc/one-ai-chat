@@ -254,53 +254,86 @@ export type Database = {
         Row: {
           action_channel_id: string | null
           action_config: Json | null
+          actions: Json | null
+          approval_required: boolean | null
+          approvers: string[] | null
+          conditions: Json | null
           created_at: string | null
+          department_id: string | null
           description: string | null
           id: string
           is_automated: boolean | null
           is_enabled: boolean | null
+          last_run_at: string | null
+          last_run_status: string | null
           last_triggered_at: string | null
           name: string
           natural_language_rule: string
+          priority: string | null
+          run_count: number | null
+          schedule_cron: string | null
           trigger_channel_id: string | null
           trigger_config: Json | null
           trigger_count: number | null
           updated_at: string | null
           user_email: string
+          variables: Json | null
         }
         Insert: {
           action_channel_id?: string | null
           action_config?: Json | null
+          actions?: Json | null
+          approval_required?: boolean | null
+          approvers?: string[] | null
+          conditions?: Json | null
           created_at?: string | null
+          department_id?: string | null
           description?: string | null
           id?: string
           is_automated?: boolean | null
           is_enabled?: boolean | null
+          last_run_at?: string | null
+          last_run_status?: string | null
           last_triggered_at?: string | null
           name: string
           natural_language_rule: string
+          priority?: string | null
+          run_count?: number | null
+          schedule_cron?: string | null
           trigger_channel_id?: string | null
           trigger_config?: Json | null
           trigger_count?: number | null
           updated_at?: string | null
           user_email: string
+          variables?: Json | null
         }
         Update: {
           action_channel_id?: string | null
           action_config?: Json | null
+          actions?: Json | null
+          approval_required?: boolean | null
+          approvers?: string[] | null
+          conditions?: Json | null
           created_at?: string | null
+          department_id?: string | null
           description?: string | null
           id?: string
           is_automated?: boolean | null
           is_enabled?: boolean | null
+          last_run_at?: string | null
+          last_run_status?: string | null
           last_triggered_at?: string | null
           name?: string
           natural_language_rule?: string
+          priority?: string | null
+          run_count?: number | null
+          schedule_cron?: string | null
           trigger_channel_id?: string | null
           trigger_config?: Json | null
           trigger_count?: number | null
           updated_at?: string | null
           user_email?: string
+          variables?: Json | null
         }
         Relationships: [
           {
@@ -308,6 +341,13 @@ export type Database = {
             columns: ["action_channel_id"]
             isOneToOne: false
             referencedRelation: "integration_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_rules_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
             referencedColumns: ["id"]
           },
           {
@@ -541,6 +581,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      departments: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          description: string | null
+          icon: string | null
+          id: string
+          name: string
+          slug: string
+          sort_order: number | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          slug: string
+          sort_order?: number | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          slug?: string
+          sort_order?: number | null
+        }
+        Relationships: []
       }
       email_logs: {
         Row: {
@@ -2416,46 +2489,69 @@ export type Database = {
         Row: {
           action_channel_slug: string | null
           category: string
+          complexity: string | null
           created_at: string | null
           default_config: Json | null
+          department_id: string | null
           description: string | null
+          estimated_time: string | null
           icon: string | null
           id: string
           is_featured: boolean | null
           name: string
           natural_language_example: string | null
+          required_integrations: string[] | null
+          steps: Json | null
           trigger_channel_slug: string | null
           use_count: number | null
         }
         Insert: {
           action_channel_slug?: string | null
           category?: string
+          complexity?: string | null
           created_at?: string | null
           default_config?: Json | null
+          department_id?: string | null
           description?: string | null
+          estimated_time?: string | null
           icon?: string | null
           id?: string
           is_featured?: boolean | null
           name: string
           natural_language_example?: string | null
+          required_integrations?: string[] | null
+          steps?: Json | null
           trigger_channel_slug?: string | null
           use_count?: number | null
         }
         Update: {
           action_channel_slug?: string | null
           category?: string
+          complexity?: string | null
           created_at?: string | null
           default_config?: Json | null
+          department_id?: string | null
           description?: string | null
+          estimated_time?: string | null
           icon?: string | null
           id?: string
           is_featured?: boolean | null
           name?: string
           natural_language_example?: string | null
+          required_integrations?: string[] | null
+          steps?: Json | null
           trigger_channel_slug?: string | null
           use_count?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "workflow_templates_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
