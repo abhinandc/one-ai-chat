@@ -226,7 +226,7 @@ export function AdvancedAIInput({
           }}
         >
           {/* Left Actions */}
-          <div className="flex items-center gap-1 pl-3 pb-3">
+          <div className="flex items-center gap-1 pl-3 self-center">
             {/* Plus Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -319,7 +319,7 @@ export function AdvancedAIInput({
           </div>
 
           {/* Textarea */}
-          <div className="flex-1 relative">
+          <div className="flex-1 relative flex items-center">
             <textarea
               ref={textareaRef}
               value={message}
@@ -331,18 +331,19 @@ export function AdvancedAIInput({
               disabled={disabled || isLoading}
               rows={1}
               className={cn(
-                "w-full resize-none bg-transparent py-4 px-2 text-base",
-                "placeholder:text-muted-foreground/50",
+                "w-full resize-none bg-transparent py-4 px-2 text-base leading-normal",
+                "placeholder:text-muted-foreground/50 placeholder:leading-normal",
                 "disabled:opacity-50 disabled:cursor-not-allowed",
                 "min-h-[56px] max-h-[200px]",
-                "focus:outline-none focus:ring-0 focus:border-none"
+                "focus:outline-none focus:ring-0 focus:border-none",
+                "flex items-center"
               )}
               style={{ outline: 'none' }}
             />
           </div>
 
           {/* Right Actions */}
-          <div className="flex items-center gap-1 pr-3 pb-3">
+          <div className="flex items-center gap-1 pr-3 self-center">
             {/* Voice Orb Button - Talk to Sia */}
             <TooltipProvider>
               <Tooltip>
