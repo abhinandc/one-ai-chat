@@ -28,7 +28,18 @@ const Chat = () => {
   // Auto-initialize virtual API key from employee_keys
   const { initialized: keyInitialized, loading: keyLoading, error: keyError } = useVirtualKeyInit(user?.email);
   
-  const { models, loading: modelsLoading } = useModels(user?.email);
+  // Only load models after key initialization is complete
+  const { models, loading: modelsLoading, refetch: refetchModels } = useModels(keyInitialized ? user?.email : undefined);
+  
+  // Refetch models when key initialization completes
+  useEffect(() => {
+    if (keyInitialized && user?.email) {
+      console.log('Key initialized, refetching models...');
+      refetchModels();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keyInitialized, user?.email]);
+  
   const {
     conversations: supabaseConversations,
     loading: conversationsLoading,

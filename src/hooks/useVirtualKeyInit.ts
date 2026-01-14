@@ -66,15 +66,26 @@ export function useVirtualKeyInit(userEmail?: string) {
 
   useEffect(() => {
     const initializeKey = async () => {
-      // Check if credentials already exist in localStorage
+      if (!userEmail) {
+        setLoading(false);
+        return;
+      }
+
+      // Check if credentials already exist in localStorage for this user
       const existingCredentials = getStoredCredentials();
-      if (existingCredentials?.api_key && existingCredentials.api_key.length > 20) {
+      const storedEmail = typeof window !== 'undefined' ? localStorage.getItem('oneai_credentials_email') : null;
+      
+      // Only use cached credentials if they match current user and are valid
+      if (existingCredentials?.api_key && 
+          existingCredentials.api_key.length > 20 && 
+          storedEmail === userEmail) {
+        console.log('Using cached credentials for', userEmail);
         setInitialized(true);
         setLoading(false);
         return;
       }
 
-      if (!supabase || !userEmail) {
+      if (!supabase) {
         setLoading(false);
         return;
       }
@@ -130,6 +141,7 @@ export function useVirtualKeyInit(userEmail?: string) {
             const defaultCred = allCreds[0];
             localStorage.setItem(CREDENTIALS_STORAGE_KEY, JSON.stringify(defaultCred));
             localStorage.setItem(API_KEY_STORAGE_KEY, defaultCred.api_key);
+            localStorage.setItem('oneai_credentials_email', userEmail);
             
             console.log('Credentials auto-initialized:', { 
               total: allCreds.length,

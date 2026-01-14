@@ -21,51 +21,59 @@ export function useModels(userEmail?: string): UseModelsResult {
   const [error, setError] = useState<string | null>(null);
 
   const fetchModels = async () => {
-    if (!supabaseClient) {
-      setError('Supabase not configured');
-      setLoading(false);
-      return;
-    }
-
-    if (!userEmail) {
-      setError('User email required');
-      setLoading(false);
-      return;
-    }
-
     try {
       setLoading(true);
       setError(null);
 
-      // Fetch models from employee_keys Edge Function (assigned by EdgeAdmin)
+      // First try to get models from localStorage (set by useVirtualKeyInit)
+      const allCredsStr = localStorage.getItem('oneai_all_credentials');
+      if (allCredsStr) {
+        try {
+          const allCreds = JSON.parse(allCredsStr);
+          if (Array.isArray(allCreds) && allCreds.length > 0) {
+            const transformedModels = allCreds.map<Model>((cred: any) => ({
+              id: cred.model_key,
+              object: 'model',
+              created: Date.now() / 1000,
+              owned_by: cred.provider || 'unknown',
+            }));
+            console.log('useModels - loaded from localStorage:', transformedModels.length, 'models');
+            setModels(transformedModels);
+            setLoading(false);
+            return;
+          }
+        } catch (parseErr) {
+          console.warn('Failed to parse cached credentials:', parseErr);
+        }
+      }
+
+      // Fallback: fetch from edge function if not in localStorage
+      if (!supabaseClient || !userEmail) {
+        setError('Credentials not loaded yet');
+        setLoading(false);
+        return;
+      }
+
       const { data, error: fetchError } = await supabaseClient.functions.invoke('employee_keys', {
         body: { email: userEmail }
       });
 
-      console.log('Employee Keys (useModels hook):', { data, error: fetchError });
+      console.log('useModels - employee_keys response:', { data, error: fetchError });
 
       if (fetchError) {
         throw new Error(fetchError.message || 'Edge function error');
       }
 
       // Extract models from the employee_keys response
-      // Response format: { keys: [...], all_models: [...] }
       let modelsList: string[] = [];
 
-      // Prefer all_models array which has full model data
-      if (data?.all_models && Array.isArray(data.all_models)) {
+      // Prefer credentials array which has decrypted keys
+      if (data?.credentials && Array.isArray(data.credentials)) {
+        modelsList = data.credentials.map((c: any) => c.model_key).filter(Boolean);
+      } else if (data?.all_models && Array.isArray(data.all_models)) {
         modelsList = data.all_models.map((m: any) => m.name || m.id).filter(Boolean);
       } else if (data?.keys && Array.isArray(data.keys)) {
-        // Extract from keys' models array
         data.keys.forEach((key: any) => {
-          const keyModels = key.models || key.models_json || [];
-          keyModels.forEach((m: any) => {
-            const modelName = typeof m === 'string' ? m : (m.name || m.id);
-            if (modelName) modelsList.push(modelName);
-          });
-        });
-      } else if (Array.isArray(data)) {
-        data.forEach((key: any) => {
           const keyModels = key.models || key.models_json || [];
           keyModels.forEach((m: any) => {
             const modelName = typeof m === 'string' ? m : (m.name || m.id);
@@ -96,9 +104,11 @@ export function useModels(userEmail?: string): UseModelsResult {
   };
 
   useEffect(() => {
-    if (userEmail) {
+    // Small delay to allow useVirtualKeyInit to populate localStorage first
+    const timer = setTimeout(() => {
       fetchModels();
-    }
+    }, 50);
+    return () => clearTimeout(timer);
   }, [userEmail]);
 
   return {
