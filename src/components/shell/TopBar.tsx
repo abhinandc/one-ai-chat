@@ -233,7 +233,7 @@ export function TopBar({ onToggleSidebar, onOpenCommandPalette, onLogout, sideba
     <ProfileModal isOpen={profileOpen} onClose={() => setProfileOpen(false)} />
     <AccountSettingsModal isOpen={accountSettingsOpen} onClose={() => setAccountSettingsOpen(false)} />
     <ModelsSettingsModal open={modelsSettingsOpen} onOpenChange={setModelsSettingsOpen} />
-    <IntegrationsModal isOpen={integrationsOpen} onClose={() => setIntegrationsOpen(false)} />
+    <IntegrationsModal open={integrationsOpen} onOpenChange={setIntegrationsOpen} />
     </>
   );
 }

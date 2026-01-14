@@ -240,7 +240,7 @@ const Index = () => {
               {comparisonModels.map((model) => (
                 <div key={model.id} className="h-80">
                   <ModelComparisonPanel
-                    model={model}
+                    model={{ ...model, object: model.object || 'model' } as any}
                     query={comparisonQuery}
                     onComplete={handleComparisonComplete}
                   />
