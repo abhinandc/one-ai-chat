@@ -6,7 +6,71 @@ import { cn } from "@/lib/utils";
 import { StreamingText } from "@/components/ui/typing-animation";
 import { ThinkingLine } from "@/components/ui/shimmer-text";
 import { AIThinkingDisplay, type ToolStep } from "./AIThinkingDisplay";
+import {
+  ChainOfThought,
+  ChainOfThoughtContent,
+  ChainOfThoughtItem,
+  ChainOfThoughtTrigger,
+  ChainOfThoughtStep,
+  ChainOfThoughtStepItem,
+} from "@/components/prompt-kit/chain-of-thought";
 import type { Message } from "@/types";
+
+// Types for chain-of-thought reasoning
+interface ThinkingStep {
+  title: string;
+  items: string[];
+}
+
+// Parse thinking blocks from content
+function parseThinkingBlocks(content: string): { thinking: ThinkingStep[]; cleanContent: string } {
+  const thinkingSteps: ThinkingStep[] = [];
+  let cleanContent = content;
+
+  // Match <thinking>...</thinking> blocks
+  const thinkingRegex = /<thinking>([\s\S]*?)<\/thinking>/gi;
+  const matches = content.matchAll(thinkingRegex);
+
+  for (const match of matches) {
+    const thinkingContent = match[1].trim();
+    // Parse into steps - each line starting with "- " or numbered
+    const lines = thinkingContent.split('\n').filter(Boolean);
+    
+    let currentStep: ThinkingStep | null = null;
+    
+    for (const line of lines) {
+      const trimmed = line.trim();
+      // Headers start with ## or are standalone titles
+      if (trimmed.startsWith('##') || (trimmed.length < 60 && !trimmed.startsWith('-') && !trimmed.match(/^\d+\./))) {
+        if (currentStep && currentStep.items.length > 0) {
+          thinkingSteps.push(currentStep);
+        }
+        currentStep = {
+          title: trimmed.replace(/^#+\s*/, ''),
+          items: [],
+        };
+      } else if (trimmed.startsWith('-') || trimmed.match(/^\d+\./)) {
+        const item = trimmed.replace(/^[-\d.]+\s*/, '');
+        if (currentStep) {
+          currentStep.items.push(item);
+        } else {
+          currentStep = { title: 'Thinking', items: [item] };
+        }
+      } else if (trimmed && currentStep) {
+        currentStep.items.push(trimmed);
+      }
+    }
+    
+    if (currentStep && currentStep.items.length > 0) {
+      thinkingSteps.push(currentStep);
+    }
+    
+    // Remove the thinking block from displayed content
+    cleanContent = cleanContent.replace(match[0], '').trim();
+  }
+
+  return { thinking: thinkingSteps, cleanContent };
+}
 
 interface ChatMessageProps {
   message: Message;
@@ -63,12 +127,19 @@ export const ChatMessage = memo(function ChatMessage({
     });
   }, []);
 
+  // Parse thinking blocks and clean content - memoized
+  const { thinking: parsedThinking, cleanContent } = useMemo(() => {
+    if (!message.content) return { thinking: [], cleanContent: '' };
+    return parseThinkingBlocks(message.content);
+  }, [message.content]);
+
   // Render markdown-like content with proper formatting - memoized
   const renderedContent = useMemo(() => {
-    if (!message.content) return null;
+    const contentToRender = cleanContent || message.content;
+    if (!contentToRender) return null;
 
     // Split content into paragraphs first
-    const paragraphs = message.content.split(/\n\n+/);
+    const paragraphs = contentToRender.split(/\n\n+/);
     
     return paragraphs.map((paragraph, pIndex) => {
       // Handle code blocks
@@ -143,7 +214,33 @@ export const ChatMessage = memo(function ChatMessage({
         </p>
       );
     });
-  }, [message.content, renderInlineFormatting]);
+  }, [cleanContent, message.content, renderInlineFormatting]);
+
+  // Render chain of thought display
+  const chainOfThoughtDisplay = useMemo(() => {
+    if (parsedThinking.length === 0) return null;
+
+    return (
+      <ChainOfThought className="mb-4">
+        <ChainOfThoughtContent>
+          {parsedThinking.map((step, stepIndex) => (
+            <ChainOfThoughtItem key={stepIndex} defaultOpen={stepIndex === 0}>
+              <ChainOfThoughtTrigger>
+                {step.title}
+              </ChainOfThoughtTrigger>
+              <ChainOfThoughtStep>
+                {step.items.map((item, itemIndex) => (
+                  <ChainOfThoughtStepItem key={itemIndex}>
+                    {item}
+                  </ChainOfThoughtStepItem>
+                ))}
+              </ChainOfThoughtStep>
+            </ChainOfThoughtItem>
+          ))}
+        </ChainOfThoughtContent>
+      </ChainOfThought>
+    );
+  }, [parsedThinking]);
 
   // Show AI loading state for empty assistant messages
   if (isAssistant && isEmpty && isStreaming) {
@@ -193,6 +290,9 @@ export const ChatMessage = memo(function ChatMessage({
               ))}
             </div>
           )}
+
+          {/* Chain of Thought display for assistant */}
+          {isAssistant && !isStreaming && chainOfThoughtDisplay}
 
           {/* Deep thinking display for assistant */}
           {isAssistant && (isDeepThinking || thinkingSteps.length > 0) && (
