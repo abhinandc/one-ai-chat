@@ -1,4 +1,12 @@
 // Chat Types
+export interface Attachment {
+  name: string;
+  type: string;
+  size?: number;
+  url?: string;
+  data?: string; // base64 for images
+}
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant' | 'system' | 'tool';
@@ -11,6 +19,17 @@ export interface Message {
     cost?: number;
     toolCalls?: ToolRun[];
     citations?: Citation[];
+    attachments?: Attachment[];
+    isDeepThinking?: boolean;
+    thinkingSteps?: {
+      id: string;
+      name: string;
+      status: 'pending' | 'running' | 'completed' | 'error';
+      description?: string;
+      result?: string;
+      toolType?: string;
+      duration?: number;
+    }[];
   };
 }
 
