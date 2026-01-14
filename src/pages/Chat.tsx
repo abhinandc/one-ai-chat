@@ -15,7 +15,7 @@ import { useChat } from "@/hooks/useChat";
 import { useModels } from "@/hooks/useModels";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useConversations } from "@/hooks/useConversations";
-import { useVirtualKeyInit } from "@/hooks/useVirtualKeyInit";
+import { useVirtualKeyInit, getStoredCredentials } from "@/hooks/useVirtualKeyInit";
 import { analyticsService } from "@/services/analyticsService";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -239,11 +239,11 @@ const Chat = () => {
       return;
     }
 
-    // Check if API key is configured
-    const apiKey = localStorage.getItem('oneai_api_key');
-    if (!apiKey || apiKey.includes('***') || apiKey.length < 20) {
+    // Check if credentials are configured
+    const creds = getStoredCredentials();
+    if (!creds?.api_key || creds.api_key.length < 20) {
       toast({
-        title: "API Key Required",
+        title: "API Credentials Required",
         description: "Please go to Models Hub and activate an API key first",
         variant: "destructive",
       });
