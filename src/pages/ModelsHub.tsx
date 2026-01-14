@@ -136,10 +136,15 @@ const ModelsHub = () => {
       // Handle different field names for models
       const modelsList = key.models || key.models_json || [];
       if (Array.isArray(modelsList)) {
-        modelsList.forEach(modelId => {
-          // Only add string model IDs
-          if (typeof modelId === 'string' && modelId.trim()) {
-            ids.add(modelId);
+        modelsList.forEach((modelItem) => {
+          // Handle both string IDs and model objects
+          if (typeof modelItem === 'string' && modelItem.trim()) {
+            ids.add(modelItem);
+          } else if (typeof modelItem === 'object' && modelItem !== null && 'name' in modelItem) {
+            const modelName = (modelItem as ModelData).name;
+            if (modelName && modelName.trim()) {
+              ids.add(modelName);
+            }
           }
         });
       }
