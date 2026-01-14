@@ -49,19 +49,28 @@ export function useModels(userEmail?: string): UseModelsResult {
       }
 
       // Extract models from the employee_keys response
+      // Response format: { keys: [...], all_models: [...] }
       let modelsList: string[] = [];
 
-      if (data?.models && Array.isArray(data.models)) {
-        modelsList = data.models;
+      // Prefer all_models array which has full model data
+      if (data?.all_models && Array.isArray(data.all_models)) {
+        modelsList = data.all_models.map((m: any) => m.name || m.id).filter(Boolean);
       } else if (data?.keys && Array.isArray(data.keys)) {
+        // Extract from keys' models array
         data.keys.forEach((key: any) => {
           const keyModels = key.models || key.models_json || [];
-          modelsList.push(...keyModels);
+          keyModels.forEach((m: any) => {
+            const modelName = typeof m === 'string' ? m : (m.name || m.id);
+            if (modelName) modelsList.push(modelName);
+          });
         });
       } else if (Array.isArray(data)) {
         data.forEach((key: any) => {
           const keyModels = key.models || key.models_json || [];
-          modelsList.push(...keyModels);
+          keyModels.forEach((m: any) => {
+            const modelName = typeof m === 'string' ? m : (m.name || m.id);
+            if (modelName) modelsList.push(modelName);
+          });
         });
       }
 
