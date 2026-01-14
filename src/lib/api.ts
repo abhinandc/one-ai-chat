@@ -421,8 +421,6 @@ export class OneEdgeClient {
       headers.set(creds.auth_header || 'Authorization', `Bearer ${creds.api_key}`);
       headers.set('Content-Type', 'application/json');
       
-      console.log('Making chat completion request:', { endpoint, model: modelKey });
-      
       const response = await fetch(endpoint, {
         method: 'POST',
         headers,
@@ -456,8 +454,6 @@ export class OneEdgeClient {
       headers.set(creds.auth_header || 'Authorization', `Bearer ${creds.api_key}`);
       headers.set('Content-Type', 'application/json');
       headers.set('Accept', 'text/event-stream');
-      
-      console.log('Making streaming chat request:', { endpoint, model: modelKey });
       
       const response = await fetch(endpoint, {
         method: 'POST',

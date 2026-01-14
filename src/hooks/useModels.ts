@@ -37,7 +37,6 @@ export function useModels(userEmail?: string): UseModelsResult {
               created: Date.now() / 1000,
               owned_by: cred.provider || 'unknown',
             }));
-            console.log('useModels - loaded from localStorage:', transformedModels.length, 'models');
             setModels(transformedModels);
             setLoading(false);
             return;
@@ -57,8 +56,6 @@ export function useModels(userEmail?: string): UseModelsResult {
       const { data, error: fetchError } = await supabaseClient.functions.invoke('employee_keys', {
         body: { email: userEmail }
       });
-
-      console.log('useModels - employee_keys response:', { data, error: fetchError });
 
       if (fetchError) {
         throw new Error(fetchError.message || 'Edge function error');

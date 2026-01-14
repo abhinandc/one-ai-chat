@@ -34,7 +34,6 @@ const Chat = () => {
   // Refetch models when key initialization completes
   useEffect(() => {
     if (keyInitialized && user?.email) {
-      console.log('Key initialized, refetching models...');
       refetchModels();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -260,7 +259,6 @@ const Chat = () => {
         description: errorMsg,
         variant: "destructive",
       });
-      console.error('Missing credentials:', { creds, keyError, keyInitialized, keyLoading });
       return;
     }
 
