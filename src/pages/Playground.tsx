@@ -1,5 +1,5 @@
-﻿import { useEffect, useMemo, useState } from "react";
-import { Play, Save, Share, Settings, Copy, Download, RefreshCw, Zap, Loader2 } from "lucide-react";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { Play, Save, Share, Settings, Copy, Download, RefreshCw, Zap, Loader2, Star, Trash2, Clock, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,12 +7,17 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useModels } from "@/hooks/useModels";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { apiClient } from "@/services/api";
+import { playgroundService, PlaygroundSession as DBSession } from "@/services/playgroundService";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 interface PlaygroundSession {
   id: string;
@@ -24,6 +29,9 @@ interface PlaygroundSession {
   prompt: string;
   response: string;
   timestamp: Date;
+  isFavorite?: boolean;
+  tokensUsed?: number;
+  responseTimeMs?: number;
 }
 
 interface StoredSession {
@@ -36,6 +44,7 @@ interface StoredSession {
   prompt: string;
   response: string;
   timestamp: string;
+  isFavorite?: boolean;
 }
 
 interface StoredState {
@@ -48,6 +57,22 @@ interface StoredState {
   response: string;
   sessions: StoredSession[];
 }
+
+// Convert DB session to local format
+const dbToLocal = (dbSession: DBSession): PlaygroundSession => ({
+  id: dbSession.id,
+  name: dbSession.name,
+  model: dbSession.model,
+  temperature: dbSession.temperature,
+  maxTokens: dbSession.max_tokens,
+  topP: dbSession.top_p,
+  prompt: dbSession.prompt,
+  response: dbSession.response || "",
+  timestamp: new Date(dbSession.created_at),
+  isFavorite: dbSession.is_favorite,
+  tokensUsed: dbSession.tokens_used,
+  responseTimeMs: dbSession.response_time_ms
+});
 
 const STORAGE_PREFIX = "oneai.playground.";
 
@@ -101,9 +126,87 @@ export default function Playground() {
   const [sessions, setSessions] = useState<PlaygroundSession[]>([]);
   const [streamingEnabled, setStreamingEnabled] = useState(true);
   const [hydrated, setHydrated] = useState(false);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [loadingFromSupabase, setLoadingFromSupabase] = useState(false);
+  const [autoSave, setAutoSave] = useState(true);
   const { toast } = useToast();
 
   const { models, loading: modelsLoading } = useModels(user?.email);
+
+  // Load sessions from Supabase
+  const loadSupabaseSessions = useCallback(async () => {
+    if (!user?.email) return;
+
+    setLoadingFromSupabase(true);
+    try {
+      const dbSessions = await playgroundService.getSessions(user.email, {
+        limit: 20,
+        favoritesOnly: showFavoritesOnly
+      });
+
+      if (dbSessions.length > 0) {
+        setSessions(dbSessions.map(dbToLocal));
+      }
+    } catch (error) {
+      console.error("Failed to load sessions from Supabase:", error);
+    } finally {
+      setLoadingFromSupabase(false);
+    }
+  }, [user?.email, showFavoritesOnly]);
+
+  // Save session to Supabase
+  const saveToSupabase = useCallback(async (session: PlaygroundSession): Promise<string | null> => {
+    if (!user?.email || !autoSave) return null;
+
+    try {
+      const sessionId = await playgroundService.saveSession(user.email, {
+        name: session.name,
+        model: session.model,
+        temperature: session.temperature,
+        maxTokens: session.maxTokens,
+        topP: session.topP,
+        prompt: session.prompt,
+        response: session.response,
+        streamingEnabled,
+        tokensUsed: session.tokensUsed,
+        responseTimeMs: session.responseTimeMs
+      });
+      return sessionId;
+    } catch (error) {
+      console.error("Failed to save session to Supabase:", error);
+      return null;
+    }
+  }, [user?.email, autoSave, streamingEnabled]);
+
+  // Toggle favorite
+  const toggleFavorite = useCallback(async (sessionId: string) => {
+    if (!user?.email) return;
+
+    const newStatus = await playgroundService.toggleFavorite(user.email, sessionId);
+    if (newStatus !== null) {
+      setSessions(prev => prev.map(s =>
+        s.id === sessionId ? { ...s, isFavorite: newStatus } : s
+      ));
+      toast({
+        title: newStatus ? "Added to favorites" : "Removed from favorites",
+        description: newStatus ? "Session saved to favorites" : "Session removed from favorites"
+      });
+    }
+  }, [user?.email, toast]);
+
+  // Delete session
+  const deleteSession = useCallback(async (sessionId: string) => {
+    if (!user?.email) return;
+
+    const success = await playgroundService.deleteSession(user.email, sessionId);
+    if (success) {
+      setSessions(prev => prev.filter(s => s.id !== sessionId));
+      toast({
+        title: "Session deleted",
+        description: "The session has been removed"
+      });
+    }
+  }, [user?.email, toast]);
 
   useEffect(() => {
     setSelectedModel("");
@@ -120,6 +223,7 @@ export default function Playground() {
       return;
     }
 
+    // First try to load from localStorage for quick hydration
     try {
       const raw = localStorage.getItem(storageKey);
       if (raw) {
@@ -166,6 +270,7 @@ export default function Playground() {
                 prompt: entry.prompt,
                 response: entry.response,
                 timestamp,
+                isFavorite: entry.isFavorite
               } as PlaygroundSession;
             })
             .filter((item): item is PlaygroundSession => Boolean(item))
@@ -179,6 +284,13 @@ export default function Playground() {
       setHydrated(true);
     }
   }, [storageKey]);
+
+  // Load sessions from Supabase after hydration
+  useEffect(() => {
+    if (hydrated && user?.email) {
+      loadSupabaseSessions();
+    }
+  }, [hydrated, user?.email, loadSupabaseSessions]);
 
   useEffect(() => {
     if (!hydrated) {
@@ -295,6 +407,7 @@ export default function Playground() {
 
     setIsGenerating(true);
     setResponse("");
+    const startTime = Date.now();
 
     try {
       const requestData = {
@@ -364,6 +477,8 @@ export default function Playground() {
       }
 
       const persistedResponse = finalResponse || response;
+      const endTime = Date.now();
+      const responseTimeMs = endTime - startTime;
 
       const newSession: PlaygroundSession = {
         id: Date.now().toString(),
@@ -375,16 +490,24 @@ export default function Playground() {
         prompt,
         response: persistedResponse,
         timestamp: new Date(),
+        isFavorite: false,
+        responseTimeMs
       };
+
+      // Save to Supabase
+      const supabaseId = await saveToSupabase(newSession);
+      if (supabaseId) {
+        newSession.id = supabaseId;
+      }
 
       setSessions((prev) => {
         const next = [newSession, ...prev];
-        return next.slice(0, 10);
+        return next.slice(0, 20);
       });
 
       toast({
         title: "Response Generated!",
-        description: `Generated using ${currentModel}`,
+        description: `Generated using ${currentModel} in ${(responseTimeMs / 1000).toFixed(1)}s`,
       });
     } catch (error) {
       console.error("Generation error:", error);
@@ -640,6 +763,23 @@ export default function Playground() {
                     </p>
                   </div>
 
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-text-primary">Auto-Save to Cloud</label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setAutoSave((prev) => !prev)}
+                        className={autoSave ? "border-accent-green text-accent-green" : ""}
+                      >
+                        {autoSave ? "On" : "Off"}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-text-secondary">
+                      Automatically save sessions to Supabase for access across devices.
+                    </p>
+                  </div>
+
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-medium text-text-primary">Prompt Templates</h4>
@@ -722,40 +862,140 @@ export default function Playground() {
 
                   <TabsContent value="history" className="flex-1 m-6 mt-4 overflow-y-auto">
                     <div className="space-y-3 h-full flex flex-col">
-                      <h3 className="text-sm font-medium text-text-primary">Recent Sessions</h3>
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-medium text-text-primary">
+                          {showFavoritesOnly ? "Favorite Sessions" : "Recent Sessions"}
+                        </h3>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                            className={cn(
+                              "text-xs",
+                              showFavoritesOnly && "text-accent-orange"
+                            )}
+                          >
+                            <Star className={cn("h-3 w-3 mr-1", showFavoritesOnly && "fill-current")} />
+                            {showFavoritesOnly ? "All" : "Favorites"}
+                          </Button>
+                          {loadingFromSupabase && (
+                            <Loader2 className="h-4 w-4 animate-spin text-text-tertiary" />
+                          )}
+                        </div>
+                      </div>
                       {sessions.length === 0 ? (
-                        <div className="text-center py-8 text-text-secondary flex-1 flex items-center justify-center">
-                          No sessions yet. Generate a response to create your first session.
+                        <div className="text-center py-8 text-text-secondary flex-1 flex items-center justify-center flex-col gap-2">
+                          <Clock className="h-8 w-8 text-text-quaternary" />
+                          <p>
+                            {showFavoritesOnly
+                              ? "No favorite sessions yet"
+                              : "No sessions yet. Generate a response to create your first session."
+                            }
+                          </p>
                         </div>
                       ) : (
                         <div className="space-y-2 flex-1 overflow-y-auto">
-                          {sessions.map((session) => (
-                            <div
-                              key={session.id}
-                              className="p-3 border border-border-primary rounded-lg hover:border-accent-blue/30 transition-colors cursor-pointer"
-                              onClick={() => {
-                                setPrompt(session.prompt);
-                                setResponse(session.response);
-                                setSelectedModel(session.model);
-                                setTemperature(session.temperature);
-                                setMaxTokens(session.maxTokens);
-                                setTopP(session.topP);
-                              }}
-                            >
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-sm font-medium text-text-primary">{session.name}</span>
-                                <span className="text-xs text-text-tertiary">
-                                  {session.timestamp.toLocaleDateString()}
-                                </span>
-                              </div>
-                              <p className="text-xs text-text-secondary line-clamp-2">
-                                {session.prompt}
-                              </p>
-                              <div className="text-xs text-text-tertiary mt-1">
-                                {models.find((m) => m.id === session.model)?.id || session.model}
-                              </div>
-                            </div>
-                          ))}
+                          <AnimatePresence mode="popLayout">
+                            {sessions.map((session) => (
+                              <motion.div
+                                key={session.id}
+                                layout
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                className={cn(
+                                  "p-3 border rounded-lg transition-colors cursor-pointer group",
+                                  session.isFavorite
+                                    ? "border-accent-orange/30 bg-accent-orange/5 hover:border-accent-orange/50"
+                                    : "border-border-primary hover:border-accent-blue/30"
+                                )}
+                              >
+                                <div
+                                  className="flex-1"
+                                  onClick={() => {
+                                    setPrompt(session.prompt);
+                                    setResponse(session.response);
+                                    setSelectedModel(session.model);
+                                    setTemperature(session.temperature);
+                                    setMaxTokens(session.maxTokens);
+                                    setTopP(session.topP);
+                                  }}
+                                >
+                                  <div className="flex items-center justify-between mb-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-medium text-text-primary">{session.name}</span>
+                                      {session.isFavorite && (
+                                        <Star className="h-3 w-3 text-accent-orange fill-current" />
+                                      )}
+                                    </div>
+                                    <span className="text-xs text-text-tertiary">
+                                      {session.timestamp.toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-text-secondary line-clamp-2">
+                                    {session.prompt}
+                                  </p>
+                                  <div className="flex items-center justify-between mt-2">
+                                    <Badge variant="outline" className="text-xs">
+                                      {session.model.split('/').pop() || session.model}
+                                    </Badge>
+                                    {session.responseTimeMs && (
+                                      <span className="text-xs text-text-quaternary">
+                                        {(session.responseTimeMs / 1000).toFixed(1)}s
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleFavorite(session.id);
+                                    }}
+                                    className="h-7 px-2"
+                                    title={session.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                                  >
+                                    <Star className={cn(
+                                      "h-3 w-3",
+                                      session.isFavorite && "fill-current text-accent-orange"
+                                    )} />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      deleteSession(session.id);
+                                    }}
+                                    className="h-7 px-2 text-destructive hover:text-destructive"
+                                    title="Delete session"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setPrompt(session.prompt);
+                                      setResponse(session.response);
+                                      setSelectedModel(session.model);
+                                      setTemperature(session.temperature);
+                                      setMaxTokens(session.maxTokens);
+                                      setTopP(session.topP);
+                                    }}
+                                    className="h-7 px-2"
+                                    title="Load session"
+                                  >
+                                    <ChevronRight className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
                         </div>
                       )}
                     </div>

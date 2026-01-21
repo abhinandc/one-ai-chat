@@ -1,10 +1,11 @@
 import { useMemo, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import supabase from "@/services/supabaseClient";
-import { Key, Copy, Check, Eye, EyeOff, RefreshCw, Zap } from "lucide-react";
+import { Key, Copy, Check, Eye, EyeOff, RefreshCw, Zap, MessageSquare, Code, Image, Brain, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface ModelData {
@@ -51,8 +52,38 @@ interface VirtualKeyData {
   metadata?: Record<string, unknown>;
 }
 
+// Helper to detect model type from name/kind
+const getModelType = (model: ModelData): 'chat' | 'code' | 'image' | 'vision' | 'embed' => {
+  const name = (model.name || '').toLowerCase();
+  const kind = (model.kind || '').toLowerCase();
+  const mode = (model.mode || '').toLowerCase();
+
+  if (mode.includes('image') || kind.includes('image') || name.includes('dall-e') || name.includes('stable-diffusion') || name.includes('imagen')) {
+    return 'image';
+  }
+  if (mode.includes('vision') || kind.includes('vision') || name.includes('vision')) {
+    return 'vision';
+  }
+  if (kind.includes('code') || name.includes('code') || name.includes('codex') || name.includes('deepseek-coder')) {
+    return 'code';
+  }
+  if (kind.includes('embed') || name.includes('embed') || name.includes('embedding')) {
+    return 'embed';
+  }
+  return 'chat';
+};
+
+const modelTypeConfig = {
+  chat: { icon: MessageSquare, label: 'Chat', color: 'text-blue-500' },
+  code: { icon: Code, label: 'Code', color: 'text-green-500' },
+  image: { icon: Image, label: 'Image', color: 'text-purple-500' },
+  vision: { icon: Eye, label: 'Vision', color: 'text-orange-500' },
+  embed: { icon: Brain, label: 'Embed', color: 'text-cyan-500' },
+};
+
 const ModelsHub = () => {
   const user = useCurrentUser();
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   const [virtualKeys, setVirtualKeys] = useState<VirtualKeyData[]>([]);
@@ -421,21 +452,61 @@ const ModelsHub = () => {
                     <span className="text-xs text-text-tertiary">{providerModels.length} model(s)</span>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-md">
-                    {providerModels.map((model) => (
-                      <GlassCard key={model.id || model.name} className="p-md hover:border-accent-blue/30 transition-colors">
-                        <div className="flex items-center justify-between gap-md">
-                          <div>
-                            <h4 className="font-medium text-text-primary text-sm">
-                              {model.display_name || model.name}
-                            </h4>
-                            <p className="text-xs text-text-tertiary capitalize">{model.provider || provider}</p>
+                    {providerModels.map((model) => {
+                      const modelType = getModelType(model);
+                      const TypeIcon = modelTypeConfig[modelType].icon;
+                      const typeLabel = modelTypeConfig[modelType].label;
+                      const typeColor = modelTypeConfig[modelType].color;
+
+                      return (
+                        <GlassCard key={model.id || model.name} className="p-md hover:border-accent-blue/30 transition-colors group">
+                          <div className="space-y-3">
+                            {/* Header with type indicator */}
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-medium text-text-primary text-sm truncate">
+                                  {model.display_name || model.name}
+                                </h4>
+                                <p className="text-xs text-text-tertiary capitalize">{model.provider || provider}</p>
+                              </div>
+                              <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted ${typeColor}`}>
+                                <TypeIcon className="h-3 w-3" />
+                                <span className="text-xs font-medium">{typeLabel}</span>
+                              </div>
+                            </div>
+
+                            {/* Model details */}
+                            <div className="flex flex-wrap gap-3 text-xs text-text-tertiary">
+                              {model.context_length && (
+                                <span className="flex items-center gap-1">
+                                  <Brain className="h-3 w-3" />
+                                  {(model.context_length / 1000).toFixed(0)}K context
+                                </span>
+                              )}
+                              {(model.cost_per_1k_input || model.cost_per_1k_output) && (
+                                <span className="flex items-center gap-1">
+                                  <DollarSign className="h-3 w-3" />
+                                  ${((model.cost_per_1k_input || 0) + (model.cost_per_1k_output || 0)).toFixed(4)}/1K
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Action button - appears on hover for chat/code models */}
+                            {(modelType === 'chat' || modelType === 'code' || modelType === 'vision') && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="w-full opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                                onClick={() => navigate('/chat', { state: { selectedModelId: model.name } })}
+                              >
+                                <MessageSquare className="h-3 w-3 mr-1" />
+                                Chat with this model
+                              </Button>
+                            )}
                           </div>
-                          <Badge variant="secondary" className="text-xs">
-                            Available
-                          </Badge>
-                        </div>
-                      </GlassCard>
-                    ))}
+                        </GlassCard>
+                      );
+                    })}
                   </div>
                 </div>
               ))}

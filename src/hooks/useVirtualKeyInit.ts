@@ -57,12 +57,36 @@ export function getCredentialForModel(modelName: string): StoredCredential | nul
 
 /**
  * Hook to auto-initialize the virtual API key from employee_keys edge function.
+ * Optimized to check localStorage synchronously first for instant page loads.
  */
 export function useVirtualKeyInit(userEmail?: string, forceRefresh?: boolean) {
   const [initialized, setInitialized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [keyData, setKeyData] = useState<{ success?: boolean; credentialsCount?: number } | null>(null);
+
+  // Check cache synchronously on mount/email change
+  useEffect(() => {
+    if (!userEmail) {
+      setLoading(false);
+      return;
+    }
+
+    // Check localStorage synchronously first
+    const existingCredentials = getStoredCredentials();
+    const storedEmail = localStorage.getItem('oneai_credentials_email');
+
+    if (existingCredentials?.api_key &&
+        existingCredentials.api_key.length > 20 &&
+        storedEmail === userEmail &&
+        !forceRefresh) {
+      setInitialized(true);
+      setLoading(false);
+      return;
+    }
+
+    // Otherwise, we need to fetch - but that's handled in the next effect
+  }, [userEmail, forceRefresh]);
 
   const fetchCredentials = async (bypassCache = false) => {
     if (!userEmail) {

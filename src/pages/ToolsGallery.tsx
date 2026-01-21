@@ -1,20 +1,38 @@
-import { useState, useEffect } from "react";
-import { Search, Filter, Star, Download, Zap, Code, Database, Globe, Plus, Trash2 } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import {
+  Search, Filter, Plus, ThumbsUp, Clock, CheckCircle, XCircle,
+  AlertCircle, Cpu, Wrench, ChevronDown, User, Users, Trash2, Edit,
+  ArrowUpCircle, MessageSquare
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GlassInput } from "@/components/ui/GlassInput";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
-import { toolService, ToolInstallation, ToolSubmission } from "@/services/toolService";
-import { useToast } from "@/hooks/use-toast";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { CreateToolModal } from "@/components/modals/CreateToolModal";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,443 +43,752 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
+import { aiGalleryService, AIGalleryRequest, NewRequestData } from "@/services/aiGalleryService";
+import { useToast } from "@/hooks/use-toast";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
-interface DisplayTool {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  tags: string[];
-  status: string;
-  type: 'installed' | 'submitted';
-  createdAt: Date;
-}
+type RequestType = 'model' | 'tool';
+type StatusFilter = 'all' | 'pending' | 'approved' | 'rejected' | 'under_review';
+type ViewMode = 'all' | 'mine';
 
-const categories = ["All", "Integration", "Data", "Communication", "Analytics", "Custom"];
+const statusConfig = {
+  pending: { icon: Clock, color: 'text-amber-500', bg: 'bg-amber-500/10', label: 'Pending' },
+  under_review: { icon: AlertCircle, color: 'text-blue-500', bg: 'bg-blue-500/10', label: 'Under Review' },
+  approved: { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-500/10', label: 'Approved' },
+  rejected: { icon: XCircle, color: 'text-red-500', bg: 'bg-red-500/10', label: 'Rejected' },
+};
 
-const getToolIcon = (name: string) => {
-  const lowerName = name.toLowerCase();
-  if (lowerName.includes("http") || lowerName.includes("api")) return <Globe className="h-6 w-6" />;
-  if (lowerName.includes("sql") || lowerName.includes("database")) return <Database className="h-6 w-6" />;
-  if (lowerName.includes("code")) return <Code className="h-6 w-6" />;
-  return <Zap className="h-6 w-6" />;
+const urgencyConfig = {
+  low: { color: 'text-muted-foreground', label: 'Low' },
+  normal: { color: 'text-foreground', label: 'Normal' },
+  high: { color: 'text-amber-500', label: 'High' },
+  critical: { color: 'text-red-500', label: 'Critical' },
 };
 
 export default function ToolsGallery() {
-  const [installedTools, setInstalledTools] = useState<ToolInstallation[]>([]);
-  const [submissions, setSubmissions] = useState<ToolSubmission[]>([]);
+  const [requests, setRequests] = useState<AIGalleryRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [sortBy, setSortBy] = useState<string>("newest");
-  const [submitModalOpen, setSubmitModalOpen] = useState(false);
+  const [requestType, setRequestType] = useState<RequestType | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [viewMode, setViewMode] = useState<ViewMode>('all');
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Modal states
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createType, setCreateType] = useState<RequestType>('model');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [toolToDelete, setToolToDelete] = useState<string | null>(null);
+  const [requestToDelete, setRequestToDelete] = useState<string | null>(null);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [requestToReview, setRequestToReview] = useState<AIGalleryRequest | null>(null);
+
+  // Form state
+  const [formData, setFormData] = useState<NewRequestData>({
+    request_type: 'model',
+    name: '',
+    description: '',
+    justification: '',
+    use_case: '',
+    urgency: 'normal',
+    team_impact: '',
+    estimated_usage: '',
+    alternatives_considered: ''
+  });
+  const [submitting, setSubmitting] = useState(false);
+
   const { toast } = useToast();
   const user = useCurrentUser();
 
-  useEffect(() => {
-    const loadTools = async () => {
-      if (!user?.email) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        const [installed, submitted] = await Promise.all([
-          toolService.getInstalledTools(user.email),
-          toolService.getToolSubmissions(user.email)
-        ]);
-        setInstalledTools(installed);
-        setSubmissions(submitted);
-      } catch (error) {
-        console.error("Failed to load tools:", error);
-        toast({
-          title: "Failed to load tools",
-          description: "Could not fetch tools from the database.",
-          variant: "destructive"
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadTools();
-  }, [user?.email, toast]);
-
-  const displayTools: DisplayTool[] = [
-    ...installedTools.map(t => ({
-      id: t.id,
-      name: t.tool_name,
-      description: `Installed tool connected to agent ${t.agent_id}`,
-      category: "Integration",
-      tags: ["installed", t.status],
-      status: t.status,
-      type: 'installed' as const,
-      createdAt: new Date(t.installed_at)
-    })),
-    ...submissions.map(s => ({
-      id: s.id,
-      name: s.name,
-      description: s.description,
-      category: s.category,
-      tags: ["submitted", s.status],
-      status: s.status,
-      type: 'submitted' as const,
-      createdAt: new Date(s.submitted_at)
-    }))
-  ];
-
-  const filteredTools = displayTools.filter(tool => {
-    const matchesSearch = tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         tool.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === "All" || tool.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
-
-  const sortedTools = [...filteredTools].sort((a, b) => {
-    switch (sortBy) {
-      case "name":
-        return a.name.localeCompare(b.name);
-      case "oldest":
-        return a.createdAt.getTime() - b.createdAt.getTime();
-      default:
-        return b.createdAt.getTime() - a.createdAt.getTime();
+  const loadRequests = useCallback(async () => {
+    if (!user?.email) {
+      setLoading(false);
+      return;
     }
-  });
-
-  const handleSubmitTool = async (data: { name: string; description: string; category: string }) => {
-    if (!user?.email) return;
 
     try {
-      const submission = await toolService.submitTool({
-        user_email: user.email,
-        name: data.name,
-        description: data.description,
-        category: data.category,
-        implementation: ""
-      });
+      setLoading(true);
+      const [requestsData, adminStatus] = await Promise.all([
+        viewMode === 'mine'
+          ? aiGalleryService.getMyRequests(user.email)
+          : aiGalleryService.getRequests(user.email, {
+              requestType: requestType === 'all' ? undefined : requestType,
+              status: statusFilter === 'all' ? undefined : statusFilter
+            }),
+        aiGalleryService.isAdmin(user.email)
+      ]);
 
-      setSubmissions(prev => [submission, ...prev]);
-      toast({
-        title: "Tool submitted",
-        description: `"${data.name}" has been submitted for review.`,
-      });
+      setRequests(requestsData);
+      setIsAdmin(adminStatus);
     } catch (error) {
-      console.error("Failed to submit tool:", error);
+      console.error("Failed to load requests:", error);
       toast({
-        title: "Failed to submit",
-        description: "Could not submit the tool. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleUninstallTool = (toolId: string) => {
-    setToolToDelete(toolId);
-    setDeleteDialogOpen(true);
-  };
-
-  const confirmUninstall = async () => {
-    if (!toolToDelete || !user?.email) return;
-
-    try {
-      await toolService.uninstallTool(toolToDelete, user.email);
-      setInstalledTools(prev => prev.filter(t => t.id !== toolToDelete));
-      toast({
-        title: "Tool uninstalled",
-        description: "The tool has been removed.",
-      });
-    } catch (error) {
-      console.error("Failed to uninstall tool:", error);
-      toast({
-        title: "Failed to uninstall",
-        description: "Could not uninstall the tool. Please try again.",
+        title: "Failed to load requests",
+        description: "Could not fetch requests from the database.",
         variant: "destructive"
       });
     } finally {
-      setToolToDelete(null);
-      setDeleteDialogOpen(false);
+      setLoading(false);
+    }
+  }, [user?.email, viewMode, requestType, statusFilter, toast]);
+
+  useEffect(() => {
+    loadRequests();
+  }, [loadRequests]);
+
+  const filteredRequests = requests.filter(req => {
+    const matchesSearch = req.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          req.description.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch;
+  });
+
+  const handleSubmitRequest = async () => {
+    if (!user?.email) return;
+    if (!formData.name || !formData.description || !formData.justification) {
+      toast({
+        title: "Missing required fields",
+        description: "Please fill in name, description, and justification.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const requestId = await aiGalleryService.submitRequest(user.email, {
+        ...formData,
+        request_type: createType
+      });
+
+      if (requestId) {
+        toast({
+          title: "Request submitted",
+          description: `Your ${createType} request has been submitted for review.`,
+        });
+        setCreateModalOpen(false);
+        resetForm();
+        loadRequests();
+      }
+    } catch (error) {
+      console.error("Failed to submit request:", error);
+      toast({
+        title: "Failed to submit",
+        description: "Could not submit your request. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active": return "text-accent-green";
-      case "approved": return "text-accent-green";
-      case "pending": return "text-accent-orange";
-      case "inactive": return "text-text-secondary";
-      case "rejected": return "text-accent-red";
-      case "error": return "text-accent-red";
-      default: return "text-text-secondary";
+  const handleUpvote = async (requestId: string) => {
+    if (!user?.email) return;
+
+    const newCount = await aiGalleryService.toggleUpvote(requestId, user.email);
+    if (newCount !== null) {
+      setRequests(prev => prev.map(r => {
+        if (r.id === requestId) {
+          return {
+            ...r,
+            upvotes: newCount,
+            user_has_upvoted: !r.user_has_upvoted
+          };
+        }
+        return r;
+      }));
     }
   };
 
-  const formatDate = (date: Date) => {
+  const handleDeleteRequest = (requestId: string) => {
+    setRequestToDelete(requestId);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!requestToDelete || !user?.email) return;
+
+    const success = await aiGalleryService.deleteRequest(user.email, requestToDelete);
+    if (success) {
+      setRequests(prev => prev.filter(r => r.id !== requestToDelete));
+      toast({
+        title: "Request deleted",
+        description: "Your request has been removed.",
+      });
+    } else {
+      toast({
+        title: "Failed to delete",
+        description: "Could not delete the request.",
+        variant: "destructive"
+      });
+    }
+    setRequestToDelete(null);
+    setDeleteDialogOpen(false);
+  };
+
+  const handleReviewRequest = async (status: 'approved' | 'rejected' | 'under_review', notes?: string) => {
+    if (!requestToReview || !user?.email) return;
+
+    const success = await aiGalleryService.reviewRequest(
+      user.email,
+      requestToReview.id,
+      status,
+      notes
+    );
+
+    if (success) {
+      toast({
+        title: `Request ${status}`,
+        description: `The request has been marked as ${status}.`,
+      });
+      loadRequests();
+    } else {
+      toast({
+        title: "Failed to review",
+        description: "Could not update the request status.",
+        variant: "destructive"
+      });
+    }
+    setReviewModalOpen(false);
+    setRequestToReview(null);
+  };
+
+  const resetForm = () => {
+    setFormData({
+      request_type: 'model',
+      name: '',
+      description: '',
+      justification: '',
+      use_case: '',
+      urgency: 'normal',
+      team_impact: '',
+      estimated_usage: '',
+      alternatives_considered: ''
+    });
+  };
+
+  const openCreateModal = (type: RequestType) => {
+    setCreateType(type);
+    resetForm();
+    setCreateModalOpen(true);
+  };
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    
+
     if (days === 0) return "Today";
     if (days === 1) return "Yesterday";
     if (days < 7) return `${days} days ago`;
-    if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
     return date.toLocaleDateString();
   };
 
   return (
     <div className="h-full flex flex-col bg-background">
-      <div className="border-b border-border-primary/50 p-6">
+      <div className="border-b border-border p-6">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
             <div>
-              <h1 className="text-3xl font-bold text-text-primary mb-2">Tools Gallery</h1>
-              <p className="text-text-secondary">Manage and discover AI tools for your workflow</p>
+              <h1 className="text-3xl font-bold text-foreground mb-2">AI Gallery</h1>
+              <p className="text-muted-foreground">Request access to new models and AI tools</p>
             </div>
-            <Button 
-              className="bg-accent-blue hover:bg-accent-blue/90"
-              onClick={() => setSubmitModalOpen(true)}
-              data-testid="button-submit-tool"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Submit Tool
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => openCreateModal('tool')}
+              >
+                <Wrench className="h-4 w-4 mr-2" />
+                Request Tool
+              </Button>
+              <Button
+                className="bg-primary hover:bg-primary/90"
+                onClick={() => openCreateModal('model')}
+              >
+                <Cpu className="h-4 w-4 mr-2" />
+                Request Model
+              </Button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-4 mb-6 flex-wrap">
+          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)} className="mb-4">
+            <TabsList>
+              <TabsTrigger value="all" className="gap-2">
+                <Users className="h-4 w-4" />
+                All Requests
+              </TabsTrigger>
+              <TabsTrigger value="mine" className="gap-2">
+                <User className="h-4 w-4" />
+                My Requests
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <div className="flex items-center gap-4 flex-wrap">
             <div className="flex-1 max-w-md">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-text-tertiary" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <GlassInput
-                  placeholder="Search tools..."
+                  placeholder="Search requests..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
                   variant="search"
-                  data-testid="input-search-tools"
                 />
               </div>
             </div>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" data-testid="button-filter-category">
+                <Button variant="outline" size="sm">
                   <Filter className="h-4 w-4 mr-2" />
-                  Category: {selectedCategory}
+                  Type: {requestType === 'all' ? 'All' : requestType === 'model' ? 'Models' : 'Tools'}
+                  <ChevronDown className="h-4 w-4 ml-2" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-48 bg-card border-border-primary shadow-lg z-50">
-                {categories.map((category) => (
-                  <DropdownMenuItem 
-                    key={category}
-                    onClick={() => setSelectedCategory(category)} 
-                    className="text-card-foreground hover:bg-accent-blue/10"
-                  >
-                    {category}
-                  </DropdownMenuItem>
-                ))}
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => setRequestType('all')}>All</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setRequestType('model')}>Models</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setRequestType('tool')}>Tools</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" data-testid="button-sort">
-                  Sort: {sortBy === "newest" ? "Newest" : sortBy === "oldest" ? "Oldest" : "Name"}
+                <Button variant="outline" size="sm">
+                  Status: {statusFilter === 'all' ? 'All' : statusConfig[statusFilter]?.label}
+                  <ChevronDown className="h-4 w-4 ml-2" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-48 bg-card border-border-primary shadow-lg z-50">
-                <DropdownMenuItem onClick={() => setSortBy("newest")} className="text-card-foreground hover:bg-accent-blue/10">
-                  Newest First
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSortBy("oldest")} className="text-card-foreground hover:bg-accent-blue/10">
-                  Oldest First
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSortBy("name")} className="text-card-foreground hover:bg-accent-blue/10">
-                  Name
-                </DropdownMenuItem>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => setStatusFilter('all')}>All</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('pending')}>Pending</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('under_review')}>Under Review</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('approved')}>Approved</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('rejected')}>Rejected</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
-
-          <div className="flex items-center gap-2 overflow-x-auto pb-2">
-            {categories.map((category) => (
-              <Button
-                key={category}
-                variant={selectedCategory === category ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedCategory(category)}
-                className={cn(
-                  "whitespace-nowrap",
-                  selectedCategory === category && "bg-accent-blue hover:bg-accent-blue/90"
-                )}
-              >
-                {category}
-              </Button>
-            ))}
           </div>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-7xl mx-auto space-y-8">
+        <div className="max-w-7xl mx-auto">
           {loading && (
             <div className="text-center py-12">
-              <Zap className="h-16 w-16 text-text-quaternary mx-auto mb-4 animate-pulse" />
-              <h3 className="text-lg font-medium text-text-primary mb-2">Loading tools...</h3>
-              <p className="text-text-secondary">Fetching tools from database</p>
+              <Cpu className="h-16 w-16 text-muted-foreground mx-auto mb-4 animate-pulse" />
+              <h3 className="text-lg font-medium text-foreground mb-2">Loading requests...</h3>
+              <p className="text-muted-foreground">Fetching data from database</p>
             </div>
           )}
 
-          {!loading && installedTools.length > 0 && (
-            <section>
-              <h2 className="text-xl font-semibold text-text-primary mb-4 flex items-center gap-2">
-                <Star className="h-5 w-5 text-accent-green" />
-                Installed Tools ({installedTools.length})
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {sortedTools.filter(t => t.type === 'installed').map((tool) => (
-                  <ToolCard 
-                    key={tool.id} 
-                    tool={tool}
-                    getStatusColor={getStatusColor}
-                    formatDate={formatDate}
-                    onUninstall={handleUninstallTool}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {!loading && submissions.length > 0 && (
-            <section>
-              <h2 className="text-xl font-semibold text-text-primary mb-4 flex items-center gap-2">
-                <Download className="h-5 w-5 text-accent-orange" />
-                My Submissions ({submissions.length})
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {sortedTools.filter(t => t.type === 'submitted').map((tool) => (
-                  <ToolCard 
-                    key={tool.id} 
-                    tool={tool}
-                    getStatusColor={getStatusColor}
-                    formatDate={formatDate}
-                    onUninstall={handleUninstallTool}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {!loading && sortedTools.length === 0 && (
+          {!loading && filteredRequests.length === 0 && (
             <div className="text-center py-12">
-              <Zap className="h-16 w-16 text-text-quaternary mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-text-primary mb-2">No tools found</h3>
-              <p className="text-text-secondary">
-                {displayTools.length === 0 
-                  ? "Submit your first tool to get started"
+              <MessageSquare className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-2">No requests found</h3>
+              <p className="text-muted-foreground mb-4">
+                {requests.length === 0
+                  ? "Be the first to request a new model or tool!"
                   : "Try adjusting your search or filters"
                 }
               </p>
-              {displayTools.length === 0 && (
-                <Button 
-                  className="mt-4"
-                  onClick={() => setSubmitModalOpen(true)}
-                  data-testid="button-submit-first-tool"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Submit First Tool
+              <div className="flex items-center justify-center gap-2">
+                <Button variant="outline" onClick={() => openCreateModal('tool')}>
+                  <Wrench className="h-4 w-4 mr-2" />
+                  Request Tool
                 </Button>
-              )}
+                <Button onClick={() => openCreateModal('model')}>
+                  <Cpu className="h-4 w-4 mr-2" />
+                  Request Model
+                </Button>
+              </div>
             </div>
           )}
+
+          <AnimatePresence mode="popLayout">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {filteredRequests.map((request, index) => (
+                <motion.div
+                  key={request.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ delay: index * 0.05 }}
+                >
+                  <RequestCard
+                    request={request}
+                    onUpvote={handleUpvote}
+                    onDelete={handleDeleteRequest}
+                    onReview={isAdmin ? (r) => { setRequestToReview(r); setReviewModalOpen(true); } : undefined}
+                    formatDate={formatDate}
+                    currentUserEmail={user?.email}
+                  />
+                </motion.div>
+              ))}
+            </div>
+          </AnimatePresence>
         </div>
       </div>
 
-      <CreateToolModal
-        open={submitModalOpen}
-        onOpenChange={setSubmitModalOpen}
-        onSubmit={handleSubmitTool}
-      />
+      {/* Create Request Modal */}
+      <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {createType === 'model' ? <Cpu className="h-5 w-5" /> : <Wrench className="h-5 w-5" />}
+              Request {createType === 'model' ? 'Model' : 'Tool'} Access
+            </DialogTitle>
+            <DialogDescription>
+              Submit a request for a new {createType === 'model' ? 'AI model' : 'AI tool'}.
+              Requests with clear justifications and business value are prioritized.
+            </DialogDescription>
+          </DialogHeader>
 
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">{createType === 'model' ? 'Model Name' : 'Tool Name'} *</Label>
+              <GlassInput
+                id="name"
+                placeholder={createType === 'model' ? 'e.g., GPT-4 Turbo, Claude 3 Opus' : 'e.g., GitHub Copilot, Cursor'}
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description">Description *</Label>
+              <Textarea
+                id="description"
+                placeholder={`Describe what this ${createType} does and its key features...`}
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="justification">Business Justification *</Label>
+              <Textarea
+                id="justification"
+                placeholder="Why do you need access to this? How will it benefit your work or the team?"
+                value={formData.justification}
+                onChange={(e) => setFormData(prev => ({ ...prev, justification: e.target.value }))}
+                rows={3}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="urgency">Urgency</Label>
+                <Select
+                  value={formData.urgency}
+                  onValueChange={(v) => setFormData(prev => ({ ...prev, urgency: v as NewRequestData['urgency'] }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="normal">Normal</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="critical">Critical</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="estimated_usage">Estimated Usage</Label>
+                <GlassInput
+                  id="estimated_usage"
+                  placeholder="e.g., Daily, Weekly, Monthly"
+                  value={formData.estimated_usage || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, estimated_usage: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="use_case">Primary Use Case</Label>
+              <Textarea
+                id="use_case"
+                placeholder="Describe your primary use case in detail..."
+                value={formData.use_case || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, use_case: e.target.value }))}
+                rows={2}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="team_impact">Team Impact</Label>
+              <GlassInput
+                id="team_impact"
+                placeholder="How many people will use this? Which teams?"
+                value={formData.team_impact || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, team_impact: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="alternatives">Alternatives Considered</Label>
+              <Textarea
+                id="alternatives"
+                placeholder="What alternatives have you considered? Why is this the best option?"
+                value={formData.alternatives_considered || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, alternatives_considered: e.target.value }))}
+                rows={2}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmitRequest} disabled={submitting}>
+              {submitting ? 'Submitting...' : 'Submit Request'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Uninstall Tool</AlertDialogTitle>
+            <AlertDialogTitle>Delete Request</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to uninstall this tool? This will also remove the associated agent.
+              Are you sure you want to delete this request? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmUninstall} className="bg-destructive text-destructive-foreground">
-              Uninstall
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground">
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Admin Review Modal */}
+      <ReviewModal
+        open={reviewModalOpen}
+        onOpenChange={setReviewModalOpen}
+        request={requestToReview}
+        onReview={handleReviewRequest}
+      />
     </div>
   );
 }
 
-function ToolCard({ 
-  tool,
-  getStatusColor, 
+function RequestCard({
+  request,
+  onUpvote,
+  onDelete,
+  onReview,
   formatDate,
-  onUninstall
-}: { 
-  tool: DisplayTool;
-  getStatusColor: (status: string) => string;
-  formatDate: (date: Date) => string;
-  onUninstall: (toolId: string) => void;
+  currentUserEmail
+}: {
+  request: AIGalleryRequest;
+  onUpvote: (id: string) => void;
+  onDelete: (id: string) => void;
+  onReview?: (request: AIGalleryRequest) => void;
+  formatDate: (date: string) => string;
+  currentUserEmail?: string;
 }) {
+  const status = statusConfig[request.status];
+  const StatusIcon = status.icon;
+  const urgency = urgencyConfig[request.urgency];
+  const isOwn = request.is_own_request || request.user_email === currentUserEmail;
+  const canDelete = isOwn && request.status === 'pending';
+
   return (
-    <GlassCard className="p-6 hover:border-accent-blue/30 transition-all duration-200 group" data-testid={`card-tool-${tool.id}`}>
+    <GlassCard className="p-5 hover:border-primary/30 transition-all duration-200">
       <div className="space-y-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-accent-blue/10 rounded-lg text-accent-blue">
-              {getToolIcon(tool.name)}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className={cn(
+              "p-2 rounded-lg shrink-0",
+              request.request_type === 'model' ? 'bg-primary/10 text-primary' : 'bg-amber-500/10 text-amber-500'
+            )}>
+              {request.request_type === 'model' ? <Cpu className="h-5 w-5" /> : <Wrench className="h-5 w-5" />}
             </div>
-            <div>
-              <h3 className="font-semibold text-text-primary group-hover:text-accent-blue transition-colors">
-                {tool.name}
-              </h3>
-              <p className="text-sm text-text-secondary capitalize">{tool.type}</p>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-semibold text-foreground truncate">{request.name}</h3>
+              <p className="text-xs text-muted-foreground">
+                {request.request_type === 'model' ? 'Model Request' : 'Tool Request'}
+                {isOwn && <span className="ml-1">(yours)</span>}
+              </p>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <Badge className={cn("text-xs", status.bg, status.color)}>
+              <StatusIcon className="h-3 w-3 mr-1" />
+              {status.label}
+            </Badge>
           </div>
         </div>
 
-        <p className="text-sm text-text-secondary line-clamp-2">{tool.description}</p>
+        <p className="text-sm text-muted-foreground line-clamp-2">{request.description}</p>
 
-        <div className="flex flex-wrap gap-2">
-          <Badge className={cn("text-xs capitalize", getStatusColor(tool.status))}>
-            {tool.status}
-          </Badge>
-          <Badge variant="outline" className="text-xs">
-            {tool.category}
-          </Badge>
-        </div>
-
-        <div className="text-xs text-text-tertiary">
-          Added {formatDate(tool.createdAt)}
-        </div>
-
-        {tool.type === 'installed' && (
-          <div className="flex items-center gap-2 pt-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="flex-1 text-accent-red hover:text-accent-red"
-              onClick={() => onUninstall(tool.id)}
-              data-testid={`button-uninstall-tool-${tool.id}`}
-            >
-              <Trash2 className="h-3 w-3 mr-1" />
-              Uninstall
-            </Button>
+        {request.justification && (
+          <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+            <span className="font-medium">Justification:</span> {request.justification.substring(0, 150)}
+            {request.justification.length > 150 && '...'}
           </div>
         )}
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant="outline" className={cn("text-xs", urgency.color)}>
+            {urgency.label} Priority
+          </Badge>
+          {request.team_impact && (
+            <Badge variant="outline" className="text-xs">
+              <Users className="h-3 w-3 mr-1" />
+              {request.team_impact}
+            </Badge>
+          )}
+          {request.estimated_usage && (
+            <Badge variant="outline" className="text-xs">
+              {request.estimated_usage}
+            </Badge>
+          )}
+        </div>
+
+        {request.admin_notes && request.status !== 'pending' && (
+          <div className="text-xs p-2 rounded bg-muted/50 border-l-2 border-primary">
+            <span className="font-medium">Admin Notes:</span> {request.admin_notes}
+          </div>
+        )}
+
+        <div className="flex items-center justify-between pt-2 border-t border-border/50">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onUpvote(request.id)}
+              className={cn(
+                "gap-1 h-8",
+                request.user_has_upvoted && "text-primary"
+              )}
+            >
+              <ThumbsUp className={cn("h-4 w-4", request.user_has_upvoted && "fill-current")} />
+              <span>{request.upvotes}</span>
+            </Button>
+            <span className="text-xs text-muted-foreground">{formatDate(request.created_at)}</span>
+          </div>
+
+          <div className="flex items-center gap-1">
+            {canDelete && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onDelete(request.id)}
+                className="h-8 text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+            {onReview && request.status === 'pending' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onReview(request)}
+                className="h-8"
+              >
+                Review
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
     </GlassCard>
+  );
+}
+
+function ReviewModal({
+  open,
+  onOpenChange,
+  request,
+  onReview
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  request: AIGalleryRequest | null;
+  onReview: (status: 'approved' | 'rejected' | 'under_review', notes?: string) => void;
+}) {
+  const [notes, setNotes] = useState('');
+
+  if (!request) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Review Request</DialogTitle>
+          <DialogDescription>
+            Review and approve or reject this {request.request_type} request.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+            <h4 className="font-semibold">{request.name}</h4>
+            <p className="text-sm text-muted-foreground">{request.description}</p>
+            <div className="text-sm">
+              <span className="font-medium">Justification:</span> {request.justification}
+            </div>
+            {request.use_case && (
+              <div className="text-sm">
+                <span className="font-medium">Use Case:</span> {request.use_case}
+              </div>
+            )}
+            <div className="text-xs text-muted-foreground">
+              Requested by: {request.user_email}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="admin_notes">Admin Notes (optional)</Label>
+            <Textarea
+              id="admin_notes"
+              placeholder="Add notes about your decision..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+            />
+          </div>
+        </div>
+
+        <DialogFooter className="flex gap-2 sm:gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => onReview('under_review', notes)}
+            className="text-blue-500 border-blue-500 hover:bg-blue-500/10"
+          >
+            <AlertCircle className="h-4 w-4 mr-2" />
+            Under Review
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => onReview('rejected', notes)}
+            className="text-red-500 border-red-500 hover:bg-red-500/10"
+          >
+            <XCircle className="h-4 w-4 mr-2" />
+            Reject
+          </Button>
+          <Button
+            onClick={() => onReview('approved', notes)}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Approve
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

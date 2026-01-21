@@ -1,7 +1,8 @@
-import { useEffect, useRef, memo, useMemo, useCallback, useState } from "react";
+import { useEffect, useRef, memo, useMemo, useCallback } from "react";
+import { motion } from "framer-motion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChatMessage } from "./ChatMessage";
-import { ThinkingLine } from "@/components/ui/shimmer-text";
+import { Shimmer } from "@/components/ai-elements/shimmer";
 import type { Message } from "@/types";
 
 interface ChatThreadProps {
@@ -9,14 +10,22 @@ interface ChatThreadProps {
   isStreaming?: boolean;
   streamingMessage?: string;
   onSuggestionClick?: (suggestion: string) => void;
+  chatMode?: "thinking" | "fast" | "coding";
+  isThinking?: boolean; // True when AI is outputting <thinking> block
+  thinkingContent?: string; // Content inside thinking block
 }
 
-export const ChatThread = memo(function ChatThread({ 
-  messages, 
-  isStreaming, 
+export const ChatThread = memo(function ChatThread({
+  messages,
+  isStreaming,
   streamingMessage,
-  onSuggestionClick 
+  onSuggestionClick,
+  chatMode = "fast",
+  isThinking = false,
+  thinkingContent = ""
 }: ChatThreadProps) {
+  // Detect if we're in deep thinking mode
+  const isDeepThinking = chatMode === "thinking" && isStreaming;
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevLengthRef = useRef(0);
 
@@ -69,8 +78,44 @@ export const ChatThread = memo(function ChatThread({
     <ScrollArea className="flex-1">
       <div className="pb-32">
         {renderedMessages}
-        
-        {/* Streaming message */}
+
+        {/* Streaming/Loading state - shimmer display */}
+        {isStreaming && !streamingMessage && (
+          <div className="w-full py-4">
+            <div className="mx-auto max-w-3xl px-4">
+              <div className={`flex items-center gap-3 p-4 rounded-xl border ${
+                isThinking || chatMode === "thinking"
+                  ? "bg-gradient-to-br from-primary/8 to-primary/3 border-primary/20"
+                  : "bg-muted/20 border-border/40"
+              }`}>
+                {/* Small animated orb */}
+                <div className="relative w-5 h-5 flex-shrink-0">
+                  <div className="absolute inset-0 rounded-full bg-primary/30 animate-pulse" />
+                  <div className="absolute inset-1 rounded-full bg-primary/60 animate-orb-pulse" />
+                </div>
+
+                {/* Shimmer text */}
+                <span className="text-sm font-medium text-foreground">
+                  <Shimmer duration={1.5} spread={2}>
+                    {isThinking ? "Deep thinking..." : chatMode === "coding" ? "Writing code..." : "Thinking..."}
+                  </Shimmer>
+                </span>
+              </div>
+
+              {/* Show live thinking content if available */}
+              {isThinking && thinkingContent && (
+                <div className="mt-3 mx-1 p-3 rounded-xl bg-muted/30 border border-border/30">
+                  <p className="text-xs text-muted-foreground font-mono leading-relaxed max-h-32 overflow-y-auto">
+                    {thinkingContent.slice(0, 500)}
+                    {thinkingContent.length > 500 && "..."}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Streaming message - shows as content arrives */}
         {isStreaming && streamingMessage && (
           <ChatMessage
             message={{
@@ -80,16 +125,8 @@ export const ChatThread = memo(function ChatThread({
               timestamp: new Date(),
             }}
             isStreaming
+            isDeepThinking={chatMode === "thinking"}
           />
-        )}
-        
-        {/* Loading indicator when waiting for response */}
-        {isStreaming && !streamingMessage && (
-          <div className="w-full py-4">
-            <div className="mx-auto max-w-3xl px-4">
-              <ThinkingLine text="AI is thinking" />
-            </div>
-          </div>
         )}
         
         <div ref={scrollRef} className="h-1" />
@@ -98,19 +135,13 @@ export const ChatThread = memo(function ChatThread({
   );
 });
 
-const ALL_SUGGESTIONS = [
+const SUGGESTIONS = [
   "Explain how AI models work",
-  "Write a Python function to sort a list",
-  "Help me understand machine learning",
-  "What are the best practices for prompts?",
-  "Create a REST API endpoint in Node.js",
-  "Explain the difference between SQL and NoSQL",
-  "Help me optimize this algorithm",
-  "Write a React component with hooks",
-  "How do neural networks learn?",
-  "What is prompt engineering?",
-  "Explain containerization with Docker",
-  "Write unit tests for my code",
+  "Write a Python sorting function",
+  "Help me with machine learning",
+  "Best practices for prompts",
+  "Create a REST API endpoint",
+  "Write a React component",
 ];
 
 interface EmptyStateProps {
@@ -118,61 +149,77 @@ interface EmptyStateProps {
 }
 
 function EmptyState({ onSuggestionClick }: EmptyStateProps) {
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-
-  // Pick 4 random suggestions on mount and rotate every 8 seconds
-  useEffect(() => {
-    const pickRandom = () => {
-      const shuffled = [...ALL_SUGGESTIONS].sort(() => Math.random() - 0.5);
-      setSuggestions(shuffled.slice(0, 4));
-    };
-    
-    pickRandom();
-    const interval = setInterval(pickRandom, 8000);
-    return () => clearInterval(interval);
-  }, []);
-
   const handleClick = (suggestion: string) => {
     onSuggestionClick?.(suggestion);
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-y-auto">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="flex-1 flex flex-col items-center justify-center p-8 overflow-y-auto"
+    >
       <div className="max-w-2xl w-full text-center space-y-8">
-        {/* Animated gradient orb */}
-        <div className="flex justify-center">
+        {/* Animated gradient orb with pulse rings */}
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="flex justify-center"
+        >
           <div className="relative h-24 w-24">
-            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 animate-pulse" />
-            <div className="absolute inset-3 rounded-full bg-gradient-to-br from-primary/40 to-primary/20" />
-            <div className="absolute inset-6 rounded-full bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/30" />
+            {/* Pulse rings */}
+            <div className="absolute inset-0 rounded-full border border-primary/20 animate-orb-ring" />
+            <div className="absolute inset-0 rounded-full border border-primary/20 animate-orb-ring" style={{ animationDelay: '0.7s' }} />
+            <div className="absolute inset-0 rounded-full border border-primary/20 animate-orb-ring" style={{ animationDelay: '1.4s' }} />
+
+            {/* Gradient layers */}
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 animate-orb-pulse" />
+            <div className="absolute inset-3 rounded-full bg-gradient-to-br from-primary/30 to-primary/15" />
+            <div className="absolute inset-6 rounded-full bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/30 animate-orb-pulse" style={{ animationDelay: '0.5s' }} />
           </div>
-        </div>
+        </motion.div>
 
         {/* Title */}
-        <div className="space-y-2">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="space-y-2"
+        >
           <h1 className="text-2xl font-semibold text-foreground">
             How can I help you today?
           </h1>
           <p className="text-muted-foreground">
             Ask me anything — I&apos;m here to assist
           </p>
-        </div>
+        </motion.div>
+      </div>
 
-        {/* Suggestion chips */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl mx-auto">
-          {suggestions.map((suggestion, index) => (
+      {/* Suggestion cards - scrolling marquee */}
+      <div className="w-full mt-8 overflow-hidden">
+        <div
+          className="flex gap-4 animate-marquee-left hover:[animation-play-state:paused]"
+          style={{
+            width: 'max-content',
+            '--marquee-duration': '25s',
+            '--marquee-gap': '1rem'
+          } as React.CSSProperties}
+        >
+          {/* Duplicate for seamless loop */}
+          {[...SUGGESTIONS, ...SUGGESTIONS].map((suggestion, idx) => (
             <button
-              key={`${suggestion}-${index}`}
+              key={`${suggestion}-${idx}`}
               onClick={() => handleClick(suggestion)}
-              className="group text-left p-4 rounded-xl bg-card hover:bg-muted/50 hover:border-primary/30 transition-all duration-200 hover:scale-[1.02] cursor-pointer"
+              className="group flex-shrink-0 px-8 py-5 rounded-2xl bg-card border border-border/60 hover:bg-muted/80 hover:border-primary/40 hover:shadow-lg transition-all duration-200 cursor-pointer"
             >
-              <span className="text-sm text-foreground group-hover:text-primary transition-colors">
+              <span className="text-base font-medium text-foreground group-hover:text-primary transition-colors whitespace-nowrap">
                 {suggestion}
               </span>
             </button>
           ))}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Cross2Icon } from "@radix-ui/react-icons";
-import { Volume2, VolumeX } from "lucide-react";
+import { Volume2, VolumeX, Send, X } from "lucide-react";
 import { useConversation } from "@elevenlabs/react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Orb, type AgentState } from "@/components/ui/orb";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/services/supabaseClient";
+import { ElevenLabsIcon } from "@/components/icons/ElevenLabsIcon";
 
 // Sia Agent ID
 const SIA_AGENT_ID = "agent_8701keg7xdvgfx89gk8fspx7jk5x";
@@ -257,18 +258,22 @@ export function SiaConversation({
 
         {/* Main Content */}
         <div className="relative z-10 flex flex-col items-center justify-center gap-12 w-full max-w-3xl px-8">
-          {/* Sia Label */}
+          {/* Sia Label with ElevenLabs branding */}
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-center"
           >
-            <h2 className="text-2xl font-light tracking-wider text-foreground/90">
-              Sia
-            </h2>
-            <p className="text-sm text-muted-foreground/70 mt-1">
-              {useBrowserSpeech ? "Voice Assistant (Browser)" : "Voice Assistant"}
-            </p>
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <h2 className="text-2xl font-light tracking-wider text-foreground/90">
+                Sia
+              </h2>
+            </div>
+            <div className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground/70">
+              <span>Powered by</span>
+              <ElevenLabsIcon size={14} className="text-muted-foreground/70" />
+              <span>ElevenLabs</span>
+            </div>
           </motion.div>
 
           {/* ElevenLabs Orb */}
@@ -323,28 +328,65 @@ export function SiaConversation({
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="min-h-[60px] max-w-xl text-center"
+                  className="min-h-[60px] max-w-xl text-center space-y-4"
                 >
                   <p className="text-xl font-light text-foreground/90 leading-relaxed">
-                    {transcript}
+                    "{transcript}"
                   </p>
+                  {/* Send to Chat button */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 rounded-full px-4"
+                      onClick={() => {
+                        if (transcript && onTranscript) {
+                          onTranscript(transcript);
+                          setTranscript("");
+                          onOpenChange(false);
+                        }
+                      }}
+                    >
+                      <Send className="h-4 w-4" />
+                      Send to Chat
+                    </Button>
+                  </motion.div>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Mute/Unmute Control */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 rounded-full"
-              onClick={() => setIsMuted(!isMuted)}
-            >
-              {isMuted ? (
-                <VolumeX className="h-5 w-5 text-muted-foreground" />
-              ) : (
-                <Volume2 className="h-5 w-5 text-muted-foreground" />
+            {/* Control Buttons */}
+            <div className="flex items-center gap-3">
+              {/* Clear transcript */}
+              {transcript && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 rounded-full"
+                  onClick={() => setTranscript("")}
+                >
+                  <X className="h-5 w-5 text-muted-foreground" />
+                </Button>
               )}
-            </Button>
+
+              {/* Mute/Unmute Control */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 rounded-full"
+                onClick={() => setIsMuted(!isMuted)}
+              >
+                {isMuted ? (
+                  <VolumeX className="h-5 w-5 text-muted-foreground" />
+                ) : (
+                  <Volume2 className="h-5 w-5 text-muted-foreground" />
+                )}
+              </Button>
+            </div>
           </div>
 
           {/* Hint */}

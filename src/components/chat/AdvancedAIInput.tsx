@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { 
-  ArrowUp, 
-  Square, 
-  Plus, 
-  Paperclip, 
+import {
+  ArrowUp,
+  Square,
+  Plus,
+  Paperclip,
   Image as ImageIcon,
   ChevronDown,
   X,
@@ -13,6 +13,7 @@ import {
   Code,
   Globe
 } from "lucide-react";
+import { ElevenLabsIcon } from "@/components/icons/ElevenLabsIcon";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -159,7 +160,9 @@ export function AdvancedAIInput({
       textareaRef.current.style.height = "auto";
     }
     
-    // Process attachments to get base64 data for images
+    // Process attachments to get base64 data for all file types
+    // Images, PDFs, text files, etc. will all be converted to base64
+    // The backend will use appropriate tools to process non-image attachments
     const processedAttachments: AttachmentData[] = await Promise.all(
       attachmentsToSend.map(async (file) => {
         const attachmentData: AttachmentData = {
@@ -167,21 +170,48 @@ export function AdvancedAIInput({
           type: file.type,
           size: file.size,
         };
-        
-        // Convert images to base64
-        if (file.type.startsWith("image/")) {
+
+        // Convert all supported file types to base64
+        const supportedTypes = [
+          'image/', // All images
+          'application/pdf', // PDF documents
+          'text/', // Text files, CSVs, etc.
+          'application/json', // JSON files
+          'application/vnd.openxmlformats', // Office documents (xlsx, docx, pptx)
+          'application/vnd.ms-excel', // Excel files
+          'application/msword', // Word documents
+        ];
+
+        const isSupported = supportedTypes.some(type => file.type.startsWith(type) || file.type === type);
+
+        if (isSupported) {
           try {
             const base64 = await fileToBase64(file);
             attachmentData.data = base64;
+            console.log('[AdvancedAIInput] File converted to base64:', {
+              name: file.name,
+              type: file.type,
+              size: file.size,
+              base64Length: base64.length,
+              prefix: base64.substring(0, 50),
+            });
           } catch (err) {
-            console.error("Failed to convert image to base64:", err);
+            console.error("Failed to convert file to base64:", err);
           }
+        } else {
+          console.warn('[AdvancedAIInput] Unsupported file type:', file.type);
         }
-        
+
         return attachmentData;
       })
     );
-    
+
+    console.log('[AdvancedAIInput] Sending message with attachments:', {
+      messageLength: messageToSend.length,
+      attachmentCount: processedAttachments.length,
+      hasImageData: processedAttachments.some(a => !!a.data),
+    });
+
     onSend(messageToSend, processedAttachments.length > 0 ? processedAttachments : undefined);
   }, [message, attachments, disabled, isLoading, onSend]);
 
@@ -324,7 +354,7 @@ export function AdvancedAIInput({
               ref={fileInputRef}
               type="file"
               multiple
-              accept="image/*,text/*,application/pdf"
+              accept="image/*,text/*,application/pdf,application/json,.xlsx,.xls,.docx,.doc,.csv"
               onChange={handleFileSelect}
               className="hidden"
             />
@@ -402,7 +432,7 @@ export function AdvancedAIInput({
 
           {/* Right Actions */}
           <div className="flex items-center gap-1 pr-3 self-center">
-            {/* Voice Orb Button - Talk to Sia */}
+            {/* ElevenLabs Voice Button - Talk to Sia */}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -410,14 +440,10 @@ export function AdvancedAIInput({
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-9 w-9 text-muted-foreground hover:text-foreground rounded-xl relative overflow-hidden group"
+                    className="h-9 w-9 text-muted-foreground hover:text-primary rounded-xl transition-colors"
                     onClick={() => setSiaOpen(true)}
                   >
-                    {/* Orb */}
-                    <div className="relative h-5 w-5 flex items-center justify-center">
-                      <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/40 to-primary/20 group-hover:scale-110 transition-transform" />
-                      <div className="relative h-3 w-3 rounded-full bg-gradient-to-br from-primary to-primary/70 shadow-sm shadow-primary/30" />
-                    </div>
+                    <ElevenLabsIcon size={20} />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top">

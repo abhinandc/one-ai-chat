@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { Menu, Settings, ChevronDown, RefreshCw } from "lucide-react";
+import { useQueryLogger } from "@/hooks/useQueryLogger";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -36,17 +38,29 @@ const Chat = () => {
   
   // Auto-initialize virtual API key from employee_keys
   const { initialized: keyInitialized, loading: keyLoading, error: keyError, refreshCredentials } = useVirtualKeyInit(user?.email);
+
+  // Query logger for context/memory
+  const { logQuery, startQueryTracking, completeQueryTracking } = useQueryLogger(user?.email);
+  const queryStartTimeRef = useRef<number>(0);
+
+  // User preferences (persisted to Supabase)
+  const {
+    preferences,
+    loading: preferencesLoading,
+    updateChatPreferences,
+    updateModelPreferences,
+  } = useUserPreferences(user?.email);
   
-  // Only load models after key initialization is complete
-  const { models, loading: modelsLoading, refetch: refetchModels } = useModels(keyInitialized ? user?.email : undefined);
-  
-  // Refetch models when key initialization completes
+  // Load models - pass email directly, useModels handles caching internally
+  const { models, loading: modelsLoading, refetch: refetchModels } = useModels(user?.email);
+
+  // Refetch models when credentials become available (in case localStorage was empty initially)
   useEffect(() => {
-    if (keyInitialized && user?.email) {
+    if (keyInitialized && models.length === 0 && !modelsLoading) {
+      console.log('[Chat] Credentials initialized, refetching models');
       refetchModels();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [keyInitialized, user?.email]);
+  }, [keyInitialized, models.length, modelsLoading, refetchModels]);
   
   const {
     conversations: supabaseConversations,
@@ -60,13 +74,93 @@ const Chat = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pendingMessage, setPendingMessage] = useState<string>("");
+  // Mode-specific configurations
+  const [chatMode, setChatMode] = useState<"thinking" | "fast" | "coding">(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem("oneEdge_chat_mode") as "thinking" | "fast" | "coding") || "fast";
+    }
+    return "fast";
+  });
+
+  // Mode-specific system prompts
+  const modeSystemPrompts: Record<string, string> = {
+    thinking: `You are an advanced AI assistant capable of deep analysis and step-by-step reasoning.
+
+When tackling complex problems:
+1. Break down your thought process into clear steps
+2. Show your reasoning using <thinking>...</thinking> blocks for internal deliberation
+3. Consider multiple perspectives before concluding
+4. Explain your logic transparently
+
+Format your thinking as:
+<thinking>
+## Analysis Phase
+- Key observation 1
+- Key observation 2
+
+## Reasoning
+- Step-by-step logic here
+</thinking>
+
+Then provide your clear, well-reasoned response.`,
+    fast: "You are a helpful AI assistant. Be concise and direct in your responses.",
+    coding: `You are an expert software engineer and coding assistant.
+
+Guidelines:
+- Write clean, maintainable, and well-documented code
+- Follow best practices and design patterns
+- Include helpful comments for complex logic
+- Consider edge cases and error handling
+- Provide explanations for your code when helpful`,
+  };
+
   const [chatSettings, setChatSettings] = useState({
-    systemPrompt: "You are a helpful AI assistant.",
+    systemPrompt: modeSystemPrompts.fast,
     temperature: 0.7,
     maxTokens: 4000,
     topP: 0.9,
     streamResponse: true,
   });
+
+  // Load settings from Supabase preferences when available
+  useEffect(() => {
+    if (!preferencesLoading && preferences.chat) {
+      // Only update if not using mode-specific prompts (user hasn't customized mode)
+      const currentModePrompt = modeSystemPrompts[chatMode];
+      const isUsingModePrompt = currentModePrompt === chatSettings.systemPrompt;
+
+      setChatSettings(prev => ({
+        systemPrompt: isUsingModePrompt ? prev.systemPrompt : preferences.chat.systemPrompt,
+        temperature: preferences.chat.temperature,
+        maxTokens: preferences.chat.maxTokens,
+        topP: preferences.chat.topP,
+        streamResponse: preferences.chat.streamResponse,
+      }));
+
+      // Load preferred model if set and current model is empty
+      if (!selectedModel && preferences.models.defaultModelId) {
+        setSelectedModel(preferences.models.defaultModelId);
+      } else if (!selectedModel && chatMode === "coding" && preferences.models.preferredCodingModel) {
+        setSelectedModel(preferences.models.preferredCodingModel);
+      } else if (!selectedModel && chatMode === "fast" && preferences.models.preferredChatModel) {
+        setSelectedModel(preferences.models.preferredChatModel);
+      }
+    }
+  }, [preferencesLoading, preferences]);
+
+  // Handle mode changes
+  const handleModeChange = (mode: string) => {
+    const validMode = mode as "thinking" | "fast" | "coding";
+    setChatMode(validMode);
+
+    // Update system prompt based on mode
+    setChatSettings(prev => ({
+      ...prev,
+      systemPrompt: modeSystemPrompts[validMode] || modeSystemPrompts.fast,
+      // Adjust temperature based on mode
+      temperature: validMode === "thinking" ? 0.3 : validMode === "coding" ? 0.2 : 0.7,
+    }));
+  };
 
 
   const {
@@ -77,6 +171,8 @@ const Chat = () => {
     stopStreaming,
     isStreaming,
     streamingMessage,
+    isThinking,
+    thinkingContent,
   } = useChat({
     model: selectedModel,
     systemPrompt: chatSettings.systemPrompt,
@@ -264,6 +360,12 @@ const Chat = () => {
 
     setCurrentConversation(conversation);
 
+    // Load the messages into the chat
+    setMessages(conversation.messages.map(msg => ({
+      role: msg.role,
+      content: msg.content,
+    })));
+
     // Load saved settings from conversation
     if (conversation.settings) {
       setSelectedModel(conversation.settings.model || selectedModel);
@@ -346,16 +448,12 @@ const Chat = () => {
       createNewConversation();
     }
 
+    // Start query tracking for logging
+    queryStartTimeRef.current = startQueryTracking(content);
+
     try {
-      // TODO: Process attachments - for now just send the message
-      // In a full implementation, attachments would be sent to the API
-      // For images, they could be sent as base64 in a vision model request
-      if (attachments && attachments.length > 0) {
-        console.log("Attachments received:", attachments.map(a => ({ name: a.name, type: a.type, hasData: !!a.data })));
-        // Future: integrate with vision models
-      }
-      
-      await sendMessage(content);
+      // Send message with attachments (images will be sent to vision-capable models)
+      await sendMessage(content, attachments);
 
       // Update conversation title if it's the first message
       if (
@@ -375,6 +473,37 @@ const Chat = () => {
       });
     }
   };
+
+  // Log query when streaming completes
+  useEffect(() => {
+    // When streaming finishes and we have a response, log it
+    if (!isStreaming && queryStartTimeRef.current > 0 && messages.length >= 2) {
+      const lastUserMessage = messages[messages.length - 2];
+      const lastAssistantMessage = messages[messages.length - 1];
+
+      if (lastUserMessage?.role === "user" && lastAssistantMessage?.role === "assistant") {
+        const responseContent = lastAssistantMessage.content || "";
+        // Create a simple summary (first 200 chars of response)
+        const responseSummary = responseContent.length > 200
+          ? responseContent.slice(0, 200) + "..."
+          : responseContent;
+
+        // Determine query type based on mode
+        const queryType = chatMode === "coding" ? "code" : chatMode === "thinking" ? "analysis" : "chat";
+
+        // Log the completed query
+        completeQueryTracking(queryStartTimeRef.current, {
+          conversationId: currentConversation?.id,
+          queryType,
+          modelUsed: selectedModel,
+          responseSummary,
+          keyTopics: [], // Could extract topics here with NLP
+        });
+
+        queryStartTimeRef.current = 0;
+      }
+    }
+  }, [isStreaming, messages, chatMode, selectedModel, currentConversation?.id, completeQueryTracking]);
 
   // Convert Supabase conversations to UI format
   const uiConversations: Conversation[] = useMemo(() => {
@@ -411,9 +540,9 @@ const Chat = () => {
     return messages.map((msg, index) => ({
       id: `msg_${index}`,
       role: msg.role as Message["role"],
-      content: msg.content,
+      content: typeof msg.content === 'string' ? msg.content : '',
       timestamp: new Date(),
-      metadata: {},
+      metadata: (msg as any).metadata || {},
     }));
   }, [messages]);
 
@@ -424,25 +553,35 @@ const Chat = () => {
     }
   }, [conversationsLoading]);
 
-  if (conversationsLoading || modelsLoading || keyLoading) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-background">
-        <div className="text-center space-y-4">
-          <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-muted-foreground text-sm">
-            {keyLoading ? 'Initializing API keys...' : 'Loading...'}
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Show skeleton while essential data loads
+  // User is guaranteed by App.tsx, but we need models to be ready
+  const isInitializing = !user || (keyLoading && models.length === 0);
 
-  if (!user) {
+  if (isInitializing) {
     return (
-      <div className="h-screen flex items-center justify-center bg-background">
-        <div className="text-center space-y-2">
-          <h2 className="text-xl font-semibold">Authentication Required</h2>
-          <p className="text-muted-foreground">Please log in to use the chat feature</p>
+      <div className="h-[calc(100vh-4rem-60px)] flex flex-col bg-background overflow-hidden">
+        {/* Header skeleton */}
+        <header className="flex items-center justify-between px-4 h-14 border-b border-border/40">
+          <div className="flex items-center gap-2">
+            <div className="h-9 w-9 rounded-md bg-muted animate-pulse" />
+            <div className="h-8 w-36 rounded-md bg-muted animate-pulse" />
+          </div>
+          <div className="h-9 w-9 rounded-md bg-muted animate-pulse" />
+        </header>
+
+        {/* Chat area skeleton */}
+        <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center space-y-3">
+              <div className="h-8 w-8 mx-auto rounded-full border-2 border-primary border-t-transparent animate-spin" />
+              <p className="text-sm text-muted-foreground">Loading chat...</p>
+            </div>
+          </div>
+
+          {/* Input skeleton */}
+          <div className="p-4 pb-6">
+            <div className="h-12 rounded-xl bg-muted animate-pulse" />
+          </div>
         </div>
       </div>
     );
@@ -485,7 +624,11 @@ const Chat = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-64">
-              {models.length === 0 ? (
+              {modelsLoading ? (
+                <DropdownMenuItem disabled>
+                  <span className="text-muted-foreground">Loading models...</span>
+                </DropdownMenuItem>
+              ) : models.length === 0 ? (
                 <DropdownMenuItem disabled>
                   <span className="text-muted-foreground">No models available</span>
                 </DropdownMenuItem>
@@ -517,6 +660,17 @@ const Chat = () => {
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh models
               </DropdownMenuItem>
+              {selectedModel && (
+                <DropdownMenuItem
+                  onClick={async () => {
+                    await updateModelPreferences({ defaultModelId: selectedModel });
+                    toast({ title: "Default model set", description: `${selectedModel} will be used by default` });
+                  }}
+                  className="text-muted-foreground"
+                >
+                  Set as default model
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -541,6 +695,9 @@ const Chat = () => {
           isStreaming={isStreaming}
           streamingMessage={streamingMessage}
           onSuggestionClick={(suggestion) => setPendingMessage(suggestion)}
+          chatMode={chatMode}
+          isThinking={isThinking}
+          thinkingContent={thinkingContent}
         />
 
         {/* Input - no duplicate model dropdown, it's in the header */}
@@ -549,9 +706,10 @@ const Chat = () => {
             onSend={handleSendMessage}
             isLoading={isStreaming}
             onStop={stopStreaming}
-            placeholder={isStreaming ? "Thinking..." : "What's on your mind?"}
+            placeholder="What's on your mind?"
             initialMessage={pendingMessage}
             onInitialMessageConsumed={() => setPendingMessage("")}
+            onModeChange={handleModeChange}
           />
         </div>
       </main>
@@ -561,8 +719,18 @@ const Chat = () => {
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         settings={chatSettings}
-        onSettingsChange={(newSettings) => {
+        onSettingsChange={async (newSettings) => {
           setChatSettings(newSettings);
+
+          // Persist to Supabase user preferences
+          await updateChatPreferences({
+            systemPrompt: newSettings.systemPrompt,
+            temperature: newSettings.temperature,
+            maxTokens: newSettings.maxTokens,
+            topP: newSettings.topP,
+            streamResponse: newSettings.streamResponse,
+          });
+
           // Auto-save settings to current conversation
           if (currentConversation && user?.email) {
             saveConversation({

@@ -16,9 +16,36 @@ export interface Model {
   owned_by: string;
 }
 
+// Vision content part types for multimodal messages
+export interface TextContentPart {
+  type: 'text';
+  text: string;
+}
+
+export interface ImageContentPart {
+  type: 'image_url';
+  image_url: {
+    url: string; // Can be a URL or base64 data URI
+    detail?: 'auto' | 'low' | 'high';
+  };
+}
+
+export type ContentPart = TextContentPart | ImageContentPart;
+
+export interface ChatMessageAttachment {
+  name: string;
+  type: string;
+  size?: number;
+  data?: string; // base64 data URI for images
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
-  content: string;
+  content: string | ContentPart[]; // String for text-only, array for multimodal
+  // Optional metadata for UI display (not sent to API)
+  metadata?: {
+    attachments?: ChatMessageAttachment[];
+  };
 }
 
 export interface ChatCompletionRequest {
@@ -483,11 +510,25 @@ export class OneEdgeClient {
       console.warn('[API] Could not get auth session, using anon key');
     }
     
-    const payload = { 
-      ...request, 
-      stream: true 
+    const payload = {
+      ...request,
+      stream: true
     };
-    
+
+    // Log request details for debugging multimodal
+    const hasMultimodal = request.messages.some(m => Array.isArray(m.content));
+    if (hasMultimodal) {
+      console.log('[API] Multimodal request detected:', {
+        model: request.model,
+        messageCount: request.messages.length,
+        lastMessageContent: Array.isArray(request.messages[request.messages.length - 1]?.content)
+          ? (request.messages[request.messages.length - 1].content as ContentPart[]).map(p =>
+              p.type === 'text' ? 'text' : `image_url (${p.image_url.url.substring(0, 30)}...)`
+            )
+          : 'string',
+      });
+    }
+
     const response = await fetch(proxyEndpoint, {
       method: 'POST',
       headers: {

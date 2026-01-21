@@ -1,13 +1,129 @@
-import { useState, useEffect, useRef, useCallback, memo } from "react";
+import { useState, useEffect, useRef, useCallback, memo, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bot, CheckCircle, AlertCircle, Loader2, Square, Sparkles } from "lucide-react";
+import { Bot, CheckCircle, AlertCircle, Loader2, Square, Sparkles, X, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import apiClient, { type Model, type ChatMessage } from "@/lib/api";
 
 type StreamStatus = "idle" | "streaming" | "completed" | "cancelled" | "error";
+
+// Code block component with copy functionality
+const CodeBlock = memo(function CodeBlock({ code, language }: { code: string; language: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copyCode = async () => {
+    await navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="my-3 rounded-lg overflow-hidden border border-border/50 bg-muted/30">
+      <div className="flex items-center justify-between bg-muted/50 px-3 py-1.5">
+        <span className="text-xs font-medium text-muted-foreground">
+          {language || "code"}
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 px-2 text-xs"
+          onClick={copyCode}
+        >
+          {copied ? (
+            <>
+              <Check className="h-3 w-3 mr-1" />
+              Copied
+            </>
+          ) : (
+            <>
+              <Copy className="h-3 w-3 mr-1" />
+              Copy
+            </>
+          )}
+        </Button>
+      </div>
+      <pre className="p-3 overflow-x-auto bg-background/30 text-xs">
+        <code className="font-mono text-foreground/90">{code}</code>
+      </pre>
+    </div>
+  );
+});
+
+// Image component with error handling and fallback
+const ImageWithFallback = memo(function ImageWithFallback({
+  imageUrl,
+  altText,
+  beforeImage,
+  afterImage
+}: {
+  imageUrl: string;
+  altText: string;
+  beforeImage: string;
+  afterImage: string;
+}) {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    console.error(`[ImageWithFallback] Image failed to load. URL length: ${imageUrl?.length}`);
+    console.error(`[ImageWithFallback] URL starts with: ${imageUrl?.slice(0, 100)}`);
+    setImageError(true);
+  };
+
+  const handleImageLoad = () => {
+    console.log(`[ImageWithFallback] Image loaded successfully`);
+    setImageLoaded(true);
+  };
+
+  if (imageError) {
+    return (
+      <div className="my-2 p-4 rounded-lg border border-destructive/30 bg-destructive/5">
+        <p className="text-xs text-destructive font-medium mb-2">Image failed to load</p>
+        <p className="text-xs text-muted-foreground break-all">
+          URL type: {imageUrl?.startsWith('data:') ? 'base64 data URL' : 'HTTPS URL'}
+        </p>
+        <p className="text-xs text-muted-foreground break-all">
+          Length: {imageUrl?.length || 0} characters
+        </p>
+        {imageUrl && !imageUrl.startsWith('data:') && (
+          <a
+            href={imageUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-primary hover:underline"
+          >
+            Open image in new tab
+          </a>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="my-2">
+      {beforeImage && <p className="text-xs text-foreground/80 mb-2">{beforeImage}</p>}
+      {!imageLoaded && (
+        <div className="flex items-center justify-center h-32 bg-muted/30 rounded-lg border border-border/50">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      )}
+      <img
+        src={imageUrl}
+        alt={altText || "Generated image"}
+        className={cn(
+          "max-w-full h-auto rounded-lg border border-border/50",
+          !imageLoaded && "hidden"
+        )}
+        loading="lazy"
+        onError={handleImageError}
+        onLoad={handleImageLoad}
+      />
+      {afterImage && <p className="text-xs text-foreground/80 mt-2 italic">{afterImage}</p>}
+    </div>
+  );
+});
 
 interface ModelResponseCardProps {
   model: Model;
@@ -17,18 +133,172 @@ interface ModelResponseCardProps {
   onSelect: (modelId: string, response: string) => void;
 }
 
-const ModelResponseCard = memo(function ModelResponseCard({ 
-  model, 
-  query, 
-  index, 
+const ModelResponseCard = memo(function ModelResponseCard({
+  model,
+  query,
+  index,
   onComplete,
-  onSelect 
+  onSelect
 }: ModelResponseCardProps) {
   const [content, setContent] = useState("");
   const [status, setStatus] = useState<StreamStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  // Handle inline formatting (bold, italic, inline code)
+  const renderInlineFormatting = useCallback((text: string) => {
+    // Handle inline code first
+    const parts = text.split(/(`[^`]+`)/);
+    return parts.map((part, index) => {
+      if (part.startsWith("`") && part.endsWith("`")) {
+        return (
+          <code
+            key={index}
+            className="px-1 py-0.5 bg-muted/80 rounded text-xs font-mono text-primary"
+          >
+            {part.slice(1, -1)}
+          </code>
+        );
+      }
+      // Handle bold
+      if (part.includes("**")) {
+        return part.split(/(\*\*[^*]+\*\*)/).map((subpart, i) => {
+          if (subpart.startsWith("**") && subpart.endsWith("**")) {
+            return <strong key={i} className="font-semibold text-foreground">{subpart.slice(2, -2)}</strong>;
+          }
+          return subpart;
+        });
+      }
+      return part;
+    });
+  }, []);
+
+  // Render markdown-like content with proper formatting
+  const renderedContent = useMemo(() => {
+    if (!content) return null;
+
+    // Split content into paragraphs first
+    const paragraphs = content.split(/\n\n+/);
+
+    return paragraphs.map((paragraph, pIndex) => {
+      // Handle markdown images (for image generation responses)
+      if (paragraph.includes("![") && paragraph.includes("](")) {
+        // Use a more robust regex that handles URLs with special characters
+        // Match ![alt](url) where url can contain anything except newlines, and we find the LAST ) as the closing
+        const imageStart = paragraph.indexOf("![");
+        if (imageStart !== -1) {
+          const altStart = imageStart + 2;
+          const altEnd = paragraph.indexOf("](", altStart);
+          if (altEnd !== -1) {
+            const urlStart = altEnd + 2;
+            // Find the closing parenthesis - for data URLs or complex URLs, find the last ) that makes sense
+            // Look for ) followed by end of string, newline, or space
+            let urlEnd = paragraph.length;
+            for (let i = paragraph.length - 1; i >= urlStart; i--) {
+              if (paragraph[i] === ')') {
+                urlEnd = i;
+                break;
+              }
+            }
+
+            const altText = paragraph.slice(altStart, altEnd);
+            const imageUrl = paragraph.slice(urlStart, urlEnd);
+            const beforeImage = paragraph.slice(0, imageStart);
+            const afterImage = paragraph.slice(urlEnd + 1);
+
+            // Debug log the URL
+            console.log(`[MultiModelComparison] Image URL length: ${imageUrl?.length}, type: ${imageUrl?.startsWith('data:') ? 'base64' : 'url'}`);
+            if (imageUrl && !imageUrl.startsWith('data:')) {
+              console.log(`[MultiModelComparison] URL prefix: ${imageUrl.slice(0, 100)}...`);
+            }
+
+            return (
+              <ImageWithFallback
+                key={pIndex}
+                imageUrl={imageUrl}
+                altText={altText}
+                beforeImage={beforeImage}
+                afterImage={afterImage}
+              />
+            );
+          }
+        }
+      }
+
+      // Handle code blocks
+      if (paragraph.includes("```")) {
+        const parts = paragraph.split(/(```[\s\S]*?```)/);
+        return (
+          <div key={pIndex} className="my-2">
+            {parts.map((part, partIndex) => {
+              if (part.startsWith("```")) {
+                const match = part.match(/```(\w+)?\n?([\s\S]*?)```/);
+                if (match) {
+                  const [, language, code] = match;
+                  return (
+                    <CodeBlock key={partIndex} code={code.trim()} language={language || ""} />
+                  );
+                }
+              }
+              return part ? <span key={partIndex} className="whitespace-pre-wrap text-xs">{part}</span> : null;
+            })}
+          </div>
+        );
+      }
+
+      // Handle headers (## and ###)
+      if (paragraph.startsWith("### ")) {
+        return (
+          <h3 key={pIndex} className="text-sm font-semibold text-foreground mt-3 mb-1">
+            {paragraph.slice(4)}
+          </h3>
+        );
+      }
+      if (paragraph.startsWith("## ")) {
+        return (
+          <h2 key={pIndex} className="text-sm font-semibold text-foreground mt-3 mb-1">
+            {paragraph.slice(3)}
+          </h2>
+        );
+      }
+
+      // Handle bullet points
+      if (paragraph.includes("\n- ") || paragraph.startsWith("- ")) {
+        const items = paragraph.split(/\n/).filter(Boolean);
+        return (
+          <ul key={pIndex} className="list-disc list-inside space-y-0.5 my-2 text-xs text-foreground/90">
+            {items.map((item, i) => (
+              <li key={i} className="leading-relaxed">
+                {renderInlineFormatting(item.replace(/^-\s*/, ""))}
+              </li>
+            ))}
+          </ul>
+        );
+      }
+
+      // Handle numbered lists
+      if (/^\d+\.\s/.test(paragraph)) {
+        const items = paragraph.split(/\n/).filter(Boolean);
+        return (
+          <ol key={pIndex} className="list-decimal list-inside space-y-0.5 my-2 text-xs text-foreground/90">
+            {items.map((item, i) => (
+              <li key={i} className="leading-relaxed">
+                {renderInlineFormatting(item.replace(/^\d+\.\s*/, ""))}
+              </li>
+            ))}
+          </ol>
+        );
+      }
+
+      // Regular paragraph with inline formatting
+      return (
+        <p key={pIndex} className="my-1.5 leading-relaxed text-xs text-foreground/90">
+          {renderInlineFormatting(paragraph)}
+        </p>
+      );
+    });
+  }, [content, renderInlineFormatting]);
 
   useEffect(() => {
     if (!query) return;
@@ -226,9 +496,11 @@ const ModelResponseCard = memo(function ModelResponseCard({
           )}
           {(status === "streaming" || status === "completed" || status === "cancelled") && (
             <>
-              <div className="whitespace-pre-wrap text-foreground/90">{content}</div>
+              <div className="prose prose-sm dark:prose-invert max-w-none">
+                {renderedContent}
+              </div>
               {status === "streaming" && (
-                <motion.span 
+                <motion.span
                   animate={{ opacity: [1, 0.3, 1] }}
                   transition={{ duration: 0.8, repeat: Infinity }}
                   className="inline-block w-1.5 h-4 bg-primary rounded-sm ml-0.5"
@@ -295,14 +567,24 @@ export function MultiModelComparison({ query, models, onClose }: MultiModelCompa
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.3 }}
-      className="space-y-6"
+      className="relative space-y-6"
     >
+      {/* Close button - positioned at top right edge */}
+      <Button
+        size="icon"
+        variant="outline"
+        onClick={onClose}
+        className="absolute -top-2 -right-2 h-12 w-12 rounded-full border-2 bg-background hover:bg-destructive/10 hover:border-destructive hover:text-destructive shadow-lg z-10 transition-all duration-200"
+      >
+        <X className="h-6 w-6" />
+      </Button>
+
       {/* Header */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.1 }}
-        className="flex items-center justify-between gap-4"
+        className="flex items-center justify-between gap-4 pr-14"
       >
         <div className="flex-1 min-w-0">
           <h2 className="text-xl font-semibold text-foreground truncate">

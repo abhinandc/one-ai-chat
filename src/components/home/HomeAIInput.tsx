@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { DotsLoader } from "@/components/ai-elements/pk-loader";
 
 interface HomeAIInputProps {
   onSend: (message: string) => void;
@@ -23,7 +23,7 @@ export function HomeAIInput({
   const adjustHeight = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
-    
+
     textarea.style.height = "auto";
     const newHeight = Math.min(textarea.scrollHeight, 160);
     textarea.style.height = `${newHeight}px`;
@@ -37,7 +37,7 @@ export function HomeAIInput({
     if (!message.trim() || disabled || isLoading) return;
     onSend(message.trim());
     setMessage("");
-    
+
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
@@ -50,33 +50,30 @@ export function HomeAIInput({
     }
   };
 
-  const canSend = message.trim().length > 0 && !disabled;
-
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.2 }}
-      className={cn("w-full relative", className)}
-    >
+    <div className={cn("w-full relative", className)}>
       <div className="relative mx-auto max-w-3xl">
         {/* Main Input Container */}
-        <motion.div 
-          animate={{
-            boxShadow: isFocused 
-              ? "0 0 0 1px hsl(var(--primary) / 0.3), 0 8px 32px hsl(var(--primary) / 0.15)" 
-              : "0 4px 20px rgba(0, 0, 0, 0.08)"
-          }}
-          transition={{ duration: 0.2 }}
+        <div
           className={cn(
-            "relative flex items-center rounded-2xl border bg-card/80 backdrop-blur-sm transition-colors duration-200",
-            isFocused 
-              ? "border-primary/40" 
-              : "border-border/60",
-            isLoading && "opacity-80"
+            "relative flex items-center rounded-2xl border bg-card/80 backdrop-blur-sm transition-all duration-200",
+            isFocused
+              ? "border-primary/40 shadow-lg shadow-primary/10"
+              : "border-border/60 shadow-md",
+            isLoading && "border-primary/60"
           )}
         >
-          {/* Textarea - centered, no icons */}
+          {/* Loading Overlay */}
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-card/95 backdrop-blur-sm rounded-2xl z-10">
+              <div className="flex items-center gap-3">
+                <DotsLoader size="md" />
+                <span className="text-sm text-muted-foreground">Finding the best models...</span>
+              </div>
+            </div>
+          )}
+
+          {/* Textarea */}
           <div className="flex-1 relative">
             <textarea
               ref={textareaRef}
@@ -90,25 +87,20 @@ export function HomeAIInput({
               rows={1}
               className={cn(
                 "w-full resize-none bg-transparent py-5 px-6 text-lg text-center",
-                "placeholder:text-muted-foreground/40 placeholder:font-light placeholder:text-lg",
+                "placeholder:text-muted-foreground/50 placeholder:font-light",
                 "disabled:opacity-50 disabled:cursor-not-allowed",
                 "min-h-[64px] max-h-[160px]",
                 "focus:outline-none"
               )}
             />
           </div>
-        </motion.div>
+        </div>
 
         {/* Hint Text */}
-        <motion.p 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="text-center text-xs text-muted-foreground/50 mt-4"
-        >
+        <p className="text-center text-xs text-muted-foreground/50 mt-3">
           Press Enter to compare responses from multiple AI models
-        </motion.p>
+        </p>
       </div>
-    </motion.div>
+    </div>
   );
 }

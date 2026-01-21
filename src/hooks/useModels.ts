@@ -17,8 +17,30 @@ export interface UseModelsResult {
 }
 
 export function useModels(userEmail?: string): UseModelsResult {
-  const [models, setModels] = useState<Model[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Check localStorage synchronously for instant load
+  const cachedModels = (() => {
+    try {
+      const allCredsStr = typeof window !== 'undefined' ? localStorage.getItem('oneai_all_credentials') : null;
+      if (allCredsStr) {
+        const allCreds = JSON.parse(allCredsStr);
+        if (Array.isArray(allCreds) && allCreds.length > 0) {
+          return allCreds.map<Model>((cred: any) => ({
+            id: cred.model_key,
+            object: 'model',
+            created: Date.now() / 1000,
+            owned_by: cred.provider || 'unknown',
+            api_path: cred.api_path,
+          }));
+        }
+      }
+    } catch {
+      // Silently fail
+    }
+    return [];
+  })();
+
+  const [models, setModels] = useState<Model[]>(cachedModels);
+  const [loading, setLoading] = useState(cachedModels.length === 0);
   const [error, setError] = useState<string | null>(null);
 
   const fetchModels = async () => {
@@ -104,12 +126,44 @@ export function useModels(userEmail?: string): UseModelsResult {
   };
 
   useEffect(() => {
-    // Small delay to allow useVirtualKeyInit to populate localStorage first
-    const timer = setTimeout(() => {
+    // Fetch models when we have a userEmail and no models loaded yet
+    if (userEmail && models.length === 0) {
       fetchModels();
-    }, 50);
-    return () => clearTimeout(timer);
-  }, [userEmail]);
+    }
+  }, [userEmail, models.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Also check localStorage periodically in case credentials were loaded by another hook
+  useEffect(() => {
+    if (models.length > 0 || !userEmail) return;
+
+    // Check if localStorage now has credentials (set by useVirtualKeyInit)
+    const checkStorage = () => {
+      const allCredsStr = localStorage.getItem('oneai_all_credentials');
+      if (allCredsStr) {
+        try {
+          const allCreds = JSON.parse(allCredsStr);
+          if (Array.isArray(allCreds) && allCreds.length > 0) {
+            const transformedModels = allCreds.map<Model>((cred: any) => ({
+              id: cred.model_key,
+              object: 'model',
+              created: Date.now() / 1000,
+              owned_by: cred.provider || 'unknown',
+              api_path: cred.api_path,
+            }));
+            setModels(transformedModels);
+            setLoading(false);
+          }
+        } catch {
+          // Silently continue
+        }
+      }
+    };
+
+    // Check immediately and after a short delay (in case credentials are being loaded)
+    checkStorage();
+    const timeout = setTimeout(checkStorage, 500);
+    return () => clearTimeout(timeout);
+  }, [userEmail, models.length]);
 
   return {
     models,
